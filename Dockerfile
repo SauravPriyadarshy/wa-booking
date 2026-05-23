@@ -51,8 +51,8 @@ ENV DATABASE_URL="postgresql://x:x@localhost:5432/x?schema=public"
 RUN node_modules/.bin/prisma generate
 # Use tsc (not nest build/webpack) so both main.ts AND worker.ts are compiled.
 # nest build/webpack only follows the main.ts entry point and would miss worker.ts.
-# tsc is hoisted to root node_modules, so reference via absolute path.
-RUN /app/node_modules/.bin/tsc -p tsconfig.build.json
+# tsc is hoisted to root node_modules; delete stale tsbuildinfo to force fresh compile.
+RUN rm -f tsconfig.build.tsbuildinfo && /app/node_modules/.bin/tsc -p tsconfig.build.json
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Stage 4: Final runtime image
