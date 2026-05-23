@@ -4,43 +4,63 @@ Multi-tenant, mobile-first booking and CRM SaaS for Indian service businesses (s
 
 ---
 
-## 🟢 Production (Live on Vercel)
+## Production (Live)
 
-| Service | URL | Status |
-|---------|-----|--------|
-| **Web App** | [https://wa-booking-web.vercel.app](https://wa-booking-web.vercel.app) | ✅ Live |
-| **API** | [https://wa-booking-api.vercel.app](https://wa-booking-api.vercel.app) | ✅ Live |
-| **API Health** | [https://wa-booking-api.vercel.app/health](https://wa-booking-api.vercel.app/health) | `{"ok":true}` |
-| **Vercel Dashboard** | [https://vercel.com/sauravpriyadarshys-projects](https://vercel.com/sauravpriyadarshys-projects) | — |
+| Service | Platform | URL | Status |
+|---------|----------|-----|--------|
+| **Web App** | Vercel | [https://wa-booking-web.vercel.app](https://wa-booking-web.vercel.app) | ✅ Live |
+| **API** | Vercel | [https://wa-booking-api.vercel.app](https://wa-booking-api.vercel.app) | ✅ Live |
+| **WhatsApp Worker** | Render | [https://wa-worker-dewp.onrender.com](https://wa-worker-dewp.onrender.com) | 🔄 Building |
+| **BullMQ Worker** | Render | [https://bullmq-worker-u2sl.onrender.com](https://bullmq-worker-u2sl.onrender.com) | 🔄 Building |
+| **Redis** | Render Key Value | `singapore-keyvalue.render.com` | ✅ Available |
+| **Database** | Neon Postgres | `ep-withered-cloud-aqowbdqg` | ✅ Live |
+| **GitHub** | — | [github.com/SauravPriyadarshy/wa-booking](https://github.com/SauravPriyadarshy/wa-booking) | ✅ Public |
 
-### Production credentials (live)
+### Production credentials
+
 | Role | Username | Password | URL |
 |------|----------|----------|-----|
 | Super Admin | `admin` | `Test@123` | [/login](https://wa-booking-web.vercel.app/login) |
 | Business Admin | `demo_admin` | `password123` | [/login](https://wa-booking-web.vercel.app/login) |
 | Customer (no login) | — | — | [/demo-salon](https://wa-booking-web.vercel.app/demo-salon) |
 
-### Production environment variables (API — `wa-booking-api`)
-| Variable | Value | Set |
-|----------|-------|-----|
+---
+
+## Infrastructure Map
+
+### Vercel — API (`wa-booking-api`)
+
+| Variable | Value | Status |
+|----------|-------|--------|
 | `DATABASE_URL` | Neon Postgres (pooler) | ✅ |
+| `DATABASE_URL_UNPOOLED` | Neon Postgres (direct) | ✅ |
 | `JWT_SECRET` | 64-char random hex | ✅ |
 | `CORS_ORIGINS` | `https://wa-booking-web.vercel.app` | ✅ |
 | `SUPERADMIN_USERNAME` | `admin` | ✅ |
 | `SUPERADMIN_PASSWORD` | `Test@123` | ✅ |
-| `REDIS_URL` | `redis://localhost:6379` (graceful no-op) | ✅ |
-| `WA_WORKER_URL` | Not set for prod (WA worker needs separate host) | ⚠️ |
+| `REDIS_URL` | Render Redis (external TLS) | ✅ |
+| `WA_WORKER_URL` | `https://wa-worker-dewp.onrender.com` | ✅ |
+| `WA_WORKER_SECRET` | 64-char hex (shared with Render) | ✅ |
 
-### Production environment variables (Web — `wa-booking-web`)
-| Variable | Value | Set |
-|----------|-------|-----|
+### Vercel — Web (`wa-booking-web`)
+
+| Variable | Value | Status |
+|----------|-------|--------|
 | `NEXT_PUBLIC_API_URL` | `https://wa-booking-api.vercel.app` | ✅ |
 
-> **Redis note**: BullMQ and slot-lock features degrade gracefully when Redis is unavailable — the core app (login, bookings, CRM, analytics) works fully. WhatsApp reminder automation requires Upstash Redis + a separate BullMQ worker process.
+### Render — Services
+
+| Service | ID | Env Vars |
+|---------|----|----------|
+| `wa-redis` (Key Value) | `red-d88kuqjbc2fs73eb9rig` | — |
+| `wa-worker` (Web) | `srv-d88kv6lckfvc73fpr7h0` | `SERVICE=wa-worker`, `PORT=3100`, `API_BASE_URL`, `REDIS_URL`, `WA_WORKER_SECRET` |
+| `bullmq-worker` (Web) | `srv-d88l0jreo5us7381utog` | `SERVICE=bullmq`, `PORT=3200`, `DATABASE_URL`, `REDIS_URL`, `WA_WORKER_URL`, `WA_WORKER_SECRET` |
+
+> Both Render services use the **universal root `Dockerfile`** and select the service to run via the `SERVICE` environment variable (`wa-worker` or `bullmq`).
 
 ---
 
-## Monorepo structure
+## Monorepo Structure
 
 ```
 apps/
@@ -50,28 +70,84 @@ apps/
 packages/
   db/           # (placeholder)
   shared/       # (placeholder)
+Dockerfile            # Universal — SERVICE=wa-worker or SERVICE=bullmq
+Dockerfile.bullmq     # Legacy (not used by Render; kept for reference)
+docker-entrypoint.sh  # Selects service at runtime
+render.yaml           # Render Blueprint spec
+docker-compose.yml    # Local dev: Postgres + Redis
 ```
 
 ---
 
-## Open in browser
+## Production URLs
 
-### Production (live)
 | URL | Purpose |
 |-----|---------|
 | [https://wa-booking-web.vercel.app](https://wa-booking-web.vercel.app) | Landing page |
 | [https://wa-booking-web.vercel.app/login](https://wa-booking-web.vercel.app/login) | Login (all roles) |
 | [https://wa-booking-web.vercel.app/signup](https://wa-booking-web.vercel.app/signup) | Mobile OTP signup |
 | [https://wa-booking-web.vercel.app/demo-salon](https://wa-booking-web.vercel.app/demo-salon) | Public booking page |
-| [https://wa-booking-web.vercel.app/city/darbhanga](https://wa-booking-web.vercel.app/city/darbhanga) | City SEO page — Darbhanga |
-| [https://wa-booking-web.vercel.app/city/laheriasarai](https://wa-booking-web.vercel.app/city/laheriasarai) | City SEO page — Laheriasarai |
-| [https://wa-booking-web.vercel.app/city/mohali](https://wa-booking-web.vercel.app/city/mohali) | City SEO page — Mohali |
-| [https://wa-booking-web.vercel.app/city/patna](https://wa-booking-web.vercel.app/city/patna) | City SEO page — Patna |
-| [https://wa-booking-web.vercel.app/city/muzaffarpur](https://wa-booking-web.vercel.app/city/muzaffarpur) | City SEO page — Muzaffarpur |
+| [https://wa-booking-web.vercel.app/city/darbhanga](https://wa-booking-web.vercel.app/city/darbhanga) | City SEO — Darbhanga |
+| [https://wa-booking-web.vercel.app/city/laheriasarai](https://wa-booking-web.vercel.app/city/laheriasarai) | City SEO — Laheriasarai |
+| [https://wa-booking-web.vercel.app/city/mohali](https://wa-booking-web.vercel.app/city/mohali) | City SEO — Mohali |
+| [https://wa-booking-web.vercel.app/city/patna](https://wa-booking-web.vercel.app/city/patna) | City SEO — Patna |
+| [https://wa-booking-web.vercel.app/city/muzaffarpur](https://wa-booking-web.vercel.app/city/muzaffarpur) | City SEO — Muzaffarpur |
 | [https://wa-booking-web.vercel.app/sitemap.xml](https://wa-booking-web.vercel.app/sitemap.xml) | XML sitemap |
 | [https://wa-booking-web.vercel.app/robots.txt](https://wa-booking-web.vercel.app/robots.txt) | robots.txt |
+| [https://wa-booking-api.vercel.app/health](https://wa-booking-api.vercel.app/health) | API health check |
+| [https://wa-worker-dewp.onrender.com/health](https://wa-worker-dewp.onrender.com/health) | WA worker health |
 
-### Local dev
+---
+
+## Local Dev
+
+### Prerequisites
+
+**Option A — Docker:**
+```bash
+docker compose up -d   # Postgres :5432 + Redis :6379
+```
+
+**Option B — Homebrew (macOS):**
+```bash
+brew install postgresql@16 && brew services start postgresql@16
+brew install redis && brew services start redis
+```
+
+### 1. API
+```bash
+cd apps/api
+cp .env.example .env          # fill DATABASE_URL, JWT_SECRET, etc.
+npx prisma migrate deploy
+npx prisma generate
+npm run db:seed               # creates superadmin + demo-salon + 38 SiteContent keys
+npm run start:dev             # http://localhost:3000
+```
+
+### 2. BullMQ worker
+```bash
+# Separate terminal, from apps/api:
+npm run worker:dev            # listens on QUEUE_REMINDERS; sends WA messages via wa-worker
+```
+
+### 3. Web
+```bash
+cd apps/web
+cp .env.example .env.local    # set NEXT_PUBLIC_API_URL=http://localhost:3000
+npm run dev                   # http://127.0.0.1:3001
+```
+
+### 4. WhatsApp worker
+```bash
+cd apps/wa-worker
+PUPPETEER_SKIP_DOWNLOAD=1 PORT=3100 npm run dev   # http://localhost:3100
+```
+> Requires Chrome/Chromium. In Docker/Render the image auto-detects `/usr/bin/chromium`.
+
+---
+
+## Local Dev URLs
+
 | URL | Purpose |
 |-----|---------|
 | `http://127.0.0.1:3001/` | Landing page |
@@ -82,7 +158,6 @@ packages/
 | `http://127.0.0.1:3001/app` | Hub — command center |
 | `http://127.0.0.1:3001/app/bookings` | Calendar + list |
 | `http://127.0.0.1:3001/app/customers` | CRM list |
-| `http://127.0.0.1:3001/app/customers/{id}` | Customer detail + timeline |
 | `http://127.0.0.1:3001/app/inbox` | WhatsApp conversation inbox |
 | `http://127.0.0.1:3001/app/leads` | Leads pipeline |
 | `http://127.0.0.1:3001/app/support` | Support tickets |
@@ -94,10 +169,9 @@ packages/
 | `http://127.0.0.1:3001/app/templates` | Quick-reply templates |
 | `http://127.0.0.1:3001/app/settings` | Business settings |
 | `http://127.0.0.1:3001/app/onboarding` | First-run business setup |
-| `http://127.0.0.1:3001/app/more` | More menu |
 | `http://127.0.0.1:3001/app/superadmin/businesses` | Super Admin — all businesses |
 | `http://127.0.0.1:3001/app/superadmin/features` | Super Admin — feature flags |
-| `http://127.0.0.1:3001/app/superadmin/content` | Super Admin — **Content Editor** |
+| `http://127.0.0.1:3001/app/superadmin/content` | Super Admin — Content Editor |
 
 ---
 
@@ -112,54 +186,7 @@ packages/
 
 ---
 
-## Local dev
-
-### 1. Prerequisites — Postgres + Redis
-
-**Option A — Docker:**
-```bash
-docker compose up -d   # Postgres :5432 + Redis :6379
-```
-
-**Option B — Homebrew (macOS):**
-```bash
-brew install postgresql@16 && brew services start postgresql@16
-brew install redis && brew services start redis
-```
-
-### 2. API
-```bash
-cd apps/api
-cp .env.example .env          # fill in DATABASE_URL, JWT_SECRET, etc.
-npx prisma migrate deploy
-npx prisma generate
-npm run db:seed               # creates superadmin + demo-salon + 38 SiteContent keys
-npm run start:dev             # http://localhost:3000
-```
-
-### 3. BullMQ worker (WhatsApp messages & reminders)
-```bash
-# In a separate terminal, from apps/api
-npm run worker:dev            # listens on QUEUE_REMINDERS; sends WA messages
-```
-
-### 4. Web
-```bash
-cd apps/web
-cp .env.example .env.local    # set NEXT_PUBLIC_API_URL=http://localhost:3000
-npm run dev                   # http://127.0.0.1:3001
-```
-
-### 5. WhatsApp worker (optional — needed for real WA messages)
-```bash
-cd apps/wa-worker
-PUPPETEER_SKIP_DOWNLOAD=1 PORT=3100 npm run dev   # http://localhost:3100
-```
-> Requires Chrome/Chromium. In Docker/Render use `CHROME_PATH=/usr/bin/chromium`.
-
----
-
-## Scripts reference
+## Scripts Reference
 
 | Location | Script | What it does |
 |----------|--------|--------------|
@@ -173,7 +200,7 @@ PUPPETEER_SKIP_DOWNLOAD=1 PORT=3100 npm run dev   # http://localhost:3100
 
 ---
 
-## API modules (NestJS)
+## API Modules (NestJS)
 
 | Module | Path prefix | Notes |
 |--------|-------------|-------|
@@ -197,54 +224,25 @@ PUPPETEER_SKIP_DOWNLOAD=1 PORT=3100 npm run dev   # http://localhost:3100
 | `public` | `/public` | Unauthenticated booking endpoints |
 | `wa-events` | `/wa-events` | Inbound WhatsApp webhook events |
 | `superadmin` | `/superadmin` | Platform-wide admin operations |
-| `site-content` | `/site-content` | Dynamic content (public read, super-admin write, Redis cached) |
+| `site-content` | `/site-content` | Dynamic content (public read, super-admin write, Redis cached 5 min) |
 | `queues` | _(internal)_ | Redis + BullMQ queue providers |
-
----
-
-## Environment variables
-
-### `apps/api/.env`
-```env
-DATABASE_URL="postgresql://app:app@localhost:5432/wa_booking?schema=public"
-JWT_SECRET="change_me_use_openssl_rand_hex_32"
-REDIS_URL="redis://localhost:6379"
-WA_WORKER_URL="http://localhost:3100"
-WA_WORKER_SECRET=""          # shared secret between API and wa-worker
-SUPERADMIN_USERNAME="admin"
-SUPERADMIN_PASSWORD="Test@123"
-PORT=3000
-CORS_ORIGINS=                # comma-separated origins; empty = allow all in dev
-```
-
-### `apps/web/.env.local`
-```env
-NEXT_PUBLIC_API_URL=http://localhost:3000
-```
 
 ---
 
 ## Deployment
 
-| Service | Platform | Notes |
-|---------|----------|-------|
-| Web | Vercel (`wa-booking-web`) | `NEXT_PUBLIC_API_URL=https://wa-booking-api.vercel.app` |
-| API | Vercel (`wa-booking-api`) | Neon Postgres via integration; `JWT_SECRET`, `CORS_ORIGINS`, `SUPERADMIN_*` must be set |
-| Redis | Upstash (recommended) | Set `REDIS_URL` in API env for BullMQ + slot lock |
-| BullMQ worker | Render / Railway | `npm run worker:start` from `apps/api`; needs `REDIS_URL` + `WA_WORKER_URL` |
-| WhatsApp worker | Render / Railway / Docker VM | Needs Chromium + long-running process; use `Dockerfile` in `apps/wa-worker` |
-
-### Re-deploy after env var changes
+### Vercel (API + Web) — auto-deploy on push to `main`
 ```bash
-cd apps/api && npx vercel --prod --yes
-cd apps/web && npx vercel --prod --yes
+cd apps/api && npx vercel --prod
+cd apps/web && npx vercel --prod
 ```
 
----
+### Render (WA worker + BullMQ) — auto-deploy on push to `main`
+Both services on Render redeploy automatically when code is pushed to GitHub (`main` branch).
+Dashboard: [dashboard.render.com](https://dashboard.render.com)
 
-## Database migrations (production)
-
-Migrations run automatically via the `postinstall` script on every Vercel deploy:
+### Database migrations (production)
+Migrations run automatically via the `postinstall` script on every Vercel API deploy:
 ```
 prisma migrate deploy
 ```
@@ -253,6 +251,28 @@ To seed the production Neon database manually:
 ```bash
 cd apps/api
 DATABASE_URL="<neon-connection-string>" npm run db:seed
+```
+
+---
+
+## Local `.env` Reference
+
+### `apps/api/.env`
+```env
+DATABASE_URL="postgresql://app:app@localhost:5432/wa_booking?schema=public"
+JWT_SECRET="change_me_use_openssl_rand_hex_32"
+REDIS_URL="redis://localhost:6379"
+WA_WORKER_URL="http://localhost:3100"
+WA_WORKER_SECRET=""
+SUPERADMIN_USERNAME="admin"
+SUPERADMIN_PASSWORD="Test@123"
+PORT=3000
+CORS_ORIGINS=
+```
+
+### `apps/web/.env.local`
+```env
+NEXT_PUBLIC_API_URL=http://localhost:3000
 ```
 
 ---

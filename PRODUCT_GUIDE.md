@@ -4,7 +4,7 @@ This guide provides a comprehensive overview of the platform's functionalities, 
 
 **Related:** [README](./README.md) (setup & deployment) · [PLANS.md](./PLANS.md) (dev status) · [Demo credentials](./User_Test_credential.md) · [Roadmap](./docs/PRODUCT_TRANSFORMATION_ROADMAP.md) · [UAT checklist](./docs/USER_TEST.md)
 
-> **🟢 LIVE IN PRODUCTION** — [https://wa-booking-web.vercel.app](https://wa-booking-web.vercel.app) | API: [https://wa-booking-api.vercel.app](https://wa-booking-api.vercel.app)
+> **LIVE IN PRODUCTION** — Web: [https://wa-booking-web.vercel.app](https://wa-booking-web.vercel.app) | API: [https://wa-booking-api.vercel.app](https://wa-booking-api.vercel.app) | WA Worker: [https://wa-worker-dewp.onrender.com](https://wa-worker-dewp.onrender.com) | GitHub: [github.com/SauravPriyadarshy/wa-booking](https://github.com/SauravPriyadarshy/wa-booking)
 
 ---
 
@@ -102,7 +102,8 @@ The platform owner manages all businesses.
 
 ### 🟢 Retention Automation (WhatsApp)
 - **What it is**: Automated WhatsApp messages that run in the background once a booking is made.
-- **Flows** (all via BullMQ worker):
+- **Production status**: BullMQ worker on Render (`bullmq-worker-u2sl.onrender.com`) + WA worker on Render (`wa-worker-dewp.onrender.com`). Scan QR at `/app/whatsapp` to activate full automation.
+- **Flows** (all via BullMQ worker → WA worker):
     1. **Booking confirmed**: Admin confirms a booking → WhatsApp message sent to customer immediately.
     2. **24h reminder**: At booking creation, a delayed job is queued. 24h before the appointment, a reminder is sent. Cancelled bookings are skipped.
     3. **Post-visit follow-up**: 24h after marking an appointment **Completed**, a feedback/rebook message is sent with the booking link.
