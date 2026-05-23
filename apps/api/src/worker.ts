@@ -181,3 +181,13 @@ worker.on('completed', (job) => console.log(`[worker] ✓ ${job.name}#${job.id}`
 worker.on('failed', (job, err) => console.error(`[worker] ✗ ${job?.name}#${job?.id}:`, err.message));
 
 console.log(`[worker] BullMQ worker started. Queue: ${QUEUE_REMINDERS}`);
+
+// Expose a minimal HTTP health endpoint so Render can run this as a web service (free plan).
+import http from 'http';
+const PORT = Number(process.env.PORT ?? 3200);
+http
+  .createServer((_req, res) => {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: true, queue: QUEUE_REMINDERS, uptime: process.uptime() }));
+  })
+  .listen(PORT, () => console.log(`[worker] Health endpoint on :${PORT}`));
