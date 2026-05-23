@@ -34,9 +34,11 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY apps/api ./apps/api
 COPY package.json ./
+# Run prisma generate from /app root so workspace node_modules are on NODE_PATH
+# and prisma.config.ts can resolve 'dotenv/config' without downloading a fresh prisma.
+RUN node_modules/.bin/prisma generate --schema=apps/api/prisma/schema.prisma
 WORKDIR /app/apps/api
-RUN npx prisma generate
-RUN npx nest build
+RUN /app/node_modules/.bin/nest build
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Stage 4: Final runtime image — includes Chromium + both built outputs
