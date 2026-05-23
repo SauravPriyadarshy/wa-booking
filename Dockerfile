@@ -34,10 +34,11 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY apps/api ./apps/api
 COPY package.json ./
-# Run prisma generate from /app root so workspace node_modules are on NODE_PATH
-# and prisma.config.ts can resolve 'dotenv/config' without downloading a fresh prisma.
-RUN node_modules/.bin/prisma generate --schema=apps/api/prisma/schema.prisma
 WORKDIR /app/apps/api
+# Dummy DATABASE_URL so prisma generate doesn't fail when no .env is present.
+# The real URL is injected by Render/Vercel at runtime.
+ENV DATABASE_URL="postgresql://placeholder:placeholder@localhost:5432/placeholder"
+RUN /app/node_modules/.bin/prisma generate
 RUN /app/node_modules/.bin/nest build
 
 # ──────────────────────────────────────────────────────────────────────────────
