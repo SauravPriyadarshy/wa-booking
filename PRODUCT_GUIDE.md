@@ -217,7 +217,7 @@ The platform owner manages all businesses.
 > - Landing: https://wa-booking-web.vercel.app
 > - Login: https://wa-booking-web.vercel.app/login
 > - Public booking: https://wa-booking-web.vercel.app/demo-salon
-> - Credentials: `admin` / `Test@123` (Super Admin) · `demo_admin` / `password123` (Business Admin)
+> - Credentials: `super` / `Test@123` (Super Admin) · `demo_admin` / `password123` (Business Admin)
 
 1. **The Landing Page**: "A salon owner in Darbhanga searches for a booking tool. They land on [our page](https://wa-booking-web.vercel.app) — the headline is in Hindi if they prefer. They see pricing, FAQs, city-specific page. They hit **Start free with mobile**."
 2. **The Signup**: "They enter their mobile number, get OTP `1234` (dev stub), and are inside the app in under a minute. Onboarding pre-fills their services."

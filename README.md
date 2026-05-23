@@ -10,8 +10,8 @@ Multi-tenant, mobile-first booking and CRM SaaS for Indian service businesses (s
 |---------|----------|-----|--------|
 | **Web App** | Vercel | [https://wa-booking-web.vercel.app](https://wa-booking-web.vercel.app) | ✅ Live |
 | **API** | Vercel | [https://wa-booking-api.vercel.app](https://wa-booking-api.vercel.app) | ✅ Live |
-| **WhatsApp Worker** | Render | [https://wa-worker-dewp.onrender.com](https://wa-worker-dewp.onrender.com) | 🔄 Building |
-| **BullMQ Worker** | Render | [https://bullmq-worker-u2sl.onrender.com](https://bullmq-worker-u2sl.onrender.com) | 🔄 Building |
+| **WhatsApp Worker** | Render | [https://wa-worker-dewp.onrender.com](https://wa-worker-dewp.onrender.com) | ✅ Live |
+| **BullMQ Worker** | Render | [https://bullmq-worker-u2sl.onrender.com](https://bullmq-worker-u2sl.onrender.com) | ✅ Live |
 | **Redis** | Render Key Value | `singapore-keyvalue.render.com` | ✅ Available |
 | **Database** | Neon Postgres | `ep-withered-cloud-aqowbdqg` | ✅ Live |
 | **GitHub** | — | [github.com/SauravPriyadarshy/wa-booking](https://github.com/SauravPriyadarshy/wa-booking) | ✅ Public |
@@ -20,7 +20,7 @@ Multi-tenant, mobile-first booking and CRM SaaS for Indian service businesses (s
 
 | Role | Username | Password | URL |
 |------|----------|----------|-----|
-| Super Admin | `admin` | `Test@123` | [/login](https://wa-booking-web.vercel.app/login) |
+| Super Admin | `super` | `Test@123` | [/login](https://wa-booking-web.vercel.app/login) |
 | Business Admin | `demo_admin` | `password123` | [/login](https://wa-booking-web.vercel.app/login) |
 | Customer (no login) | — | — | [/demo-salon](https://wa-booking-web.vercel.app/demo-salon) |
 
@@ -36,7 +36,7 @@ Multi-tenant, mobile-first booking and CRM SaaS for Indian service businesses (s
 | `DATABASE_URL_UNPOOLED` | Neon Postgres (direct) | ✅ |
 | `JWT_SECRET` | 64-char random hex | ✅ |
 | `CORS_ORIGINS` | `https://wa-booking-web.vercel.app` | ✅ |
-| `SUPERADMIN_USERNAME` | `admin` | ✅ |
+| `SUPERADMIN_USERNAME` | `super` | ✅ |
 | `SUPERADMIN_PASSWORD` | `Test@123` | ✅ |
 | `REDIS_URL` | Render Redis (external TLS) | ✅ |
 | `WA_WORKER_URL` | `https://wa-worker-dewp.onrender.com` | ✅ |
@@ -191,7 +191,7 @@ PUPPETEER_SKIP_DOWNLOAD=1 PORT=3100 npm run dev   # http://localhost:3100
 | Location | Script | What it does |
 |----------|--------|--------------|
 | `apps/api` | `npm run start:dev` | NestJS with hot-reload |
-| `apps/api` | `npm run db:seed` | Seed superadmin + demo business + 38 SiteContent keys |
+| `apps/api` | `npm run db:seed` | Seed superadmin + demo business + 40 SiteContent keys |
 | `apps/api` | `npm run db:migrate` | Run pending Prisma migrations |
 | `apps/api` | `npm run worker:dev` | BullMQ worker (WhatsApp confirmations, reminders) |
 | `apps/api` | `npm run build` | Production NestJS build |
@@ -207,7 +207,7 @@ PUPPETEER_SKIP_DOWNLOAD=1 PORT=3100 npm run dev   # http://localhost:3100
 | `auth` | `/auth` | JWT login, OTP mobile signup, refresh tokens (O(1) prefix lookup) |
 | `me` | `/me` | Current user profile, UI capabilities |
 | `hub` | `/hub` | Hub stats, schedule, leads/tickets strip |
-| `appointments` | `/appointments` | Bookings CRUD; atomic Redis lock + Prisma TX (graceful without Redis) |
+| `appointments` | `/appointments` | Bookings CRUD; atomic Redis lock + Prisma TX; WhatsApp notifications on create |
 | `customers` | `/customers` | CRM, timeline |
 | `leads` | `/leads` | Lead pipeline |
 | `support` | `/support` | Support tickets |
@@ -220,9 +220,9 @@ PUPPETEER_SKIP_DOWNLOAD=1 PORT=3100 npm run dev   # http://localhost:3100
 | `conversations` | `/conversations` | WhatsApp conversation threads |
 | `whatsapp` | `/whatsapp` | WA session management, QR, `sendMessage()` |
 | `quick-replies` | `/quick-replies` | Message templates |
-| `settings` | `/settings` | Business settings |
+| `settings` | `/settings` | Business settings; `GET/PATCH /settings/profile` (name, phone, slug, timezone) |
 | `public` | `/public` | Unauthenticated booking endpoints |
-| `wa-events` | `/wa-events` | Inbound WhatsApp webhook events |
+| `wa-events` | `/wa` | Inbound WhatsApp webhook events; `POST /wa/booking-action` (CONFIRM/CANCEL via WA reply) |
 | `superadmin` | `/superadmin` | Platform-wide admin operations |
 | `site-content` | `/site-content` | Dynamic content (public read, super-admin write, Redis cached 5 min) |
 | `queues` | _(internal)_ | Redis + BullMQ queue providers |

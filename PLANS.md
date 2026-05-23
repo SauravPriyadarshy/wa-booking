@@ -13,15 +13,16 @@ Current state, priorities, and known gaps for the WhatsApp-first Booking + CRM p
 - [x] PostgreSQL with Prisma (multi-tenant, single DB, `businessId` scoping)
 - [x] Redis + BullMQ (queues wired in `AppModule`; standalone worker process at `src/worker.ts`)
 - [x] JWT auth with refresh tokens (O(1) indexed `tokenPrefix` lookup — no more O(n) bcrypt scan)
-- [x] **Vercel deployment LIVE** — web + API deployed to production (May 23, 2026)
+- [x] **Vercel deployment LIVE** — web + API live in production (May 23, 2026)
   - Web: https://wa-booking-web.vercel.app ✅
   - API: https://wa-booking-api.vercel.app ✅
-  - Neon Postgres: 6 migrations applied, 38 SiteContent keys seeded ✅
+  - Neon Postgres: 6 migrations applied, 40 SiteContent keys seeded ✅
   - All production env vars configured ✅
-- [x] **Render deployment LIVE** — WhatsApp worker + BullMQ worker deploying (May 23, 2026)
-  - WhatsApp worker: https://wa-worker-dewp.onrender.com 🔄
-  - BullMQ worker: https://bullmq-worker-u2sl.onrender.com 🔄
+- [x] **Render deployment LIVE** — WhatsApp worker + BullMQ worker live (May 23, 2026)
+  - WhatsApp worker: https://wa-worker-dewp.onrender.com ✅
+  - BullMQ worker: https://bullmq-worker-u2sl.onrender.com ✅
   - Redis Key Value: `singapore-keyvalue.render.com` ✅
+  - Keep-alive cron: API pings wa-worker every 10 min (prevents Render free-tier sleep) ✅
 - [x] **GitHub repo**: https://github.com/SauravPriyadarshy/wa-booking ✅
 - [x] Auto-deploy on push: Vercel (web + api) + Render (both workers) trigger on `main` branch push ✅
 - [x] Slot lock Redis-unavailable bug fixed (graceful fallback when Redis unreachable)
@@ -69,6 +70,10 @@ Current state, priorities, and known gaps for the WhatsApp-first Booking + CRM p
 - [x] **Heartbeat loop**: 60s state check + auto-reconnect with back-off
 - [x] **sendMessage()** on `WhatsAppService` — used by BullMQ worker
 - [x] `workerConfigured` flag in status API — UI shows setup guide vs. QR flow
+- [x] **Instant booking notifications**: customer gets acknowledgement + provider gets new booking alert on every booking create
+- [x] **Provider confirm via WhatsApp**: reply `CONFIRM <id>` or `CANCEL <id>` → `POST /wa/booking-action` updates status and triggers customer confirmation message
+- [x] **Keep-alive cron**: `WhatsAppKeepAlive` pings `/health` every 10 min (prevents Render free-tier sleep)
+- [x] Business phone configurable via `PATCH /settings/profile` and `/app/settings/profile` UI
 
 ### Leads
 - [x] Lead list with stage pipeline (New → Contacted → Qualified → Converted)
@@ -102,7 +107,8 @@ Current state, priorities, and known gaps for the WhatsApp-first Booking + CRM p
 - [x] Templates surfaced in Inbox conversation view
 
 ### Settings
-- [x] Business profile (name, phone, timezone)
+- [x] **Business Profile** (`GET/PATCH /settings/profile`): name, phone, slug, timezone — editable by Business Admin and Super Admin
+- [x] `/app/settings/profile` — frontend profile form (name, WhatsApp number, booking URL, timezone)
 - [x] Business hours (weekday open/close times)
 - [x] Holidays
 
@@ -117,15 +123,17 @@ Current state, priorities, and known gaps for the WhatsApp-first Booking + CRM p
 ### Dynamic Content Management (SiteContent)
 - [x] `SiteContent` Prisma model with `key`, `locale`, `group`, `label`, `value`
 - [x] NestJS `site-content` module: public GET (Redis cached 5 min), Super Admin PUT/bulk
-- [x] 38 default keys seeded: landing (EN + HI), SEO, WhatsApp templates (EN + HI), city pages, onboarding
+- [x] 40 default keys seeded: landing (EN + HI), SEO, WhatsApp templates (EN + HI incl. new booking_new_customer + booking_new_provider), city pages, onboarding
 - [x] Super Admin Content Editor UI at `/app/superadmin/content`
 
 ### Retention Automation (WhatsApp)
-- [x] **Booking confirmed**: immediate WhatsApp message via BullMQ `booking_confirm` job
+- [x] **New booking → customer**: immediate `booking_new_customer` job — "Booking received, pending confirmation"
+- [x] **New booking → provider**: immediate `booking_new_provider` job — alert to business phone with CONFIRM/CANCEL instructions
+- [x] **Booking confirmed**: immediate WhatsApp message via BullMQ `booking_confirm` job (also triggered by WhatsApp CONFIRM command)
 - [x] **24h reminder**: delayed job; checks appointment not cancelled before send
 - [x] **Post-visit follow-up**: 24h delayed `post_visit` job on COMPLETED
 - [x] **Inactive recovery**: `inactive_recovery` job type scaffolded in worker
-- [x] All templates interpolated from SiteContent DB
+- [x] All templates interpolated from SiteContent DB (editable by Super Admin)
 
 ### Viral / Growth
 - [x] **WhatsApp share button** on booking success screen — pre-filled `api.whatsapp.com` deep link
@@ -146,7 +154,7 @@ Current state, priorities, and known gaps for the WhatsApp-first Booking + CRM p
 ## Current priorities (next 2–4 weeks)
 
 ### P0 — Must fix before public launch
-- [ ] **WhatsApp QR scan** — connect a phone number to the deployed wa-worker at `/app/whatsapp` and verify end-to-end WhatsApp delivery
+- [ ] **WhatsApp QR scan** — scan QR at `/app/whatsapp` with `+919122000751` to activate end-to-end delivery
 - [ ] **OTP SMS gateway** — wire Twilio / MSG91 so real mobile signups work (dev stub `1234` only)
 - [ ] **WhatsApp session persistence** — sessions drop on worker restart; evaluate Redis-backed session store or Baileys migration
 - [ ] **Auth rate limits per-route** — override ThrottlerGuard on `/auth/login` and `/auth/otp/request` to 10 req/min
