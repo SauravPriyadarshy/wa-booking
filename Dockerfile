@@ -49,7 +49,9 @@ WORKDIR /app/apps/api
 # Dummy URL so prisma generate never fails on missing env var during image build.
 ENV DATABASE_URL="postgresql://x:x@localhost:5432/x?schema=public"
 RUN node_modules/.bin/prisma generate
-RUN node_modules/.bin/nest build
+# Use tsc (not nest build/webpack) so both main.ts AND worker.ts are compiled.
+# nest build/webpack only follows the main.ts entry point and would miss worker.ts.
+RUN node_modules/.bin/tsc -p tsconfig.build.json
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Stage 4: Final runtime image
