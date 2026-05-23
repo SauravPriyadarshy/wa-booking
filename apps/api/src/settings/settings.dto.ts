@@ -1,4 +1,24 @@
-import { IsBoolean, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import { IsBoolean, IsInt, IsOptional, IsString, IsTimeZone, Matches, Max, Min } from 'class-validator';
+
+export class UpdateBusinessProfileDto {
+  @IsOptional()
+  @IsString()
+  name?: string;
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^\+?[0-9\s\-().]{7,20}$/, { message: 'Invalid phone number' })
+  phone?: string;
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^[a-z0-9-]{3,60}$/, { message: 'Slug must be lowercase letters, numbers and hyphens only' })
+  slug?: string;
+
+  @IsOptional()
+  @IsTimeZone()
+  timezone?: string;
+}
 
 export class SetBusinessHoursDto {
   @IsInt()

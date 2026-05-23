@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable } from '@nestjs/common';
 import { AppointmentStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { HOLIDAY_APPOINTMENT_CANCEL_REASON } from '../common/holiday-cancel';
@@ -6,6 +6,33 @@ import { HOLIDAY_APPOINTMENT_CANCEL_REASON } from '../common/holiday-cancel';
 @Injectable()
 export class SettingsService {
   constructor(private prisma: PrismaService) {}
+
+  getProfile(businessId: string) {
+    return this.prisma.business.findUnique({
+      where: { id: businessId },
+      select: { id: true, name: true, phone: true, slug: true, timezone: true, isActive: true },
+    });
+  }
+
+  async updateProfile(
+    businessId: string,
+    data: { name?: string; phone?: string; slug?: string; timezone?: string },
+  ) {
+    if (data.slug) {
+      const existing = await this.prisma.business.findUnique({ where: { slug: data.slug }, select: { id: true } });
+      if (existing && existing.id !== businessId) throw new ConflictException('Slug already taken');
+    }
+    return this.prisma.business.update({
+      where: { id: businessId },
+      data: {
+        ...(data.name !== undefined && { name: data.name }),
+        ...(data.phone !== undefined && { phone: data.phone }),
+        ...(data.slug !== undefined && { slug: data.slug }),
+        ...(data.timezone !== undefined && { timezone: data.timezone }),
+      },
+      select: { id: true, name: true, phone: true, slug: true, timezone: true, isActive: true },
+    });
+  }
 
   listHours(businessId: string) {
     return this.prisma.businessHours.findMany({

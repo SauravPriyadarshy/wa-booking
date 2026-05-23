@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Patch, Post, UseGuards } from '@nestjs/common';
 import { JwtUserGuard } from '../common/auth/jwt-user.guard';
 import { RequireBusinessGuard } from '../common/tenant/require-business.guard';
 import { AuthUserDecorator } from '../common/auth/auth-user.decorator';
@@ -6,12 +6,25 @@ import type { AuthUser } from '../common/auth/auth.types';
 import { Roles } from '../common/auth/roles.decorator';
 import { RolesGuard } from '../common/auth/roles.guard';
 import { UserRole } from '../common/auth/user-role.enum';
-import { AddHolidayDto, SetBusinessHoursDto } from './settings.dto';
+import { AddHolidayDto, SetBusinessHoursDto, UpdateBusinessProfileDto } from './settings.dto';
 import { SettingsService } from './settings.service';
 
 @Controller('settings')
 export class SettingsController {
   constructor(private settings: SettingsService) {}
+
+  @Get('profile')
+  @UseGuards(JwtUserGuard, RequireBusinessGuard)
+  getProfile(@AuthUserDecorator() user: AuthUser) {
+    return this.settings.getProfile(user.businessId!);
+  }
+
+  @Patch('profile')
+  @UseGuards(JwtUserGuard, RequireBusinessGuard, RolesGuard)
+  @Roles(UserRole.BUSINESS_ADMIN, UserRole.SUPER_ADMIN)
+  updateProfile(@AuthUserDecorator() user: AuthUser, @Body() dto: UpdateBusinessProfileDto) {
+    return this.settings.updateProfile(user.businessId!, dto);
+  }
 
   @Get('hours')
   @UseGuards(JwtUserGuard, RequireBusinessGuard)
