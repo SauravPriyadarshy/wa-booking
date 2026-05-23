@@ -1,0 +1,52 @@
+services:
+  # ── Redis Key Value ──────────────────────────────────────────────────────────
+  - type: keyvalue
+    name: wa-redis
+    plan: free
+    ipAllowList: []   # Internal connections only (from other Render services)
+
+  # ── WhatsApp Worker ─────────────────────────────────────────────────────────
+  - type: web
+    name: wa-worker
+    runtime: docker
+    dockerfilePath: ./apps/wa-worker/Dockerfile
+    dockerContext: .
+    plan: starter
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: "3100"
+      - key: API_BASE_URL
+        value: https://wa-booking-api.vercel.app
+      - key: WA_WORKER_SECRET
+        generateValue: true
+      - key: REDIS_URL
+        fromService:
+          name: wa-redis
+          type: keyvalue
+          property: connectionString
+
+  # ── BullMQ Worker ───────────────────────────────────────────────────────────
+  - type: worker
+    name: bullmq-worker
+    runtime: docker
+    dockerfilePath: ./apps/api/Dockerfile.worker
+    dockerContext: .
+    plan: starter
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false   # Paste your Neon DATABASE_URL from Vercel dashboard
+      - key: REDIS_URL
+        fromService:
+          name: wa-redis
+          type: keyvalue
+          property: connectionString
+      - key: WA_WORKER_URL
+        sync: false   # Paste the wa-worker service URL after it deploys (e.g. https://wa-worker.onrender.com)
+      - key: WA_WORKER_SECRET
+        fromService:
+          name: wa-worker
+          type: web
+          envVarKey: WA_WORKER_SECRET
