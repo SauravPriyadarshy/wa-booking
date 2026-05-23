@@ -11,8 +11,12 @@ export class WhatsAppController {
 
   @Get('status')
   @UseGuards(JwtUserGuard, RequireBusinessGuard)
-  status(@AuthUserDecorator() user: AuthUser) {
-    return this.whatsapp.workerStatus(user.businessId!);
+  async status(@AuthUserDecorator() user: AuthUser) {
+    const [base, live] = await Promise.all([
+      this.whatsapp.getStatus(user.businessId!),
+      this.whatsapp.workerStatus(user.businessId!).catch(() => null),
+    ]);
+    return { ...base, ...(live ?? {}) };
   }
 
   @Post('connect')
