@@ -1,0 +1,30 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: wa_booking_postgres
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app
+      POSTGRES_DB: wa_booking
+    ports:
+      - "5432:5432"
+    volumes:
+      - wa_booking_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d wa_booking"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    container_name: wa_booking_redis
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - wa_booking_redisdata:/data
+
+volumes:
+  wa_booking_pgdata:
+  wa_booking_redisdata:

@@ -1,0 +1,74 @@
+---
+description: Prisma schema conventions, migrations, and multi-tenant data access
+globs: apps/api/prisma/**,apps/api/src/**/*.ts
+alwaysApply: false
+---
+
+# Prisma & Database Conventions
+
+## Schema location
+`apps/api/prisma/schema.prisma` — single source of truth for all models.
+
+## Key models (quick reference)
+| Model | Unique constraint | Notes |
+|-------|------------------|-------|
+| `Business` | `slug` | Tenant root |
+| `User` | `username` | Roles: SUPER_ADMIN, BUSINESS_ADMIN, STAFF |
+| `Appointment` | — | Links customer + service + staff + business |
+| `Conversation` | `[businessId, phone]` | WhatsApp thread |
+| `Lead` | — | Pipeline: NEW → CONTACTED → QUALIFIED → CONVERTED |
+| `SupportTicket` | — | Statuses: OPEN, IN_PROGRESS, RESOLVED |
+| `Payment` | `appointmentId` | One payment per appointment |
+| `Service` | — | `priceCents` integer; `durationMin` integer |
+| `BusinessFeature` | `[businessId, key]` | Feature flags |
+
+## Migration workflow
+```bash
+# Create a new migration (dev)
+cd apps/api
+npx prisma migrate dev --name describe_your_change
+
+# Deploy existing migrations (CI / prod)
+npx prisma migrate deploy
+
+# After schema changes, regenerate client
+npx prisma generate
+```
+
+## Multi-tenancy rule (critical)
+```typescript
+// ✅ Every query scoped to businessId
+await prisma.service.findMany({ where: { businessId } });
+
+// ✅ Upsert using stable unique keys
+await prisma.businessHours.upsert({
+  where: { businessId_weekday: { businessId, weekday } },
+  create: { ... },
+  update: { ... },
+});
+
+// ❌ Never query without businessId unless intentional (e.g. seed, superadmin)
+await prisma.appointment.findMany(); // WRONG in a tenant context
+```
+
+## Money
+Store as **integer cents** — `priceCents`, `amountCents`. Never floats.
+
+## Seed
+`apps/api/prisma/seed.ts` — always upsert, never raw insert, so re-runs are safe.
+Run: `npm run db:seed` (from `apps/api/`).
+
+## Avoid N+1
+Use `include` / `select` at query time. Never lazy-load inside loops.
+```typescript
+// ✅ Single query with includes
+const appts = await prisma.appointment.findMany({
+  where: { businessId },
+  include: { service: true, customer: true },
+});
+
+// ❌ N+1
+for (const appt of appts) {
+  const svc = await prisma.service.findUnique({ where: { id: appt.serviceId } });
+}
+```

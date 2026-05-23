@@ -1,0 +1,22 @@
+{
+  "name": "services",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Multi-tenant WhatsApp-first booking + CRM SaaS monorepo",
+  "scripts": {
+    "dev": "npm run dev -ws --if-present",
+    "build": "npm run build -ws --if-present",
+    "lint": "npm run lint -ws --if-present",
+    "typecheck": "npm run typecheck -ws --if-present"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "vercel": "^53.2.0"
+  }
+}

@@ -1,0 +1,541 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  BUSINESS_ADMIN
+  STAFF
+}
+
+enum AppointmentStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+  NO_SHOW
+}
+
+enum LeadStage {
+  NEW
+  INTERESTED
+  FOLLOW_UP
+  CONVERTED
+  LOST
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  WAITING_CUSTOMER
+  RESOLVED
+  CLOSED
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  STATUS_CHANGE
+}
+
+enum ConversationStatus {
+  OPEN
+  CLOSED
+}
+
+enum MessageDirection {
+  IN
+  OUT
+}
+
+enum MessageStatus {
+  RECEIVED
+  SENT
+  DELIVERED
+  READ
+  FAILED
+}
+
+model Conversation {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id])
+
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id])
+
+  phone String?
+  name  String?
+
+  status ConversationStatus @default(OPEN)
+
+  assignedToStaffId String?
+  assignedToStaff   StaffProfile? @relation(fields: [assignedToStaffId], references: [id])
+
+  labels String[] @default([])
+
+  lastMessageAt  DateTime?
+  lastInboundAt  DateTime?
+  lastOutboundAt DateTime?
+
+  messages Message[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([businessId, updatedAt])
+  @@index([businessId, lastMessageAt])
+  @@index([businessId, status])
+  @@index([businessId, phone])
+  @@index([customerId])
+  @@unique([businessId, phone], name: "businessId_phone")
+}
+
+model Message {
+  id             String   @id @default(cuid())
+  businessId     String
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  waMessageId String? @unique
+  direction   MessageDirection
+  body        String
+  status      MessageStatus @default(RECEIVED)
+  sentAt      DateTime?
+  receivedAt  DateTime @default(now())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([businessId, receivedAt])
+  @@index([conversationId, receivedAt])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id])
+
+  actorUserId String?
+  actorUser   User?   @relation(fields: [actorUserId], references: [id])
+
+  entityType String
+  entityId   String
+  action     AuditAction
+  metaJson   Json?
+
+  createdAt DateTime @default(now())
+
+  @@index([businessId, createdAt])
+  @@index([entityType, entityId])
+}
+
+model QuickReply {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id])
+
+  title    String
+  body     String
+  tags     String[] @default([])
+  isActive Boolean  @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([businessId, isActive])
+}
+
+model Lead {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id])
+
+  name   String?
+  phone  String?
+  source String  @default("WHATSAPP") // WHATSAPP | WALKIN | CALL | OTHER
+
+  stage LeadStage @default(NEW)
+  notes String?
+
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([businessId, stage])
+  @@index([businessId, phone])
+}
+
+model SupportTicket {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id])
+
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id])
+
+  title    String
+  status   TicketStatus @default(OPEN)
+  priority String       @default("NORMAL") // LOW | NORMAL | HIGH
+
+  assignedToStaffId String?
+  assignedToStaff   StaffProfile? @relation(fields: [assignedToStaffId], references: [id])
+
+  lastMessageAt DateTime?
+  internalNotes String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([businessId, status])
+  @@index([businessId, lastMessageAt])
+}
+
+model RefreshToken {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash   String
+  tokenPrefix String    @default("") // first 8 chars of raw token — enables indexed lookup
+  revokedAt   DateTime?
+  expiresAt   DateTime
+  createdAt   DateTime  @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@index([tokenPrefix])
+}
+
+model BusinessCategory {
+  id           String  @id @default(cuid())
+  key          String  @unique
+  name         String
+  description  String?
+  isActive     Boolean @default(true)
+  // Template metadata used by onboarding
+  templateJson Json?
+
+  businesses Business[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Business {
+  id       String  @id @default(cuid())
+  name     String
+  slug     String  @unique
+  phone    String?
+  timezone String  @default("Asia/Kolkata")
+  isActive Boolean @default(true)
+
+  categoryId String?
+  category   BusinessCategory? @relation(fields: [categoryId], references: [id])
+
+  users           User[]
+  services        Service[]
+  serviceGroups   ServiceGroup[]
+  staff           StaffProfile[]
+  customers       Customer[]
+  appointments    Appointment[]
+  payments        Payment[]
+  paymentConfig   PaymentConfig?
+  features        BusinessFeature[]
+  whatsappSession WhatsAppSession?
+  hours           BusinessHours[]
+  holidays        Holiday[]
+  leads           Lead[]
+  tickets         SupportTicket[]
+  quickReplies    QuickReply[]
+  auditLogs       AuditLog[]
+  conversations   Conversation[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([categoryId])
+}
+
+model User {
+  id                String    @id @default(cuid())
+  username          String?   @unique
+  phone             String?   @unique
+  email             String?   @unique
+  name              String?
+  passwordHash      String?
+  passwordUpdatedAt DateTime?
+  role              UserRole
+  isActive          Boolean   @default(true)
+
+  businessId String?
+  business   Business? @relation(fields: [businessId], references: [id])
+
+  staffProfile  StaffProfile?
+  refreshTokens RefreshToken[]
+  auditLogs     AuditLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([businessId, role])
+}
+
+model StaffProfile {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id])
+
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id])
+
+  title       String?
+  isAvailable Boolean @default(true)
+
+  appointments    Appointment[]
+  hours           StaffHours[]
+  assignedTickets SupportTicket[]
+  assignedConversations Conversation[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([businessId])
+}
+
+model BusinessHours {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id])
+
+  // 0=Sun .. 6=Sat
+  weekday  Int
+  startMin Int // minutes from midnight (e.g., 540 for 09:00)
+  endMin   Int // minutes from midnight (e.g., 1080 for 18:00)
+  isClosed Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([businessId, weekday])
+  @@index([businessId])
+}
+
+model StaffHours {
+  id      String       @id @default(cuid())
+  staffId String
+  staff   StaffProfile @relation(fields: [staffId], references: [id])
+
+  weekday  Int
+  startMin Int
+  endMin   Int
+  isOff    Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([staffId, weekday])
+  @@index([staffId])
+}
+
+model Holiday {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id])
+
+  dateISO String // YYYY-MM-DD in business timezone
+  name    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([businessId, dateISO])
+  @@index([businessId])
+}
+
+model ServiceGroup {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id])
+
+  name      String
+  sortOrder Int    @default(0)
+
+  services Service[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([businessId])
+}
+
+model Service {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id])
+
+  groupId String?
+  group   ServiceGroup? @relation(fields: [groupId], references: [id])
+
+  name            String
+  durationMin     Int
+  bufferBeforeMin Int     @default(0)
+  bufferAfterMin  Int     @default(0)
+  priceCents      Int?
+  isActive        Boolean @default(true)
+
+  appointments Appointment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([businessId, isActive])
+  @@index([groupId])
+}
+
+model Customer {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id])
+
+  phone String?
+  name  String?
+  notes String?
+
+  appointments Appointment[]
+  leads        Lead[]
+  tickets      SupportTicket[]
+  conversations Conversation[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([businessId])
+  @@index([businessId, phone])
+}
+
+model Appointment {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id])
+
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id])
+
+  serviceId String
+  service   Service @relation(fields: [serviceId], references: [id])
+
+  staffId String?
+  staff   StaffProfile? @relation(fields: [staffId], references: [id])
+
+  status  AppointmentStatus @default(PENDING)
+  startAt DateTime
+  endAt   DateTime
+
+  /** When status is CANCELLED, optional reason (e.g. HOLIDAY for mass holiday cancel). */
+  cancelReason String?
+
+  source String @default("APP") // APP | WHATSAPP
+
+  payment Payment?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([businessId, startAt])
+  @@index([businessId, status])
+  @@index([customerId])
+  @@index([serviceId])
+  @@index([staffId])
+}
+
+model PaymentConfig {
+  id         String   @id @default(cuid())
+  businessId String   @unique
+  business   Business @relation(fields: [businessId], references: [id])
+
+  upiId           String?
+  upiQrUrl        String?
+  bankDetailsJson Json?
+  allowCash       Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Payment {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id])
+
+  appointmentId String      @unique
+  appointment   Appointment @relation(fields: [appointmentId], references: [id])
+
+  method      String // UPI | CASH
+  amountCents Int?
+  proofUrl    String?
+  verifiedAt  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([businessId])
+}
+
+model BusinessFeature {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id])
+
+  key     String
+  enabled Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([businessId, key])
+  @@index([key])
+}
+
+model WhatsAppSession {
+  id         String   @id @default(cuid())
+  businessId String   @unique
+  business   Business @relation(fields: [businessId], references: [id])
+
+  status          String    @default("DISCONNECTED") // DISCONNECTED | QR_REQUIRED | CONNECTED
+  sessionJson     Json? // serialized auth/session info (encrypted at rest later)
+  lastConnectedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Platform-level dynamic content — Super Admin editable via /app/superadmin/content
+// key uses dotted namespaces: "landing.hero.title", "seo.landing.description", "wa.booking_confirm"
+model SiteContent {
+  id        String   @id @default(cuid())
+  key       String   // dotted namespace key
+  locale    String   @default("en") // "en" | "hi"
+  group     String   // "landing" | "seo" | "wa_templates" | "city" | "onboarding"
+  label     String   // human-readable label for the editor UI
+  value     String   // plain text or JSON string for rich blocks
+  updatedBy String?  // userId of last super admin editor
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([key, locale])
+  @@index([group, locale])
+}

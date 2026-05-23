@@ -1,0 +1,85 @@
+---
+description: Project overview, architecture, and conventions — always active
+alwaysApply: true
+---
+
+# WhatsApp-first Booking + CRM — Project Overview
+
+## Production URLs (LIVE)
+- **Web**: https://wa-booking-web.vercel.app
+- **API**: https://wa-booking-api.vercel.app
+- **Vercel**: https://vercel.com/sauravpriyadarshys-projects
+- **Super Admin login**: `admin` / `Test@123`
+- **Business Admin login**: `demo_admin` / `password123`
+
+## Stack
+- **API**: NestJS 11, Prisma 6, PostgreSQL (Neon in prod), Redis/BullMQ, JWT auth, `@nestjs/throttler`, `@nestjs/schedule`
+- **Web**: Next.js 16 App Router, React 19, Tailwind 4, `next-intl` (i18n), `recharts` (analytics charts), Zod, react-hook-form
+- **Worker**: Express + whatsapp-web.js (separate long-running process, port 3100)
+- **BullMQ worker**: `apps/api/src/worker.ts` — standalone process; processes WhatsApp message jobs (booking_confirm, reminder_24h, post_visit, inactive_recovery)
+- **Monorepo**: npm workspaces (`apps/api`, `apps/web`, `apps/wa-worker`)
+
+## Ports
+| Service | Local port |
+|---------|-----------|
+| API | 3000 |
+| Web | 3001 |
+| WA worker | 3100 |
+| Postgres | 5432 |
+| Redis | 6379 |
+
+## Multi-tenancy rule
+Every database query that touches business data **must** filter by `businessId`. Never return cross-tenant data. The `businessId` is always derived from the authenticated user — never from a request body or query param.
+
+## Roles
+`SUPER_ADMIN` · `BUSINESS_ADMIN` · `STAFF` — defined in `UserRole` Prisma enum. UI gated via `/me/ui` endpoint.
+
+## Auth flow
+JWT access token (short-lived) + refresh token stored in `RefreshToken` table with indexed `tokenPrefix` (first 8 chars) for O(1) lookup. Mobile signup uses OTP (dev stub: `1234`). Password login for admin/staff. Global rate limit: 60 req/min via `ThrottlerModule`.
+
+## Dynamic content (SiteContent)
+All user-facing text (landing page, SEO metadata, WhatsApp message templates, city pages, onboarding text) is stored in the `SiteContent` model. Keys use dotted namespaces: `landing.hero.title`, `seo.landing.description`, `wa.booking_confirm`. Editable by Super Admin at `/app/superadmin/content`. Redis cached for 5 minutes — invalidated on update.
+
+## WhatsApp automation (BullMQ)
+- `booking_confirm` — enqueued immediately when appointment status → CONFIRMED
+- `reminder_24h` — enqueued at appointment creation, delayed to `startAt − 24h`
+- `post_visit` — enqueued when status → COMPLETED, delayed 24h
+- `inactive_recovery` — scaffolded; requires a cron to trigger
+- All message templates are fetched from `SiteContent` DB at job processing time (supports Super Admin edits without redeploy)
+
+## Redis / graceful degradation
+- `REDIS_URL` in production currently points to localhost (placeholder) — slot lock and BullMQ degrade gracefully
+- Slot lock: if Redis is unavailable `redisAvailable=false` → skips lock, proceeds with Prisma TX only
+- SiteContent caching: try/catch around all Redis ops → falls back to DB query
+- BullMQ queue `add()` calls: all wrapped in try/catch → non-fatal, reminders skipped if Redis down
+
+## Key files
+- `apps/api/prisma/schema.prisma` — source of truth for all data models
+- `apps/api/src/common/` — guards, decorators, tenant helpers
+- `apps/api/src/site-content/` — dynamic content module (public GET, super-admin PUT, Redis cache)
+- `apps/api/src/worker.ts` — BullMQ job processor (run separately from API)
+- `apps/api/src/queues/queues.module.ts` — REDIS + QUEUE_WHATSAPP + QUEUE_REMINDERS providers
+- `apps/web/src/app/` — Next.js App Router routes
+- `apps/web/src/lib/site-content.ts` — client helpers for fetching SiteContent from API (ISR revalidate 300s)
+- `apps/web/messages/en.json` + `messages/hi.json` — static UI strings for next-intl
+- `apps/web/src/i18n/request.ts` — next-intl locale resolution from `locale` cookie
+- `apps/web/src/components/lang-switcher.tsx` — EN ↔ HI toggle component
+- `PLANS.md` — current dev status and next steps
+
+## SEO conventions
+- All Next.js pages that are server components export `generateMetadata()` pulling from `getSiteContentGroup("seo")`
+- `[slug]/page.tsx` is a server wrapper around `booking-client.tsx` — adds metadata + JSON-LD `LocalBusiness` schema
+- `apps/web/src/app/sitemap.ts` — static routes + city pages
+- `apps/web/src/app/robots.ts` — allow public, disallow `/app/`, `/api/`
+
+## Design principles
+- Mobile-first; tap targets ≥ 44px; bottom nav for primary actions
+- Emerald + Zinc palette; glassmorphism subtle; motion ≤ 200ms
+- No ERP vocabulary; no dense tables on mobile; Hub is the default home
+- Date always on first line, time on second line (Hub "Leads & tickets" pattern)
+- `StatCard`, `Card`, `Button`, `FormField`, `FieldInput` are shared UI components in `@/components/ui`
+
+## Money / numbers
+- All prices stored as integer cents (`priceCents`, `amountCents`)
+- Display: `₹${Math.round(cents / 100).toLocaleString("en-IN")}`
+- Never store or compute with floats for money

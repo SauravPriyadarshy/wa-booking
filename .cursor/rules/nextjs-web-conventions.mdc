@@ -1,0 +1,72 @@
+---
+description: Next.js 16 App Router conventions — routing, components, API calls, state
+globs: apps/web/src/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# Next.js Web Conventions
+
+## App Router routing
+All routes live under `apps/web/src/app/`. Group `(public)` for unauthenticated pages. Authenticated app lives under `app/`. Dynamic segments use `[slug]` or `[id]`.
+
+## Server vs Client components
+```typescript
+// Default: Server Component — no 'use client'
+// Add 'use client' only when you need: hooks, browser APIs, event handlers
+'use client';
+```
+Prefer Server Components for data fetching; use Client Components for interactivity.
+
+## API calls
+All API calls go to `NEXT_PUBLIC_API_URL`. Use the shared `apiFetch` helper (or equivalent) — never hardcode `localhost:3000`.
+```typescript
+const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/appointments`, {
+  headers: { Authorization: `Bearer ${token}` },
+});
+```
+
+## Auth
+JWT stored client-side (cookie or localStorage). Check auth in layouts/middleware. On 401, redirect to `/login`.
+
+## State management
+- **Zustand** for global client state (auth, business context)
+- **React Hook Form + Zod** for form state and validation
+- Avoid prop-drilling beyond 2 levels — use Zustand store
+
+## Component conventions
+```typescript
+// Named exports; props typed inline or with interface
+export function BookingCard({ booking }: { booking: Appointment }) { ... }
+
+// Colocate sub-components in the same file if small (<50 lines)
+// Extract to own file when reused across routes
+```
+
+## Styling
+Tailwind 4 utility classes only — no inline styles, no CSS modules (unless absolutely required). Emerald (`emerald-*`) for primary actions, Zinc (`zinc-*`) for surfaces.
+
+## URL params deep links
+Bookings route supports: `?date=YYYY-MM-DD`, `?view=day|list`, `?status=PENDING|CONFIRMED`.
+Hub "View" buttons pass hash + query params to scroll-highlight the target row.
+
+## Loading & empty states
+Every primary route must have a loading state and a calm empty state with one primary action. Use `loading.tsx` for suspense boundaries.
+
+## Money display
+Prices stored as cents. Display: `₹${Math.round(priceCents / 100).toLocaleString('en-IN')}`.
+
+## SEO / metadata
+Server components export `generateMetadata()`. Pull content from `getSiteContentGroup("seo")` in `@/lib/site-content`.
+Client component pages need a server wrapper to export `generateMetadata` (see `[slug]/page.tsx` → `booking-client.tsx` pattern).
+
+## Dynamic content (SiteContent)
+Use `getSiteContentGroup(group, locale)` from `@/lib/site-content` to fetch DB content in server components.
+ISR revalidation is 300s — avoid calling this in client components (use server component data passing instead).
+`parseJson(raw, fallback)` is a safe JSON.parse helper for JSON-valued content keys.
+
+## i18n (next-intl)
+`next-intl` is configured in "without routing" mode. Locale is read from `locale` cookie.
+- Server components: `import { getTranslations } from 'next-intl/server'; const t = await getTranslations('booking');`
+- Client components: `import { useTranslations } from 'next-intl'; const t = useTranslations('booking');`
+- Message files: `apps/web/messages/en.json` and `messages/hi.json`
+- `LangSwitcher` component at `@/components/lang-switcher` for EN ↔ HI toggle

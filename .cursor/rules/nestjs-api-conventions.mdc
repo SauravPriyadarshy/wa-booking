@@ -1,0 +1,80 @@
+---
+description: NestJS API conventions — guards, multi-tenancy, Prisma, DTOs
+globs: apps/api/src/**/*.ts
+alwaysApply: false
+---
+
+# NestJS API Conventions
+
+## Module structure
+Every feature module has: `*.module.ts`, `*.controller.ts`, `*.service.ts`, optional `dto/`, optional `*.guard.ts`. Register in `app.module.ts`.
+
+## Auth guards
+```typescript
+// Always use both guards together for authenticated endpoints
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(UserRole.BUSINESS_ADMIN)
+@Get()
+findAll(@CurrentUser() user: JwtPayload) { ... }
+```
+
+## Multi-tenancy — mandatory
+```typescript
+// ✅ ALWAYS filter by businessId from the authenticated user
+const items = await this.prisma.appointment.findMany({
+  where: { businessId: user.businessId },
+});
+
+// ❌ NEVER accept businessId from request body/params without validation
+```
+
+## Prisma service
+Inject `PrismaService` directly — no repository pattern.
+```typescript
+constructor(private readonly prisma: PrismaService) {}
+```
+
+## DTOs
+Use `class-validator` decorators. Validate with `ValidationPipe` (global in `main.ts`).
+```typescript
+export class CreateAppointmentDto {
+  @IsUUID() serviceId: string;
+  @IsDateString() startAt: string;
+}
+```
+
+## Error handling
+```typescript
+// ✅ Throw NestJS HTTP exceptions
+throw new NotFoundException(`Service ${id} not found`);
+throw new ForbiddenException('Cannot access another tenant\'s data');
+
+// ❌ Never swallow errors silently
+try { ... } catch (e) { /* empty */ }
+```
+
+## Pricing / money
+Store all monetary values as **integer cents** (`priceCents`, `amountCents`). Never use floats for money.
+
+## Seed
+`apps/api/prisma/seed.ts` — upsert-safe. Run: `npm run db:seed` from `apps/api/`.
+Seeds: categories, super admin, demo business, 38 SiteContent keys (landing EN+HI, SEO, WA templates, city pages, onboarding).
+
+## Redis injection
+Modules that need Redis or BullMQ queues must import `QueuesModule`:
+```typescript
+@Module({ imports: [QueuesModule], ... })
+```
+Inject with `@Inject('REDIS')`, `@Inject('QUEUE_WHATSAPP')`, `@Inject('QUEUE_REMINDERS')`.
+
+## Rate limiting
+Global `ThrottlerGuard` is already applied as `APP_GUARD`. Per-endpoint override:
+```typescript
+@Throttle({ default: { ttl: 60_000, limit: 10 } })
+@Post('login')
+login() { ... }
+```
+
+## SiteContent
+To read dynamic content in a service or processor, query `prisma.siteContent.findUnique({ where: { key_locale: { key, locale } } })`.
+Do NOT hardcode message template strings — always fetch from SiteContent so Super Admin can edit without redeploy.
