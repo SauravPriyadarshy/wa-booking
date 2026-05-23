@@ -12,6 +12,12 @@ type WaIncomingMessageEvent = {
   timestampMs?: number;
 };
 
+type BookingActionBody = {
+  appointmentId: string;
+  action: 'CONFIRM' | 'CANCEL';
+  businessId: string;
+};
+
 @Controller('wa')
 export class WaEventsController {
   constructor(private wa: WaEventsService) {}
@@ -19,6 +25,14 @@ export class WaEventsController {
   @Post('events')
   async ingest(@Headers('x-worker-secret') secret: string | undefined, @Body() evt: WaIncomingMessageEvent) {
     return this.wa.ingest(secret, evt);
+  }
+
+  @Post('booking-action')
+  async bookingAction(
+    @Headers('x-worker-secret') secret: string | undefined,
+    @Body() body: BookingActionBody,
+  ) {
+    return this.wa.handleBookingAction(secret, body);
   }
 }
 

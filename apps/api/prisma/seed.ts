@@ -444,6 +444,22 @@ async function seedSiteContent() {
 
     // ── WhatsApp message templates ───────────────────────────────────────
     {
+      key: "wa.booking_new_customer",
+      locale: "en",
+      group: "wa_templates",
+      label: "New Booking — Customer Acknowledgement",
+      value:
+        "Hi {customerName}! 👋\n\nYour booking request has been received at *{businessName}*.\n\n📅 {date}\n⏰ {time}\n💇 Service: {service}\n\nWe'll confirm shortly. Thank you!",
+    },
+    {
+      key: "wa.booking_new_provider",
+      locale: "en",
+      group: "wa_templates",
+      label: "New Booking — Provider Notification (use {bookingId} for confirm/cancel)",
+      value:
+        "📋 *New Booking Request!*\n\n👤 Customer: {customerName}\n💇 Service: {service}\n📅 {date} at {time}\n📞 Phone: {customerPhone}\n\nReply to take action:\n✅ *CONFIRM {bookingId}*\n❌ *CANCEL {bookingId}*",
+    },
+    {
       key: "wa.booking_confirm",
       locale: "en",
       group: "wa_templates",

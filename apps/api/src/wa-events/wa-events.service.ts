@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { MessageDirection, MessageStatus } from '@prisma/client';
 
@@ -15,7 +15,10 @@ type WaIncomingMessageEvent = {
 
 @Injectable()
 export class WaEventsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    @Inject('QUEUE_REMINDERS') private remindersQueue: any,
+  ) {}
 
   async ingest(secret: string | undefined, evt: WaIncomingMessageEvent) {
     const expected = process.env.WA_WORKER_SECRET;
@@ -81,6 +84,62 @@ export class WaEventsService {
     });
 
     return { ok: true };
+  }
+
+  /**
+   * Called by the wa-worker when the service provider replies CONFIRM/CANCEL {bookingId}
+   * via WhatsApp. Updates appointment status and enqueues customer notification.
+   */
+  async handleBookingAction(
+    secret: string | undefined,
+    body: { appointmentId: string; action: 'CONFIRM' | 'CANCEL'; businessId: string },
+  ) {
+    const expected = process.env.WA_WORKER_SECRET;
+    if (expected && secret !== expected) throw new UnauthorizedException('Invalid worker secret');
+
+    const { appointmentId, action, businessId } = body;
+    if (!appointmentId || !action || !businessId) throw new BadRequestException('appointmentId, action, businessId required');
+
+    const appt = await this.prisma.appointment.findUnique({
+      where: { id: appointmentId },
+      select: {
+        id: true, businessId: true, status: true, startAt: true,
+        customerId: true,
+        customer: { select: { name: true, phone: true } },
+        service: { select: { name: true } },
+        business: { select: { name: true, slug: true } },
+      },
+    });
+
+    if (!appt || appt.businessId !== businessId) throw new BadRequestException('Appointment not found');
+    if (appt.status !== 'PENDING') return { ok: false, message: `Booking is already ${appt.status.toLowerCase()}` };
+
+    const newStatus = action === 'CONFIRM' ? 'CONFIRMED' : 'CANCELLED';
+    await this.prisma.appointment.update({ where: { id: appointmentId }, data: { status: newStatus } });
+
+    // When confirmed, send customer the confirmation WhatsApp message
+    if (action === 'CONFIRM' && appt.customer?.phone) {
+      try {
+        await this.remindersQueue.add(
+          'booking_confirm',
+          {
+            appointmentId: appt.id,
+            businessId,
+            customerId: appt.customerId,
+            customerName: appt.customer.name,
+            customerPhone: appt.customer.phone,
+            serviceName: appt.service.name,
+            businessName: appt.business.name,
+            bookingSlug: appt.business.slug,
+            startAt: appt.startAt.toISOString(),
+          },
+          { jobId: `confirm:${appt.id}`, removeOnComplete: true },
+        );
+      } catch { /* non-fatal */ }
+    }
+
+    console.log(`[wa-events] Booking ${appointmentId} ${newStatus} via WhatsApp command`);
+    return { ok: true, status: newStatus };
   }
 }
 

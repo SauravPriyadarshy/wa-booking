@@ -111,10 +111,12 @@ export class AppointmentsService {
    * Prevents double-booking under concurrent requests.
    */
   async create(businessId: string, dto: { customerId: string; serviceId: string; staffId?: string; startAt: string }) {
-    const service = await this.prisma.service.findUnique({ where: { id: dto.serviceId } });
+    const [service, customer, business] = await Promise.all([
+      this.prisma.service.findUnique({ where: { id: dto.serviceId } }),
+      this.prisma.customer.findUnique({ where: { id: dto.customerId }, select: { id: true, businessId: true, name: true, phone: true } }),
+      this.prisma.business.findUnique({ where: { id: businessId }, select: { id: true, name: true, phone: true, slug: true } }),
+    ]);
     if (!service || service.businessId !== businessId) throw new BadRequestException('Service not found');
-
-    const customer = await this.prisma.customer.findUnique({ where: { id: dto.customerId } });
     if (!customer || customer.businessId !== businessId) throw new BadRequestException('Customer not found');
 
     const startAt = new Date(dto.startAt);
@@ -190,7 +192,40 @@ export class AppointmentsService {
         });
       });
 
-      // Enqueue 24h reminder job (delay = startAt - 24h - now, min 0)
+      const commonJobData = {
+        appointmentId: appointment.id,
+        businessId,
+        customerId: dto.customerId,
+        customerName: customer.name,
+        customerPhone: customer.phone,
+        serviceName: service.name,
+        businessName: business?.name ?? '',
+        businessPhone: business?.phone ?? null,
+        bookingSlug: business?.slug ?? '',
+        startAt: appointment.startAt.toISOString(),
+      };
+
+      // Immediate WhatsApp notification to customer (booking received, pending confirmation)
+      try {
+        await this.remindersQueue.add(
+          'booking_new_customer',
+          commonJobData,
+          { jobId: `booking_new_customer:${appointment.id}`, removeOnComplete: true },
+        );
+      } catch { /* non-fatal */ }
+
+      // Immediate WhatsApp notification to provider (new booking alert + confirm/cancel instructions)
+      if (business?.phone) {
+        try {
+          await this.remindersQueue.add(
+            'booking_new_provider',
+            commonJobData,
+            { jobId: `booking_new_provider:${appointment.id}`, removeOnComplete: true },
+          );
+        } catch { /* non-fatal */ }
+      }
+
+      // Enqueue 24h reminder (delay = startAt - 24h - now, min 0)
       const reminderDelay = Math.max(0, startAt.getTime() - Date.now() - 24 * 60 * 60 * 1000);
       try {
         await this.remindersQueue.add(
@@ -198,9 +233,7 @@ export class AppointmentsService {
           { appointmentId: appointment.id, businessId, customerId: dto.customerId, serviceId: dto.serviceId },
           { delay: reminderDelay, jobId: `reminder_24h:${appointment.id}`, removeOnComplete: true },
         );
-      } catch {
-        // Non-fatal: reminder jobs will be recovered on worker restart
-      }
+      } catch { /* non-fatal */ }
 
       return appointment;
     } finally {

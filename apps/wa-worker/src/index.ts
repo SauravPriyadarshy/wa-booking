@@ -136,9 +136,19 @@ function getOrCreateClient(businessId: string) {
 
   client.on('message', async (m: any) => {
     const fromPhone = typeof m?.from === 'string' ? m.from : undefined;
-    const body = typeof m?.body === 'string' ? m.body : '';
+    const body = typeof m?.body === 'string' ? m.body.trim() : '';
     const waMessageId = m?.id?._serialized ?? m?.id?.id ?? undefined;
     if (!body) return;
+
+    // Detect provider commands: "CONFIRM <bookingId>" or "CANCEL <bookingId>"
+    const commandMatch = /^(CONFIRM|CANCEL)\s+(\S+)$/i.exec(body);
+    if (commandMatch) {
+      const action = commandMatch[1].toUpperCase() as 'CONFIRM' | 'CANCEL';
+      const appointmentId = commandMatch[2];
+      console.log(`[wa-worker] Command detected: ${action} ${appointmentId} from ${fromPhone}`);
+      await postToApi('/wa/booking-action', { appointmentId, action, businessId });
+    }
+
     await postToApi('/wa/events', {
       type: 'message',
       businessId,

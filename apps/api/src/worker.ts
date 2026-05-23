@@ -69,6 +69,49 @@ async function processJob(job: Job) {
     return customer?.phone ?? null;
   };
 
+  if (name === 'booking_new_customer') {
+    const phone = data.customerPhone ?? (await getPhone(data.customerId));
+    if (!phone) { console.warn(`[worker] booking_new_customer: no phone for customer ${data.customerId}`); return; }
+
+    const template = await getTemplate('wa.booking_new_customer', 'en')
+      ?? 'Hi {customerName}! 👋\n\nYour booking request has been received at *{businessName}*.\n\n📅 {date}\n⏰ {time}\n💇 Service: {service}\n\nWe\'ll confirm shortly. Thank you!';
+
+    const { date, time } = formatDateTime(data.startAt);
+    const message = interpolate(template, {
+      customerName: data.customerName ?? 'there',
+      businessName: data.businessName,
+      date,
+      time,
+      service: data.serviceName,
+    });
+
+    await sendWhatsApp(data.businessId, phone, message);
+    console.log(`[worker] booking_new_customer sent for appointment ${data.appointmentId}`);
+    return;
+  }
+
+  if (name === 'booking_new_provider') {
+    const phone = data.businessPhone;
+    if (!phone) { console.warn(`[worker] booking_new_provider: no phone for business ${data.businessId}`); return; }
+
+    const template = await getTemplate('wa.booking_new_provider', 'en')
+      ?? '📋 *New Booking Request!*\n\n👤 {customerName}\n💇 {service}\n📅 {date} at {time}\n📞 {customerPhone}\n\nReply to confirm or cancel:\n✅ *CONFIRM {bookingId}*\n❌ *CANCEL {bookingId}*';
+
+    const { date, time } = formatDateTime(data.startAt);
+    const message = interpolate(template, {
+      customerName: data.customerName ?? 'Customer',
+      service: data.serviceName,
+      date,
+      time,
+      customerPhone: data.customerPhone ?? 'N/A',
+      bookingId: data.appointmentId,
+    });
+
+    await sendWhatsApp(data.businessId, phone, message);
+    console.log(`[worker] booking_new_provider sent for appointment ${data.appointmentId}`);
+    return;
+  }
+
   if (name === 'booking_confirm') {
     const phone = data.customerPhone ?? (await getPhone(data.customerId));
     if (!phone) { console.warn(`[worker] booking_confirm: no phone for customer ${data.customerId}`); return; }
