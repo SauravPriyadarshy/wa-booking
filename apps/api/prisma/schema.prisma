@@ -178,6 +178,7 @@ model Lead {
 
   @@index([businessId, stage])
   @@index([businessId, phone])
+  @@index([businessId, stage, updatedAt])
 }
 
 model SupportTicket {
@@ -433,6 +434,7 @@ model Customer {
 
   @@index([businessId])
   @@index([businessId, phone])
+  @@index([businessId, createdAt])
 }
 
 model Appointment {
@@ -465,6 +467,7 @@ model Appointment {
 
   @@index([businessId, startAt])
   @@index([businessId, status])
+  @@index([businessId, startAt, status])
   @@index([customerId])
   @@index([serviceId])
   @@index([staffId])
@@ -501,6 +504,7 @@ model Payment {
   updatedAt DateTime @updatedAt
 
   @@index([businessId])
+  @@index([businessId, verifiedAt])
 }
 
 model FollowUpLog {

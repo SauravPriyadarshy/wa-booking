@@ -1,4 +1,5 @@
 import { Body, Controller, Post, Req, Res, UseGuards } from '@nestjs/common';
+import { Throttle, SkipThrottle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import {
   AdminSetPasswordDto,
@@ -15,6 +16,7 @@ import { UserRole } from '../common/auth/user-role.enum';
 import { AuthUserDecorator } from '../common/auth/auth-user.decorator';
 import type { AuthUser } from '../common/auth/auth.types';
 import { RolesGuard } from '../common/auth/roles.guard';
+import { assertNotProductionEndpoint } from '../common/security-config';
 import type { Request, Response } from 'express';
 
 @Controller('auth')
@@ -23,18 +25,19 @@ export class AuthController {
 
   @Post('bootstrap-superadmin')
   bootstrap(@Body() dto: BootstrapSuperAdminDto) {
+    const blocked = assertNotProductionEndpoint('bootstrap-superadmin');
+    if (blocked) return blocked;
     return this.auth.bootstrapSuperAdmin(dto);
   }
 
   @Post('ensure-default-admin')
   ensureDefaultAdmin() {
-    if (process.env.NODE_ENV === 'production') {
-      // hard-disable in prod
-      return { ok: false, message: 'Disabled in production' };
-    }
+    const blocked = assertNotProductionEndpoint('ensure-default-admin');
+    if (blocked) return blocked;
     return this.auth.ensureDefaultAdmin();
   }
 
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Post('login')
   async login(@Res({ passthrough: true }) res: Response, @Body() dto: LoginDto) {
     const data = await this.auth.loginWithPassword(dto);
@@ -47,11 +50,13 @@ export class AuthController {
     return { ...data, refreshToken: undefined };
   }
 
+  @Throttle({ default: { limit: 6, ttl: 60_000 } })
   @Post('otp/request')
   requestOtp(@Body() dto: OtpRequestDto) {
     return this.auth.requestOtp(dto.phone);
   }
 
+  @Throttle({ default: { limit: 6, ttl: 60_000 } })
   @Post('otp/verify')
   async verifyOtp(@Res({ passthrough: true }) res: Response, @Body() dto: OtpVerifyDto) {
     const data = await this.auth.verifyOtp(dto.phone, dto.code);
@@ -64,6 +69,7 @@ export class AuthController {
     return { ...data, refreshToken: undefined };
   }
 
+  @SkipThrottle()
   @Post('refresh')
   async refresh(
     @Req() req: Request,

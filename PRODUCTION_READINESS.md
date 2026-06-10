@@ -23,12 +23,16 @@
 
 | Item | Status | Notes |
 |------|--------|-------|
-| JWT auth with refresh tokens | ✅ | 15min access / 7d refresh |
+| JWT auth with refresh tokens | ✅ | HttpOnly cookie; token redacted in logs |
 | bcryptjs password hashing | ✅ | 10 rounds |
-| Helmet HTTP headers | ✅ | `@nestjs/helmet` |
-| Rate limiting (ThrottlerModule) | ✅ | API-wide throttling |
-| RBAC (SUPER_ADMIN / BUSINESS_ADMIN / STAFF) | ✅ | `RolesGuard` + `RequireBusinessGuard` |
+| Helmet HTTP headers | ✅ | HSTS + standard headers |
+| Rate limiting (ThrottlerModule) | ✅ | 60/min global; auth 6–10/min |
+| Input validation | ✅ | whitelist + forbidNonWhitelisted |
+| Production CORS lockdown | ✅ | Requires `CORS_ORIGINS` in prod |
+| Bootstrap endpoints disabled in prod | ✅ | No open superadmin creation |
 | Multi-tenant data isolation | ✅ | All queries scoped by `businessId` |
+| Web security middleware | ✅ | X-Frame-Options, nosniff, no-store on /app |
+| DB composite indexes | ✅ | Appointments, payments, leads, customers |
 | Audit logs | ✅ | `AuditLog` model for sensitive operations |
 | CORS configured | ✅ | `CORS_ORIGINS` env variable |
 
