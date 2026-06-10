@@ -51,6 +51,14 @@ export class SiteContentController {
     return this.siteContent.upsert(key, locale, dto.value, user.userId);
   }
 
+  /** Super Admin: create missing platform/darbhanga/pwa keys in DB. */
+  @Post('bootstrap')
+  @UseGuards(JwtUserGuard, RolesGuard)
+  @Roles(UserRole.SUPER_ADMIN)
+  bootstrap(@AuthUserDecorator() user: AuthUser) {
+    return this.siteContent.bootstrapDefaults(user.userId);
+  }
+
   /** Super Admin: bulk update multiple keys at once. */
   @Post('bulk')
   @UseGuards(JwtUserGuard, RolesGuard)

@@ -1,6 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import type IORedis from 'ioredis';
+import { BOOTSTRAP_DEFAULTS } from './content-defaults';
 
 const CACHE_TTL = 300; // 5 minutes
 
@@ -93,6 +94,24 @@ export class SiteContentService {
       this.getGroup('landing', locale),
     ]);
     return { platform, darbhanga, pwa, landing };
+  }
+
+  /** Insert missing platform/darbhanga/pwa keys (does not overwrite existing). */
+  async bootstrapDefaults(updatedBy: string) {
+    let created = 0;
+    for (const item of BOOTSTRAP_DEFAULTS) {
+      const existing = await this.prisma.siteContent.findUnique({
+        where: { key_locale: { key: item.key, locale: item.locale } },
+        select: { id: true },
+      });
+      if (existing) continue;
+      await this.prisma.siteContent.create({
+        data: { ...item, updatedBy },
+      });
+      created += 1;
+      await this.invalidateCache(item.group, item.locale);
+    }
+    return { ok: true, created, total: BOOTSTRAP_DEFAULTS.length };
   }
 
   /** Bulk upsert — only updates existing keys, ignores unknown ones. */

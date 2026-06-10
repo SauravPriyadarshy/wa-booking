@@ -187,6 +187,22 @@ export default function SuperAdminContentPage() {
 
   const groupKeys = Object.keys(grouped).sort();
 
+  async function bootstrapMissing() {
+    setErr(null);
+    try {
+      const res = await fetch(`${apiBase()}/site-content/bootstrap`, {
+        method: "POST",
+        headers: authHeader(),
+      });
+      const data = (await res.json()) as { created?: number; message?: string };
+      if (!res.ok) throw new Error(data.message ?? "Bootstrap failed");
+      setRefreshTick((t) => t + 1);
+      alert(`Added ${data.created ?? 0} missing content keys. Edit them below.`);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Bootstrap failed");
+    }
+  }
+
   return (
     <div className="space-y-4">
       <a href="/app/superadmin" className="text-[13px] font-semibold text-emerald-700">
@@ -230,6 +246,13 @@ export default function SuperAdminContentPage() {
             <option key={l} value={l}>{l === "en" ? "English" : "Hindi"}</option>
           ))}
         </select>
+        <button
+          type="button"
+          onClick={() => void bootstrapMissing()}
+          className="h-9 rounded-lg border border-emerald-200 bg-emerald-50 px-3 text-[13px] font-semibold text-emerald-800"
+        >
+          Sync missing keys
+        </button>
       </div>
 
       <div className="mt-2 text-[12px] text-zinc-400">
