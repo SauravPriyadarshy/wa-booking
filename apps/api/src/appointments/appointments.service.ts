@@ -4,6 +4,7 @@ import { AppointmentStatus } from '@prisma/client';
 import type IORedis from 'ioredis';
 import { generateSlots } from './slot-engine';
 import { HOLIDAY_APPOINTMENT_CANCEL_REASON } from '../common/holiday-cancel';
+import { AutomationService } from '../automation/automation.service';
 
 const SLOT_LOCK_TTL_MS = 8_000; // 8s lock per slot attempt
 
@@ -13,6 +14,7 @@ export class AppointmentsService {
     private prisma: PrismaService,
     @Inject('REDIS') private redis: IORedis,
     @Inject('QUEUE_REMINDERS') private remindersQueue: any,
+    private automation: AutomationService,
   ) {}
 
   listUpcoming(businessId: string) {
@@ -256,7 +258,8 @@ export class AppointmentsService {
         customerId: true, serviceId: true, businessId: true,
         customer: { select: { name: true, phone: true } },
         service: { select: { name: true } },
-        business: { select: { name: true, slug: true } },
+        business: { select: { name: true, slug: true, category: { select: { key: true } } } },
+        staff: { select: { user: { select: { name: true } } } },
       },
     });
 
@@ -297,6 +300,20 @@ export class AppointmentsService {
           { delay: 24 * 60 * 60 * 1000, jobId: `post_visit:${id}`, removeOnComplete: true },
         );
       } catch { /* non-fatal */ }
+
+      if (updated.business.category?.key === 'clinic') {
+        await this.automation.scheduleClinicFollowups({
+          businessId,
+          appointmentId: id,
+          customerId: updated.customerId,
+          customerName: updated.customer.name,
+          customerPhone: updated.customer?.phone ?? null,
+          serviceName: updated.service.name,
+          businessName: updated.business.name,
+          bookingSlug: updated.business.slug,
+          doctorName: updated.staff?.user?.name ?? null,
+        });
+      }
     }
 
     return { id: updated.id, status: updated.status, startAt: updated.startAt, endAt: updated.endAt };

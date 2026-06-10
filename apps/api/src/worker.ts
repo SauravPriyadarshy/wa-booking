@@ -184,14 +184,78 @@ async function processJob(job: Job) {
     return;
   }
 
+  if (name === 'clinic_followup') {
+    const phone = data.customerPhone ?? (await getPhone(data.customerId));
+    if (!phone) return;
+
+    const appt = await prisma.appointment.findUnique({
+      where: { id: data.appointmentId },
+      select: { status: true, businessId: true },
+    });
+    if (!appt || appt.status !== 'COMPLETED' || appt.businessId !== data.businessId) return;
+
+    const existing = await prisma.followUpLog.findFirst({
+      where: {
+        businessId: data.businessId,
+        customerId: data.customerId,
+        appointmentId: data.appointmentId,
+        kind: 'clinic_followup',
+        intervalDays: data.intervalDays,
+      },
+    });
+    if (existing) return;
+
+    const template =
+      (await getTemplate('wa.clinic_followup', 'en')) ??
+      'Hi {customerName}! 👋\n\nIt has been {days} days since your visit at *{businessName}*.\n\n{doctorLine}Please book your follow-up visit:\n{bookingLink}';
+
+    const bookingLink = `${process.env.WEB_BASE_URL ?? 'https://wa-booking-web.vercel.app'}/${data.bookingSlug ?? ''}`;
+    const doctorLine = data.doctorName ? `Dr. ${data.doctorName} recommends a check-up.\n\n` : '';
+    const message = interpolate(template, {
+      customerName: data.customerName ?? 'there',
+      businessName: data.businessName,
+      service: data.serviceName ?? 'consultation',
+      days: String(data.intervalDays),
+      doctorLine,
+      doctorName: data.doctorName ?? '',
+      bookingLink,
+    });
+
+    const sent = await sendWhatsApp(data.businessId, phone, message);
+    if (sent) {
+      await prisma.followUpLog.create({
+        data: {
+          businessId: data.businessId,
+          customerId: data.customerId,
+          appointmentId: data.appointmentId,
+          kind: 'clinic_followup',
+          intervalDays: data.intervalDays,
+        },
+      });
+    }
+    console.log(`[worker] clinic_followup ${data.intervalDays}d for appointment ${data.appointmentId}`);
+    return;
+  }
+
   if (name === 'inactive_recovery') {
     const phone = data.phone;
     if (!phone) return;
 
+    const existing = await prisma.followUpLog.findFirst({
+      where: {
+        businessId: data.businessId,
+        customerId: data.customerId,
+        kind: 'inactive_recovery',
+        intervalDays: data.intervalDays ?? 45,
+        sentAt: { gte: new Date(Date.now() - (data.intervalDays ?? 45) * 24 * 60 * 60 * 1000) },
+      },
+    });
+    if (existing) return;
+
     const template = await getTemplate('wa.inactive_recovery', 'en')
       ?? 'Hi {customerName}! We miss you at *{businessName}* 😊\n\nReady for your next {service}?\n\nBook: {bookingLink}';
 
-    const bookingLink = `${process.env.WEB_BASE_URL ?? 'https://yourbooking.app'}/${data.bookingSlug}`;
+    const bookingLink = `${process.env.WEB_BASE_URL ?? 'https://wa-booking-web.vercel.app'}/${data.bookingSlug}`;
     const message = interpolate(template, {
       customerName: data.customerName ?? 'there',
       businessName: data.businessName,
@@ -199,7 +263,18 @@ async function processJob(job: Job) {
       bookingLink,
     });
 
-    await sendWhatsApp(data.businessId, phone, message);
+    const sent = await sendWhatsApp(data.businessId, phone, message);
+    if (sent) {
+      await prisma.followUpLog.create({
+        data: {
+          businessId: data.businessId,
+          customerId: data.customerId,
+          appointmentId: '',
+          kind: 'inactive_recovery',
+          intervalDays: data.intervalDays ?? 45,
+        },
+      });
+    }
     console.log(`[worker] inactive_recovery sent to customer ${data.customerId}`);
     return;
   }

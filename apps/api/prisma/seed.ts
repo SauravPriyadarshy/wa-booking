@@ -549,6 +549,22 @@ async function seedSiteContent() {
         "Hi {customerName}! We miss you at *{businessName}* 😊\n\nIt's been a while — ready for your next {service}?\n\nBook in one tap: {bookingLink}",
     },
     {
+      key: "wa.clinic_followup",
+      locale: "en",
+      group: "wa_templates",
+      label: "Clinic Follow-up Reminder (7/15/30/90 days)",
+      value:
+        "Hi {customerName}! 👋\n\nIt has been {days} days since your visit at *{businessName}*.\n\n{doctorLine}Please book your follow-up visit:\n{bookingLink}",
+    },
+    {
+      key: "wa.clinic_followup",
+      locale: "hi",
+      group: "wa_templates",
+      label: "Clinic Follow-up (Hindi)",
+      value:
+        "नमस्ते {customerName}! 👋\n\n*{businessName}* में visit को {days} din ho gaye.\n\n{doctorLine}Follow-up ke liye book karein:\n{bookingLink}",
+    },
+    {
       key: "wa.booking_confirm",
       locale: "hi",
       group: "wa_templates",

@@ -265,6 +265,7 @@ model Business {
   conversations   Conversation[]
   students        Student[]
   feeRecords      FeeRecord[]
+  followUpLogs    FollowUpLog[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -305,6 +306,9 @@ model StaffProfile {
   user   User   @relation(fields: [userId], references: [id])
 
   title       String?
+  specialization     String?
+  consultationFeeCents Int?
+  consultationDurationMin Int @default(15)
   isAvailable Boolean @default(true)
 
   appointments    Appointment[]
@@ -497,6 +501,20 @@ model Payment {
   updatedAt DateTime @updatedAt
 
   @@index([businessId])
+}
+
+model FollowUpLog {
+  id            String   @id @default(cuid())
+  businessId    String
+  business      Business @relation(fields: [businessId], references: [id])
+  customerId    String
+  appointmentId String @default("")
+  kind          String   // clinic_followup | inactive_recovery
+  intervalDays  Int
+  sentAt        DateTime @default(now())
+
+  @@unique([businessId, customerId, kind, intervalDays, appointmentId])
+  @@index([businessId, sentAt])
 }
 
 model BusinessFeature {

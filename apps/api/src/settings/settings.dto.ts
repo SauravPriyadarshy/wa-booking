@@ -1,4 +1,4 @@
-import { IsBoolean, IsInt, IsOptional, IsString, IsTimeZone, Matches, Max, Min } from 'class-validator';
+import { IsBoolean, IsInt, IsObject, IsOptional, IsString, IsTimeZone, Matches, Max, Min } from 'class-validator';
 
 export class UpdateBusinessProfileDto {
   @IsOptional()
@@ -51,5 +51,10 @@ export class AddHolidayDto {
   @IsOptional()
   @IsBoolean()
   cancelAffectedBookings?: boolean;
+}
+
+export class UpdateFollowUpSettingsDto {
+  @IsObject()
+  intervals: Record<string, boolean>;
 }
 

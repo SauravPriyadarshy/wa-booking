@@ -3,7 +3,7 @@ import { JwtUserGuard } from '../common/auth/jwt-user.guard';
 import { RequireBusinessGuard } from '../common/tenant/require-business.guard';
 import { AuthUserDecorator } from '../common/auth/auth-user.decorator';
 import type { AuthUser } from '../common/auth/auth.types';
-import { CreateStaffDto, SetStaffHoursDto, ToggleAvailabilityDto } from './staff.dto';
+import { CreateStaffDto, SetStaffHoursDto, ToggleAvailabilityDto, UpdateStaffDto } from './staff.dto';
 import { StaffService } from './staff.service';
 
 @Controller('staff')
@@ -20,6 +20,12 @@ export class StaffController {
   @UseGuards(JwtUserGuard, RequireBusinessGuard)
   create(@AuthUserDecorator() user: AuthUser, @Body() dto: CreateStaffDto) {
     return this.staff.create(user.businessId!, dto);
+  }
+
+  @Patch(':id')
+  @UseGuards(JwtUserGuard, RequireBusinessGuard)
+  update(@AuthUserDecorator() user: AuthUser, @Param('id') id: string, @Body() dto: UpdateStaffDto) {
+    return this.staff.update(user.businessId!, id, dto);
   }
 
   @Patch(':id/availability')

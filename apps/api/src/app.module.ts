@@ -30,6 +30,7 @@ import { ConversationsModule } from './conversations/conversations.module';
 import { QueuesModule } from './queues/queues.module';
 import { SiteContentModule } from './site-content/site-content.module';
 import { CoachingModule } from './coaching/coaching.module';
+import { AutomationModule } from './automation/automation.module';
 
 @Module({
   imports: [
@@ -63,6 +64,7 @@ import { CoachingModule } from './coaching/coaching.module';
     ConversationsModule,
     PublicModule,
     CoachingModule,
+    AutomationModule,
   ],
   controllers: [AppController],
   providers: [

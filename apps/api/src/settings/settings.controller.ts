@@ -6,7 +6,7 @@ import type { AuthUser } from '../common/auth/auth.types';
 import { Roles } from '../common/auth/roles.decorator';
 import { RolesGuard } from '../common/auth/roles.guard';
 import { UserRole } from '../common/auth/user-role.enum';
-import { AddHolidayDto, SetBusinessHoursDto, UpdateBusinessProfileDto } from './settings.dto';
+import { AddHolidayDto, SetBusinessHoursDto, UpdateBusinessProfileDto, UpdateFollowUpSettingsDto } from './settings.dto';
 import { SettingsService } from './settings.service';
 
 @Controller('settings')
@@ -49,6 +49,19 @@ export class SettingsController {
   @Roles(UserRole.BUSINESS_ADMIN, UserRole.SUPER_ADMIN)
   addHoliday(@AuthUserDecorator() user: AuthUser, @Body() dto: AddHolidayDto) {
     return this.settings.addHoliday(user.businessId!, dto);
+  }
+
+  @Get('follow-ups')
+  @UseGuards(JwtUserGuard, RequireBusinessGuard)
+  followUps(@AuthUserDecorator() user: AuthUser) {
+    return this.settings.getFollowUpSettings(user.businessId!);
+  }
+
+  @Patch('follow-ups')
+  @UseGuards(JwtUserGuard, RequireBusinessGuard, RolesGuard)
+  @Roles(UserRole.BUSINESS_ADMIN, UserRole.SUPER_ADMIN)
+  updateFollowUps(@AuthUserDecorator() user: AuthUser, @Body() dto: UpdateFollowUpSettingsDto) {
+    return this.settings.setFollowUpSettings(user.businessId!, dto.intervals ?? {});
   }
 }
 

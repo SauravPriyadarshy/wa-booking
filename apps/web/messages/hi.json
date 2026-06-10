@@ -12,7 +12,9 @@
     "close": "बंद करें",
     "search": "खोजें",
     "noResults": "कोई परिणाम नहीं मिला।",
-    "required": "आवश्यक"
+    "required": "आवश्यक",
+    "refresh": "Refresh",
+    "saving": "सेव हो रहा…"
   },
   "auth": {
     "login": "लॉगिन करें",
@@ -52,6 +54,18 @@
     "bookInUnderMinute": "1 मिनट में Book करें",
     "pickServiceTimePhone": "Service, समय और फोन नंबर चुनें — हम WhatsApp पर confirm करेंगे।"
   },
+  "nav": {
+    "today": "आज",
+    "bookings": "बुकिंग",
+    "customers": "ग्राहक",
+    "messages": "मैसेज",
+    "more": "और",
+    "hub": "Hub",
+    "whatsapp": "WhatsApp",
+    "support": "सहायता",
+    "insights": "रिपोर्ट",
+    "settings": "सेटिंग"
+  },
   "hub": {
     "title": "आज",
     "today": "आज",
@@ -69,7 +83,78 @@
     "messages": "मैसेज",
     "more": "और",
     "followup": "फॉलोअप",
-    "services": "सेवाएँ"
+    "services": "सेवाएँ",
+    "workspace": "आज का काम",
+    "health": "Business Health",
+    "leakage": "Revenue Leakage",
+    "schedule": "आज का schedule",
+    "leadsTickets": "Leads & Tickets",
+    "viewAll": "सब देखें",
+    "clinicToday": "Clinic आज",
+    "coachingToday": "Coaching आज",
+    "noBookings": "आज कोई बुकिंग नहीं",
+    "noBookingsDesc": "Booking link share करें या नई बुकिंग add करें।",
+    "addBooking": "Booking add करें"
+  },
+  "staff": {
+    "title": "Staff",
+    "doctorsTitle": "Doctors & Staff",
+    "addStaff": "Staff add करें",
+    "addDoctor": "Doctor add करें",
+    "name": "नाम",
+    "role": "Role (optional)",
+    "specialization": "Specialization",
+    "fee": "Consultation fee (₹)",
+    "duration": "Duration (minutes)",
+    "available": "Available",
+    "off": "Off",
+    "hours": "Available days & timings",
+    "saveProfile": "Profile save करें",
+    "emptyTitle": "अभी कोई staff नहीं",
+    "emptyDesc": "Staff add करें ताकि booking assign हो सके।",
+    "emptyAction": "Staff add करें",
+    "doctorEmptyTitle": "अभी कोई doctor नहीं",
+    "doctorEmptyDesc": "Doctor profile add करें — fee और timing के साथ।",
+    "mon": "Mon",
+    "tue": "Tue",
+    "wed": "Wed",
+    "thu": "Thu",
+    "fri": "Fri",
+    "sat": "Sat",
+    "sun": "Sun"
+  },
+  "queue": {
+    "title": "Patient Queue",
+    "subtitle": "आज का कतार — live update",
+    "waiting": "Waiting",
+    "done": "Done",
+    "missed": "Missed",
+    "estimatedWait": "Estimated wait",
+    "currentPatient": "Current Patient",
+    "noCurrent": "कोई patient अभी नहीं",
+    "noCurrentDesc": "Appointment confirm होने पर patient यहाँ दिखेगा।",
+    "waitingList": "Waiting",
+    "completed": "Completed",
+    "followUpLink": "Missed patients follow-up →",
+    "emptyWaiting": "कोई waiting patient नहीं।"
+  },
+  "settings": {
+    "title": "सेटिंग",
+    "subtitle": "आपका business app पर कैसे चले।",
+    "followUps": "Follow-up reminders",
+    "followUpsSub": "Visit के बाद WhatsApp reminder",
+    "followUpsDesc": "Visit के बाद patient को automatic WhatsApp reminder। Clinic के लिए best।",
+    "intervalDays": "Visit के {days} din baad",
+    "inactiveNote": "45+ din inactive customers ko har subah reminder jata hai."
+  },
+  "empty": {
+    "noStaff": "अभी कोई staff नहीं",
+    "noServices": "अभी कोई service नहीं",
+    "noLeads": "अभी कोई lead नहीं",
+    "noPayments": "कोई pending payment नहीं",
+    "noMessages": "अभी कोई message नहीं",
+    "noStudents": "अभी कोई student नहीं",
+    "noBookings": "आज कोई बुकिंग नहीं"
   },
   "onboarding": {
     "title": "अपना booking page बनाएं",
@@ -82,13 +167,5 @@
     "next": "आगे",
     "finish": "Setup पूरा करें",
     "step": "Step {current} में से {total}"
-  "empty": {
-    "noStaff": "अभी कोई staff नहीं",
-    "noServices": "अभी कोई service नहीं",
-    "noLeads": "अभी कोई lead नहीं",
-    "noPayments": "कोई pending payment नहीं",
-    "noMessages": "अभी कोई message नहीं",
-    "noStudents": "अभी कोई student नहीं",
-    "noBookings": "आज कोई बुकिंग नहीं"
   }
 }

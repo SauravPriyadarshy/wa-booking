@@ -2,7 +2,9 @@
 
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { apiBase } from "@/lib/api-base";
 import { ToastProvider } from "@/components/ui";
 import { LangSwitcher } from "@/components/lang-switcher";
@@ -48,26 +50,40 @@ function linkActive(pathname: string, href: string) {
   return p === h || p.startsWith(`${h}/`);
 }
 
-const NAV_TABS: Array<{ href: string; label: string; module: string | null; Icon: LucideIcon }> = [
-  { href: "/app", label: "आज", module: "hub", Icon: Home },
-  { href: "/app/bookings", label: "बुकिंग", module: "bookings", Icon: CalendarDays },
-  { href: "/app/customers", label: "ग्राहक", module: "customers", Icon: Users },
-  { href: "/app/inbox", label: "मैसेज", module: "whatsapp-connect", Icon: MessageCircle },
-  { href: "/app/more", label: "और", module: null, Icon: MoreHorizontal },
+const NAV_TAB_CONFIG: Array<{ href: string; labelKey: keyof NavLabels; module: string | null; Icon: LucideIcon }> = [
+  { href: "/app", labelKey: "today", module: "hub", Icon: Home },
+  { href: "/app/bookings", labelKey: "bookings", module: "bookings", Icon: CalendarDays },
+  { href: "/app/customers", labelKey: "customers", module: "customers", Icon: Users },
+  { href: "/app/inbox", labelKey: "messages", module: "whatsapp-connect", Icon: MessageCircle },
+  { href: "/app/more", labelKey: "more", module: null, Icon: MoreHorizontal },
 ];
 
-const SIDEBAR_LINKS: Array<{ href: string; label: string; module: string; Icon: LucideIcon }> = [
-  { href: "/app", label: "Hub", module: "hub", Icon: Home },
-  { href: "/app/bookings", label: "Bookings", module: "bookings", Icon: CalendarDays },
-  { href: "/app/customers", label: "Customers", module: "customers", Icon: Users },
-  { href: "/app/whatsapp", label: "WhatsApp", module: "whatsapp-connect", Icon: MessageCircle },
-  { href: "/app/support", label: "Support", module: "support", Icon: LifeBuoy },
-  { href: "/app/analytics", label: "Insights", module: "analytics", Icon: BarChart2 },
-  { href: "/app/settings", label: "Settings", module: "more", Icon: Settings },
+type NavLabels = {
+  today: string;
+  bookings: string;
+  customers: string;
+  messages: string;
+  more: string;
+  hub: string;
+  whatsapp: string;
+  support: string;
+  insights: string;
+  settings: string;
+};
+
+const SIDEBAR_CONFIG: Array<{ href: string; labelKey: keyof NavLabels; module: string; Icon: LucideIcon }> = [
+  { href: "/app", labelKey: "hub", module: "hub", Icon: Home },
+  { href: "/app/bookings", labelKey: "bookings", module: "bookings", Icon: CalendarDays },
+  { href: "/app/customers", labelKey: "customers", module: "customers", Icon: Users },
+  { href: "/app/whatsapp", labelKey: "whatsapp", module: "whatsapp-connect", Icon: MessageCircle },
+  { href: "/app/support", labelKey: "support", module: "support", Icon: LifeBuoy },
+  { href: "/app/analytics", labelKey: "insights", module: "analytics", Icon: BarChart2 },
+  { href: "/app/settings", labelKey: "settings", module: "more", Icon: Settings },
 ];
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const tn = useTranslations("nav");
   const [me, setMe] = useState<MeResponse | null>(null);
   const [ui, setUi] = useState<UiConfig | null>(null);
 
@@ -100,8 +116,14 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const show = (key: string | null) => !key || modules.size === 0 || modules.has(key);
   const isSuperAdmin = me?.ok && me.user.role === "SUPER_ADMIN";
 
-  const visibleTabs = NAV_TABS.filter((t) => show(t.module));
-  const visibleSidebar = SIDEBAR_LINKS.filter((t) => show(t.module));
+  const visibleTabs = NAV_TAB_CONFIG.filter((t) => show(t.module)).map((t) => ({
+    ...t,
+    label: tn(t.labelKey),
+  }));
+  const visibleSidebar = SIDEBAR_CONFIG.filter((t) => show(t.module)).map((t) => ({
+    ...t,
+    label: tn(t.labelKey),
+  }));
 
   return (
     <ToastProvider>
@@ -173,9 +195,10 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                 {visibleTabs.map(({ href, label, Icon }) => {
                   const active = linkActive(pathname, href);
                   return (
-                    <a
+                    <Link
                       key={href}
                       href={href}
+                      prefetch
                       className={`flex min-h-11 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-2 tap-highlight-none transition-colors ${
                         active ? "text-emerald-600" : "text-zinc-400"
                       }`}
@@ -186,7 +209,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                       >
                         {label}
                       </span>
-                    </a>
+                    </Link>
                   );
                 })}
               </div>

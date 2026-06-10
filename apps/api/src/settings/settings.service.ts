@@ -2,10 +2,14 @@ import { BadRequestException, ConflictException, Injectable } from '@nestjs/comm
 import { AppointmentStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { HOLIDAY_APPOINTMENT_CANCEL_REASON } from '../common/holiday-cancel';
+import { AutomationService } from '../automation/automation.service';
 
 @Injectable()
 export class SettingsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private automation: AutomationService,
+  ) {}
 
   getProfile(businessId: string) {
     return this.prisma.business.findUnique({
@@ -139,6 +143,14 @@ export class SettingsService {
 
       return { holiday, cancelled };
     });
+  }
+
+  getFollowUpSettings(businessId: string) {
+    return this.automation.getFollowupSettings(businessId);
+  }
+
+  setFollowUpSettings(businessId: string, intervals: Record<string, boolean>) {
+    return this.automation.setFollowupSettings(businessId, intervals);
   }
 }
 

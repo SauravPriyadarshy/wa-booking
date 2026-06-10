@@ -175,7 +175,11 @@ Current state, priorities, and known gaps for the WhatsApp-first Booking + CRM p
 - [ ] **Auth rate limits per-route** — override ThrottlerGuard on `/auth/login` and `/auth/otp/request` to 10 req/min
 
 ### P1 — High impact
-- [ ] **Inactive 45d recovery job** — schedule cron to query customers with no booking in 45d and enqueue `inactive_recovery` jobs
+- [x] **Clinic follow-up automation** — 7/15/30/90 day WhatsApp jobs on visit complete + settings UI
+- [x] **Inactive recovery cron** — daily scan for 45+ day inactive customers
+- [x] **Doctor profiles** — specialization, fee, duration, weekly hours on staff page
+- [x] **App i18n** — `useTranslations` on nav, settings, staff, follow-ups; EN/HI message files
+- [x] **Performance** — lazy hub dashboard, `optimizePackageImports`, image formats, Link prefetch
 - [ ] **Staff day view** — STAFF role sees "my column only"
 - [ ] **Push-style badge counts** — Hub KPI badges for pending confirm, needs reply, payments pending (poll or SSE)
 - [ ] **WhatsApp message linking** — link every outbound message to booking/customer in CRM timeline
