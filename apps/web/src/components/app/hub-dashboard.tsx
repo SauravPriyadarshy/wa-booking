@@ -505,7 +505,7 @@ export function HubDashboard() {
       leakage.unansweredLeads > 0);
 
   return (
-    <div className="px-4 pb-8 pt-4">
+    <div className="pb-8 pt-4">
       {/* 1. Header — greeting + WA status badge */}
       <div className="animate-slide-up flex items-start justify-between gap-3">
         <div>
@@ -603,7 +603,7 @@ export function HubDashboard() {
             </button>
           ) : null}
           <h2 className="text-[13px] font-semibold uppercase tracking-wide text-zinc-400">Today Workspace</h2>
-          <div className="mt-3 grid grid-cols-2 gap-2">
+          <div className="mt-3 grid grid-cols-2 gap-2 md:grid-cols-3 lg:grid-cols-4">
             <WorkspaceCard
               label="Today's Bookings"
               count={d.stats.bookingsToday}
@@ -668,7 +668,7 @@ export function HubDashboard() {
       {(!launchMode || showAdvanced) && categoryKey === "clinic" && clinic ? (
         <section className="mt-5">
           <h2 className="text-[13px] font-semibold uppercase tracking-wide text-zinc-400">Clinic Today</h2>
-          <div className="mt-3 grid grid-cols-2 gap-2">
+          <div className="mt-3 grid grid-cols-2 gap-2 md:grid-cols-3 lg:grid-cols-4">
             <WorkspaceCard label="Patients" count={clinic.patientsToday} sub="today" href="/app/queue" accent="text-blue-600" />
             <WorkspaceCard label="In Queue" count={clinic.waitingCount} sub="waiting" href="/app/queue" accent="text-emerald-600" urgent={clinic.waitingCount > 0} />
             <WorkspaceCard label="Follow-ups" count={clinic.followUpsDue} sub="due" href="/app/leads" accent="text-amber-600" urgent={clinic.followUpsDue > 0} />
@@ -681,7 +681,7 @@ export function HubDashboard() {
       {(!launchMode || showAdvanced) && categoryKey === "coaching" && coaching ? (
         <section className="mt-5">
           <h2 className="text-[13px] font-semibold uppercase tracking-wide text-zinc-400">Coaching Today</h2>
-          <div className="mt-3 grid grid-cols-2 gap-2">
+          <div className="mt-3 grid grid-cols-2 gap-2 md:grid-cols-3 lg:grid-cols-4">
             <WorkspaceCard label="Students" count={coaching.totalStudents} sub="active" href="/app/students" accent="text-blue-600" />
             <WorkspaceCard label="Fees Due" count={coaching.feesDue} sub={formatInrFromCents(coaching.feesDueCents)} href="/app/fees" accent="text-red-600" urgent={coaching.feesDue > 0} />
             <WorkspaceCard label="Attendance" count={coaching.attendancePct != null ? `${coaching.attendancePct}%` : "—"} sub="today" href="/app/students" accent="text-emerald-600" />
@@ -871,7 +871,7 @@ export function HubDashboard() {
       {/* 5. Quick actions */}
       <section className="mt-6">
         <h2 className="text-[15px] font-semibold text-zinc-900">Quick actions</h2>
-        <div className="mt-3 grid grid-cols-3 gap-3">
+        <div className="mt-3 grid grid-cols-3 gap-3 md:grid-cols-4 lg:grid-cols-6">
           <a
             href="/app/bookings?new=1"
             className="flex min-h-[88px] flex-col items-center justify-center gap-2 rounded-2xl border border-zinc-100 bg-white p-3 shadow-sm transition hover:border-emerald-200 hover:bg-emerald-50 active:scale-95 tap-highlight-none"

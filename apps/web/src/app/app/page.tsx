@@ -58,7 +58,7 @@ function SuperAdminHome() {
   }, []);
 
   return (
-    <div className="px-4 pb-28 pt-4 md:pb-8">
+    <div className="space-y-4">
       <div className="flex items-center gap-2">
         <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-amber-700">⚡ Super Admin</span>
       </div>
@@ -168,7 +168,7 @@ export default function AppHome() {
     const isDarbhanga = onboardingQs.includes("darbhanga");
 
     return (
-      <div className="px-4 py-4">
+      <div className="space-y-4">
         <div className="rounded-2xl border border-zinc-100 bg-white p-5 shadow-sm">
           <div className="text-[13px] font-medium text-zinc-500">
             {isDarbhanga ? "Darbhanga Pack" : "Start here"}

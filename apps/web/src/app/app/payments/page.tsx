@@ -110,7 +110,7 @@ export default function PaymentsPage() {
   }
 
   return (
-    <div className="px-4 py-4">
+    <div className="space-y-4">
       <div className="text-sm text-zinc-500">Payments</div>
       <div className="mt-2 text-xs text-zinc-500">Manual verification (UPI / Cash).</div>
 

@@ -356,7 +356,7 @@ export default function BookingsPage() {
   }, [holidayDialogOpen]);
 
   return (
-    <div className="px-4 pb-28 pt-4 md:pb-8">
+    <div className="space-y-4">
       <div className="flex items-center justify-between gap-2">
         <Link href="/app" className="text-[13px] font-semibold text-emerald-700">
           ← Hub

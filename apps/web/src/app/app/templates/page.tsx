@@ -72,7 +72,7 @@ export default function TemplatesPage() {
   }
 
   return (
-    <div className="px-4 py-4">
+    <div className="space-y-4">
       <div className="text-sm text-zinc-500">Quick replies</div>
       <div className="mt-2 text-xs text-zinc-500">Tap to copy. Use inside WhatsApp chats.</div>
 

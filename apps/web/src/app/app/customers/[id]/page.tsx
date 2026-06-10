@@ -120,7 +120,7 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
 
   if (loading && !c) {
     return (
-      <div className="px-4 py-4">
+      <div className="space-y-4">
         <CustomerCardSkeleton />
         <div className="mt-4 h-40 animate-pulse rounded-2xl bg-zinc-100" />
       </div>
@@ -130,7 +130,7 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
   const lastVisitDays = c?.lastVisitAt ? daysSince(c.lastVisitAt) : null;
 
   return (
-    <div className="px-4 pb-28 pt-4 md:pb-8">
+    <div className="space-y-4">
       <a href="/app/customers" className="text-[13px] font-semibold text-emerald-700">← Customers</a>
 
       {err && (

@@ -81,7 +81,7 @@ export default function BusinessProfilePage() {
   ];
 
   return (
-    <div className="px-4 pb-28 pt-4 md:pb-8">
+    <div className="space-y-4">
       <a href="/app/settings" className="text-[13px] font-semibold text-emerald-700">
         ← Settings
       </a>

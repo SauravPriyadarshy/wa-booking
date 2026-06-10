@@ -27,31 +27,54 @@ export class CustomersService {
       take: 200,
     });
 
-    // Enrich with last visit and total spend
-    const enriched = await Promise.all(
-      customers.map(async (c) => {
-        const [lastAppt, spendAgg] = await Promise.all([
-          this.prisma.appointment.findFirst({
-            where: { businessId, customerId: c.id, status: { in: ['COMPLETED', 'CONFIRMED'] } },
-            orderBy: { startAt: 'desc' },
-            select: { startAt: true, service: { select: { name: true } } },
-          }),
-          this.prisma.payment.aggregate({
-            where: { businessId, appointment: { customerId: c.id }, verifiedAt: { not: null } },
-            _sum: { amountCents: true },
-          }),
-        ]);
-        return {
-          ...c,
-          totalVisits: c._count.appointments,
-          lastVisitAt: lastAppt?.startAt?.toISOString() ?? null,
-          lastService: lastAppt?.service?.name ?? null,
-          totalSpendCents: spendAgg._sum.amountCents ?? 0,
-        };
-      }),
-    );
+    const ids = customers.map((c) => c.id);
+    if (ids.length === 0) return [];
 
-    return enriched;
+    const [appointments, payments] = await Promise.all([
+      this.prisma.appointment.findMany({
+        where: {
+          businessId,
+          customerId: { in: ids },
+          status: { in: ['COMPLETED', 'CONFIRMED'] },
+        },
+        orderBy: { startAt: 'desc' },
+        select: {
+          customerId: true,
+          startAt: true,
+          service: { select: { name: true } },
+        },
+      }),
+      this.prisma.payment.findMany({
+        where: {
+          businessId,
+          verifiedAt: { not: null },
+          appointment: { customerId: { in: ids } },
+        },
+        select: { amountCents: true, appointment: { select: { customerId: true } } },
+      }),
+    ]);
+
+    const lastByCustomer = new Map<string, (typeof appointments)[0]>();
+    for (const appt of appointments) {
+      if (!lastByCustomer.has(appt.customerId)) lastByCustomer.set(appt.customerId, appt);
+    }
+
+    const spendByCustomer = new Map<string, number>();
+    for (const p of payments) {
+      const cid = p.appointment.customerId;
+      spendByCustomer.set(cid, (spendByCustomer.get(cid) ?? 0) + (p.amountCents ?? 0));
+    }
+
+    return customers.map((c) => {
+      const last = lastByCustomer.get(c.id);
+      return {
+        ...c,
+        totalVisits: c._count.appointments,
+        lastVisitAt: last?.startAt?.toISOString() ?? null,
+        lastService: last?.service?.name ?? null,
+        totalSpendCents: spendByCustomer.get(c.id) ?? 0,
+      };
+    });
   }
 
   create(businessId: string, data: any) {

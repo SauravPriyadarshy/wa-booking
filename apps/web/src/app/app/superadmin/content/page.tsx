@@ -185,7 +185,7 @@ export default function SuperAdminContentPage() {
   const groupKeys = Object.keys(grouped).sort();
 
   return (
-    <div className="px-4 pb-28 pt-4 md:pb-8">
+    <div className="space-y-4">
       <a href="/app/superadmin" className="text-[13px] font-semibold text-emerald-700">
         ← Super Admin
       </a>

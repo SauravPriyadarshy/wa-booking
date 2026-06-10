@@ -144,7 +144,7 @@ export default function LeadsPage() {
   }
 
   return (
-    <div className="px-4 py-4">
+    <div className="space-y-4">
       <div className="text-sm text-zinc-500">Leads</div>
       <div className="mt-2 text-xs text-zinc-500">New inquiries → follow up → converted.</div>
 

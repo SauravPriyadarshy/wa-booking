@@ -114,14 +114,14 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
   const totalPending = useMemo(() => (student?.feeRecords.filter((f) => !f.paidAt).reduce((s, f) => s + f.amountCents, 0) ?? 0), [student?.feeRecords]);
 
   if (loading) return (
-    <div className="px-4 py-4 space-y-3">
+    <div className="space-y-3">
       <div className="h-24 animate-pulse rounded-2xl bg-zinc-100" />
       <div className="h-32 animate-pulse rounded-2xl bg-zinc-100" />
     </div>
   );
 
   return (
-    <div className="px-4 pb-28 pt-4 md:pb-8">
+    <div className="space-y-4">
       <a href="/app/students" className="text-[13px] font-semibold text-emerald-700">← Students</a>
 
       {error && <div className="mt-2 rounded-xl bg-red-50 border border-red-200 px-3 py-2 text-[13px] text-red-700">{error}</div>}

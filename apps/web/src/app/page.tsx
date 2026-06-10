@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { getSiteContentGroup, parseJson } from "@/lib/site-content";
+import { MarketingShell } from "@/components/layout/marketing-shell";
 
 export async function generateMetadata(): Promise<Metadata> {
   const seo = await getSiteContentGroup("seo", "en");
@@ -112,33 +113,21 @@ export default async function Home() {
   const waNumber = landingEn["landing.whatsapp_number"] ?? "917500002221";
 
   return (
-    <div className="min-h-screen bg-white">
-      {/* ── Sticky nav ────────────────────────────────────────────── */}
-      <nav className="sticky top-0 z-50 border-b border-zinc-100 bg-white/95 backdrop-blur">
-        <div className="mx-auto flex h-14 max-w-lg items-center justify-between px-4">
-          <div className="flex items-center gap-2.5">
-            <div className="grid h-9 w-9 place-items-center rounded-xl bg-emerald-600 text-sm font-bold text-white">WA</div>
-            <span className="text-[15px] font-semibold text-zinc-900">BookNow</span>
-          </div>
-          <a href="/login" className="h-9 rounded-xl border border-zinc-200 px-4 text-[13px] font-semibold text-zinc-700 leading-9">
-            Login
-          </a>
-        </div>
-      </nav>
-
-      {/* Darbhanga launch banner */}
-      <a
-        href="/darbhanga"
-        className="block border-b border-emerald-200 bg-emerald-600 px-4 py-3 text-center transition hover:bg-emerald-700"
-      >
-        <span className="text-[13px] font-bold text-white">
-          📍 Darbhanga? → WhatsApp Pack — teen cheez, paanch minute, ₹0
-        </span>
-      </a>
-
+    <MarketingShell
+      banner={
+        <a
+          href="/darbhanga"
+          className="block border-b border-emerald-200 bg-emerald-600 py-3 text-center transition hover:bg-emerald-700"
+        >
+          <span className="text-[13px] font-bold text-white">
+            📍 Darbhanga? → WhatsApp Pack — teen cheez, paanch minute, ₹0
+          </span>
+        </a>
+      }
+    >
       {/* ── Hero ──────────────────────────────────────────────────── */}
       <div className="bg-gradient-to-b from-emerald-50 via-white to-white">
-        <div className="mx-auto max-w-lg px-4 pt-10 pb-8">
+        <div className="shell pt-10 pb-8 md:pt-14">
           <div className="inline-flex items-center gap-2 rounded-full bg-emerald-100 px-3 py-1 text-[12px] font-semibold text-emerald-700">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
             WhatsApp Business Assistant
@@ -179,7 +168,7 @@ export default async function Home() {
 
       {/* ── Stats bar ─────────────────────────────────────────────── */}
       <div className="border-y border-zinc-100 bg-zinc-50 py-5">
-        <div className="mx-auto max-w-lg px-4">
+        <div className="shell">
           <div className="grid grid-cols-3 gap-4 text-center">
             {[
               { n: "100+", label: "Businesses" },
@@ -196,7 +185,7 @@ export default async function Home() {
       </div>
 
       {/* ── Category showcase ─────────────────────────────────────── */}
-      <div className="mx-auto max-w-lg px-4 py-10">
+      <div className="shell py-10">
         <div className="text-center">
           <div className="text-[11px] font-semibold uppercase tracking-widest text-emerald-600">किसके लिए बना है?</div>
           <h2 className="mt-2 text-[22px] font-bold text-zinc-900">हर type के business के लिए</h2>
@@ -220,7 +209,7 @@ export default async function Home() {
 
       {/* ── How it works ──────────────────────────────────────────── */}
       <div className="bg-emerald-50 py-10">
-        <div className="mx-auto max-w-lg px-4">
+        <div className="shell">
           <div className="text-center">
             <div className="text-[11px] font-semibold uppercase tracking-widest text-emerald-600">कैसे काम करता है?</div>
             <h2 className="mt-2 text-[22px] font-bold text-zinc-900">3 steps में शुरू करें</h2>
@@ -253,7 +242,7 @@ export default async function Home() {
       </div>
 
       {/* ── Before / After ────────────────────────────────────────── */}
-      <div className="mx-auto max-w-lg px-4 py-10">
+      <div className="shell py-10">
         <div className="text-center">
           <div className="text-[11px] font-semibold uppercase tracking-widest text-emerald-600">पहले vs अब</div>
           <h2 className="mt-2 text-[22px] font-bold text-zinc-900">BookNow से क्या बदलता है?</h2>
@@ -294,7 +283,7 @@ export default async function Home() {
 
       {/* ── Testimonials ──────────────────────────────────────────── */}
       <div className="bg-zinc-50 py-10">
-        <div className="mx-auto max-w-lg px-4">
+        <div className="shell">
           <div className="text-center">
             <div className="text-[11px] font-semibold uppercase tracking-widest text-emerald-600">लोग क्या कहते हैं</div>
             <h2 className="mt-2 text-[22px] font-bold text-zinc-900">Real businesses, real results</h2>
@@ -322,7 +311,7 @@ export default async function Home() {
       </div>
 
       {/* ── Trusted cities ────────────────────────────────────────── */}
-      <div className="mx-auto max-w-lg px-4 py-8">
+      <div className="shell py-8">
         <div className="text-center text-[13px] font-semibold text-zinc-500">इन शहरों में active है</div>
         <div className="mt-4 flex flex-wrap justify-center gap-2">
           {CITIES.map((city) => (
@@ -339,7 +328,7 @@ export default async function Home() {
 
       {/* ── Pricing ───────────────────────────────────────────────── */}
       <div className="bg-zinc-50 py-10">
-        <div className="mx-auto max-w-lg px-4">
+        <div className="shell">
           <h2 className="text-center text-[22px] font-bold text-zinc-900">{pricing.headline}</h2>
           <div className="mt-6 grid gap-4 sm:grid-cols-2">
             {pricing.plans.map((plan) => (
@@ -375,7 +364,7 @@ export default async function Home() {
       </div>
 
       {/* ── FAQ ───────────────────────────────────────────────────── */}
-      <div className="mx-auto max-w-lg px-4 py-10">
+      <div className="shell py-10">
         <h2 className="text-center text-[22px] font-bold text-zinc-900">अक्सर पूछे जाने वाले सवाल</h2>
         <div className="mt-5 space-y-3">
           {faqs.map((item, i) => (
@@ -392,7 +381,7 @@ export default async function Home() {
 
       {/* ── Final CTA ─────────────────────────────────────────────── */}
       <div className="bg-emerald-600 py-10">
-        <div className="mx-auto max-w-lg px-4 text-center">
+        <div className="shell text-center">
           <h2 className="text-[22px] font-bold text-white">आज ही शुरू करें — बिल्कुल Free</h2>
           <p className="mt-2 text-[14px] text-emerald-100">5 मिनट में setup। कोई credit card नहीं चाहिए।</p>
           <a
@@ -406,7 +395,7 @@ export default async function Home() {
 
       {/* ── Footer ────────────────────────────────────────────────── */}
       <footer className="border-t border-zinc-100 py-8">
-        <div className="mx-auto max-w-lg px-4">
+        <div className="shell">
           <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-[12px] text-zinc-500">
             {CITIES.map((city) => (
               <a key={city} href={`/city/${city.toLowerCase()}`} className="hover:text-emerald-600">
@@ -451,6 +440,6 @@ export default async function Home() {
           }),
         }}
       />
-    </div>
+    </MarketingShell>
   );
 }

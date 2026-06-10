@@ -179,6 +179,8 @@ model Lead {
   @@index([businessId, stage])
   @@index([businessId, phone])
   @@index([businessId, stage, updatedAt])
+  @@index([businessId, updatedAt])
+  @@index([businessId, customerId])
 }
 
 model SupportTicket {
@@ -204,6 +206,8 @@ model SupportTicket {
 
   @@index([businessId, status])
   @@index([businessId, lastMessageAt])
+  @@index([businessId, updatedAt])
+  @@index([businessId, customerId])
 }
 
 model RefreshToken {
@@ -435,6 +439,7 @@ model Customer {
   @@index([businessId])
   @@index([businessId, phone])
   @@index([businessId, createdAt])
+  @@index([businessId, updatedAt])
 }
 
 model Appointment {
@@ -468,6 +473,7 @@ model Appointment {
   @@index([businessId, startAt])
   @@index([businessId, status])
   @@index([businessId, startAt, status])
+  @@index([businessId, customerId, status, startAt])
   @@index([customerId])
   @@index([serviceId])
   @@index([staffId])
@@ -625,5 +631,6 @@ model FeeRecord {
 
   @@index([businessId, month])
   @@index([studentId])
+  @@index([studentId, paidAt])
   @@index([businessId, paidAt])
 }

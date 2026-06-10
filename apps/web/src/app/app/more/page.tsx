@@ -54,7 +54,7 @@ export default function MorePage() {
   const role = me?.ok ? me.user.role : null;
 
   return (
-    <div className="px-4 py-4">
+    <div className="space-y-4">
       <div className="text-sm text-zinc-500">More</div>
 
       <div className="mt-3 grid gap-3">

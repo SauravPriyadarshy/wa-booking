@@ -19,26 +19,37 @@ export class CoachingService {
 
     const now = new Date();
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const dateCutoff = thirtyDaysAgo.toISOString().split('T')[0];
+    const ids = students.map((s) => s.id);
+    if (ids.length === 0) return [];
 
-    const enriched = await Promise.all(
-      students.map(async (s) => {
-        const [recentAttendance, pendingFees] = await Promise.all([
-          this.prisma.studentAttendance.findMany({
-            where: { studentId: s.id, dateISO: { gte: thirtyDaysAgo.toISOString().split('T')[0] } },
-            select: { present: true },
-          }),
-          this.prisma.feeRecord.count({
-            where: { studentId: s.id, paidAt: null },
-          }),
-        ]);
-        const totalRecent = recentAttendance.length;
-        const presentCount = recentAttendance.filter((a) => a.present).length;
-        const attendancePct = totalRecent > 0 ? Math.round((presentCount / totalRecent) * 100) : null;
-        return { ...s, attendancePct, pendingFees };
+    const [allAttendance, pendingFees] = await Promise.all([
+      this.prisma.studentAttendance.findMany({
+        where: { studentId: { in: ids }, dateISO: { gte: dateCutoff } },
+        select: { studentId: true, present: true },
       }),
-    );
+      this.prisma.feeRecord.groupBy({
+        by: ['studentId'],
+        where: { studentId: { in: ids }, paidAt: null },
+        _count: true,
+      }),
+    ]);
 
-    return enriched;
+    const attMap = new Map<string, { total: number; present: number }>();
+    for (const row of allAttendance) {
+      const cur = attMap.get(row.studentId) ?? { total: 0, present: 0 };
+      cur.total += 1;
+      if (row.present) cur.present += 1;
+      attMap.set(row.studentId, cur);
+    }
+    const feeMap = new Map(pendingFees.map((g) => [g.studentId, g._count]));
+
+    return students.map((s) => {
+      const att = attMap.get(s.id);
+      const attendancePct =
+        att && att.total > 0 ? Math.round((att.present / att.total) * 100) : null;
+      return { ...s, attendancePct, pendingFees: feeMap.get(s.id) ?? 0 };
+    });
   }
 
   async getStudent(businessId: string, id: string) {

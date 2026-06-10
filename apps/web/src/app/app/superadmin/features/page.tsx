@@ -100,7 +100,7 @@ function SuperAdminFeaturesPage() {
   }, [features]);
 
   return (
-    <div className="px-4 py-4">
+    <div className="space-y-4">
       <div className="flex items-center justify-between">
         <a href="/app" className="text-sm text-emerald-700">
           Back

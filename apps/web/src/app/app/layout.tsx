@@ -50,35 +50,33 @@ function linkActive(pathname: string, href: string) {
   return p === h || p.startsWith(`${h}/`);
 }
 
-const NAV_TAB_CONFIG: Array<{ href: string; labelKey: keyof NavLabels; module: string | null; Icon: LucideIcon }> = [
-  { href: "/app", labelKey: "today", module: "hub", Icon: Home },
-  { href: "/app/bookings", labelKey: "bookings", module: "bookings", Icon: CalendarDays },
-  { href: "/app/customers", labelKey: "customers", module: "customers", Icon: Users },
-  { href: "/app/inbox", labelKey: "messages", module: "whatsapp-connect", Icon: MessageCircle },
-  { href: "/app/more", labelKey: "more", module: null, Icon: MoreHorizontal },
-];
-
 type NavLabels = {
   today: string;
   bookings: string;
   customers: string;
-  messages: string;
   more: string;
-  hub: string;
   whatsapp: string;
   support: string;
   insights: string;
   settings: string;
 };
 
-const SIDEBAR_CONFIG: Array<{ href: string; labelKey: keyof NavLabels; module: string; Icon: LucideIcon }> = [
-  { href: "/app", labelKey: "hub", module: "hub", Icon: Home },
-  { href: "/app/bookings", labelKey: "bookings", module: "bookings", Icon: CalendarDays },
-  { href: "/app/customers", labelKey: "customers", module: "customers", Icon: Users },
-  { href: "/app/whatsapp", labelKey: "whatsapp", module: "whatsapp-connect", Icon: MessageCircle },
-  { href: "/app/support", labelKey: "support", module: "support", Icon: LifeBuoy },
-  { href: "/app/analytics", labelKey: "insights", module: "analytics", Icon: BarChart2 },
-  { href: "/app/settings", labelKey: "settings", module: "more", Icon: Settings },
+const NAV_ITEMS: Array<{
+  href: string;
+  labelKey: keyof NavLabels;
+  module: string | null;
+  Icon: LucideIcon;
+  tab: boolean;
+  side: boolean;
+}> = [
+  { href: "/app", labelKey: "today", module: "hub", Icon: Home, tab: true, side: true },
+  { href: "/app/bookings", labelKey: "bookings", module: "bookings", Icon: CalendarDays, tab: true, side: true },
+  { href: "/app/customers", labelKey: "customers", module: "customers", Icon: Users, tab: true, side: true },
+  { href: "/app/whatsapp", labelKey: "whatsapp", module: "whatsapp-connect", Icon: MessageCircle, tab: true, side: true },
+  { href: "/app/more", labelKey: "more", module: null, Icon: MoreHorizontal, tab: true, side: false },
+  { href: "/app/support", labelKey: "support", module: "support", Icon: LifeBuoy, tab: false, side: true },
+  { href: "/app/analytics", labelKey: "insights", module: "analytics", Icon: BarChart2, tab: false, side: true },
+  { href: "/app/settings", labelKey: "settings", module: "more", Icon: Settings, tab: false, side: true },
 ];
 
 export default function AppLayout({ children }: { children: ReactNode }) {
@@ -116,13 +114,13 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const show = (key: string | null) => !key || modules.size === 0 || modules.has(key);
   const isSuperAdmin = me?.ok && me.user.role === "SUPER_ADMIN";
 
-  const visibleTabs = NAV_TAB_CONFIG.filter((t) => show(t.module)).map((t) => ({
+  const visibleTabs = NAV_ITEMS.filter((t) => t.tab && show(t.module)).map((t) => ({
     ...t,
-    label: tn(t.labelKey),
+    label: tn(t.labelKey === "today" ? "today" : t.labelKey),
   }));
-  const visibleSidebar = SIDEBAR_CONFIG.filter((t) => show(t.module)).map((t) => ({
+  const visibleSidebar = NAV_ITEMS.filter((t) => t.side && show(t.module)).map((t) => ({
     ...t,
-    label: tn(t.labelKey),
+    label: tn(t.labelKey === "today" ? "hub" : t.labelKey),
   }));
 
   return (
@@ -163,9 +161,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         </aside>
 
         <div className="relative flex min-h-screen flex-1 flex-col">
-          <div className="relative mx-auto w-full max-w-md flex-1 md:max-w-5xl">
+          <div className="shell relative flex flex-1 flex-col">
             {isSuperAdmin && (
-              <div className="px-4 pt-3">
+              <div className="pt-3">
                 <a
                   href="/app/superadmin"
                   className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[12px] font-semibold text-amber-800"
@@ -175,7 +173,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
               </div>
             )}
 
-            <main className="animate-slide-up pb-24 md:pb-8">
+            <main className="app-main animate-slide-up flex-1">
               {children}
             </main>
 
@@ -189,7 +187,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
             <nav className="fixed bottom-0 left-0 right-0 z-30 border-t border-zinc-100 bg-white/95 pb-safe backdrop-blur-md md:hidden">
               <div
-                className="mx-auto grid w-full max-w-md gap-0 px-1 py-1"
+                className="shell grid gap-0 py-1 !px-2"
                 style={{ gridTemplateColumns: `repeat(${visibleTabs.length}, 1fr)` }}
               >
                 {visibleTabs.map(({ href, label, Icon }) => {

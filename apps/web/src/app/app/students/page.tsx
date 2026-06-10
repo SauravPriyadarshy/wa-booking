@@ -93,7 +93,7 @@ export default function StudentsPage() {
   const batches = [...new Set(students.map((s) => s.batch).filter(Boolean))];
 
   return (
-    <div className="px-4 pb-28 pt-4 md:pb-8">
+    <div className="space-y-4">
       <a href="/app" className="text-[13px] font-semibold text-emerald-700">← Hub</a>
 
       <div className="mt-3 flex items-end justify-between">

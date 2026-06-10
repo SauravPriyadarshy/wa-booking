@@ -100,7 +100,7 @@ export default function QueuePage() {
   const q = data!;
 
   return (
-    <div className="px-4 pb-28 pt-4">
+    <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-[20px] font-bold text-zinc-900">Patient Queue</h1>

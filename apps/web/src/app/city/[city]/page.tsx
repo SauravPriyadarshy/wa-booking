@@ -156,7 +156,7 @@ export default async function CityPage({ params }: { params: Promise<{ city: str
       <div className="min-h-screen bg-white">
         {/* ── Nav ── */}
         <nav className="sticky top-0 z-50 border-b border-zinc-100 bg-white/95 backdrop-blur">
-          <div className="mx-auto flex h-14 max-w-lg items-center justify-between px-4">
+          <div className="shell flex h-14 items-center justify-between px-4">
             <a href="/" className="flex items-center gap-2">
               <div className="grid h-8 w-8 place-items-center rounded-xl bg-emerald-600 text-xs font-bold text-white">WA</div>
               <span className="text-[14px] font-semibold text-zinc-900">BookNow</span>
@@ -167,7 +167,7 @@ export default async function CityPage({ params }: { params: Promise<{ city: str
 
         {/* ── Hero ── */}
         <div className="bg-gradient-to-b from-emerald-50 to-white">
-          <div className="mx-auto max-w-lg px-4 pt-8 pb-6">
+          <div className="shell pt-8 pb-6">
             <div className="text-[11px] font-semibold uppercase tracking-widest text-emerald-600">BookNow for {cityName}</div>
             <h1 className="mt-2 text-[26px] font-bold leading-tight text-zinc-900">{headlineHi}</h1>
             <p className="mt-2 text-[14px] text-zinc-500">{headlineEn}</p>
@@ -187,7 +187,7 @@ export default async function CityPage({ params }: { params: Promise<{ city: str
         </div>
 
         {/* ── Category cards ── */}
-        <div className="mx-auto max-w-lg px-4 py-8">
+        <div className="shell py-8">
           <div className="text-[12px] font-semibold uppercase tracking-wider text-zinc-400">{cityName} में किस business के लिए?</div>
           <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
             {categories.map((cat) => (
@@ -202,7 +202,7 @@ export default async function CityPage({ params }: { params: Promise<{ city: str
 
         {/* ── Benefits ── */}
         <div className="bg-zinc-50 py-8">
-          <div className="mx-auto max-w-lg px-4">
+          <div className="shell">
             <h2 className="text-[18px] font-bold text-zinc-900">{cityName} के businesses क्यों BookNow use करते हैं?</h2>
             <div className="mt-4 grid gap-3">
               {[
@@ -224,7 +224,7 @@ export default async function CityPage({ params }: { params: Promise<{ city: str
         </div>
 
         {/* ── FAQ ── */}
-        <div className="mx-auto max-w-lg px-4 py-8">
+        <div className="shell py-8">
           <h2 className="text-[18px] font-bold text-zinc-900">अक्सर पूछे जाने वाले सवाल — {cityName}</h2>
           <div className="mt-4 space-y-2">
             {faqs.map((faq, i) => (
@@ -241,7 +241,7 @@ export default async function CityPage({ params }: { params: Promise<{ city: str
 
         {/* ── CTA ── */}
         <div className="bg-emerald-600 py-8">
-          <div className="mx-auto max-w-lg px-4 text-center">
+          <div className="shell text-center">
             <h2 className="text-[20px] font-bold text-white">{cityName} में अभी शुरू करें — Free</h2>
             <p className="mt-1 text-[13px] text-emerald-100">कोई credit card नहीं चाहिए।</p>
             <a href="/signup"
@@ -252,7 +252,7 @@ export default async function CityPage({ params }: { params: Promise<{ city: str
         </div>
 
         {/* ── Other cities ── */}
-        <div className="mx-auto max-w-lg px-4 py-6">
+        <div className="shell py-6">
           <div className="text-center text-[12px] font-medium text-zinc-400">और शहर</div>
           <div className="mt-2 flex flex-wrap justify-center gap-3">
             {SUPPORTED_CITIES.filter((c) => c !== city).map((c) => (

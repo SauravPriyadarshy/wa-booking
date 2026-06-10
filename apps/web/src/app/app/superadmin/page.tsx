@@ -46,7 +46,7 @@ export default function SuperAdminPage() {
   }, []);
 
   return (
-    <div className="px-4 pb-28 pt-4 md:pb-8">
+    <div className="space-y-4">
       <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-amber-700">
         ⚡ Super Admin
       </span>

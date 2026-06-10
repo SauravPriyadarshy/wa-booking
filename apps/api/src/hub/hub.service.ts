@@ -231,7 +231,7 @@ export class HubService {
       revenueAgg,
       inactiveCustomerCount,
       pendingPaymentCount,
-      conversationsOpen,
+      needsReplyCount,
       firstService,
       followUpsDue,
       staffAvailable,
@@ -277,14 +277,13 @@ export class HubService {
       this.prisma.payment.count({
         where: { businessId, verifiedAt: null },
       }),
-      this.prisma.conversation.findMany({
-        where: {
-          businessId,
-          status: 'OPEN',
-          lastInboundAt: { not: null },
-        },
-        select: { lastInboundAt: true, lastOutboundAt: true },
-      }),
+      this.prisma.$queryRaw<[{ count: number }]>`
+        SELECT COUNT(*)::int AS count FROM "Conversation"
+        WHERE "businessId" = ${businessId}
+          AND status = 'OPEN'
+          AND "lastInboundAt" IS NOT NULL
+          AND ("lastOutboundAt" IS NULL OR "lastInboundAt" > "lastOutboundAt")
+      `.then((rows) => Number(rows[0]?.count ?? 0)),
       this.prisma.service.findFirst({
         where: { businessId, isActive: true },
         orderBy: { createdAt: 'asc' },
@@ -312,12 +311,6 @@ export class HubService {
         },
       }),
     ]);
-
-    const needsReplyCount = conversationsOpen.filter((c) => {
-      if (!c.lastInboundAt) return false;
-      if (!c.lastOutboundAt) return true;
-      return c.lastInboundAt > c.lastOutboundAt;
-    }).length;
 
     const pendingConfirmations = appointmentsToday.filter((a) => a.status === AppointmentStatus.PENDING).length;
 
