@@ -100,3 +100,25 @@ body {
 @media (min-width: 768px) {
   .app-main { padding-bottom: 2rem; }
 }
+
+/* Installed PWA / WebView / Capacitor shells */
+html[data-display="standalone"] body,
+html[data-shell="capacitor"] body,
+html[data-shell="cordova"] body,
+html[data-shell="webview"] body {
+  overscroll-behavior-y: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+html[data-display="standalone"] .app-main,
+html[data-shell="capacitor"] .app-main,
+html[data-shell="cordova"] .app-main {
+  padding-bottom: calc(7rem + env(safe-area-inset-bottom, 0px));
+}
+@media (min-width: 768px) {
+  html[data-display="standalone"] .app-main,
+  html[data-shell="capacitor"] .app-main,
+  html[data-shell="cordova"] .app-main {
+    padding-bottom: 2rem;
+  }
+}

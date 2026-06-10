@@ -29,6 +29,31 @@ export function corsOriginChecker() {
     .split(',')
     .map((s) => s.trim())
     .filter(Boolean);
+
+  const webUrl = process.env.NEXT_PUBLIC_WEB_URL ?? process.env.WEB_URL;
+  if (webUrl) {
+    try {
+      origins.push(new URL(webUrl).origin);
+    } catch {
+      /* ignore invalid URL */
+    }
+  }
+
+  // Hybrid app shells (Capacitor / Cordova) — set CORS_ORIGINS in prod to restrict
+  const wrapperOrigins = [
+    'capacitor://localhost',
+    'ionic://localhost',
+    'http://localhost',
+    'http://localhost:3001',
+    'https://localhost',
+  ];
+  const allowWrappers = process.env.CORS_ALLOW_WRAPPERS !== 'false';
+  if (allowWrappers) {
+    for (const o of wrapperOrigins) {
+      if (!origins.includes(o)) origins.push(o);
+    }
+  }
+
   const isProd = process.env.NODE_ENV === 'production';
 
   return (origin: string | undefined, cb: (err: Error | null, allow?: boolean) => void) => {

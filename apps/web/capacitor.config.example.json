@@ -1,0 +1,10 @@
+{
+  "appId": "com.booknow.app",
+  "appName": "BookNow",
+  "webDir": "out",
+  "server": {
+    "url": "https://wa-booking-web.vercel.app",
+    "cleartext": false,
+    "androidScheme": "https"
+  }
+}

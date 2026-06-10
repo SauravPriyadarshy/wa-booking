@@ -1,20 +1,29 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-/** Security headers on all routes — minimal, no CSP breakage for Next.js. */
+/** Security headers — wrapper/PWA friendly (no X-Frame-Options DENY). */
 export function middleware(request: NextRequest) {
   const response = NextResponse.next();
-  response.headers.set("X-Frame-Options", "DENY");
+  const path = request.nextUrl.pathname;
+
   response.headers.set("X-Content-Type-Options", "nosniff");
   response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
-  response.headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
   response.headers.set("X-DNS-Prefetch-Control", "on");
-  if (request.nextUrl.pathname.startsWith("/app")) {
+  // Camera for WhatsApp QR; geolocation off
+  response.headers.set("Permissions-Policy", "camera=(self), microphone=(), geolocation=()");
+
+  if (path === "/sw.js") {
+    response.headers.set("Service-Worker-Allowed", "/");
+    response.headers.set("Cache-Control", "public, max-age=0, must-revalidate");
+  }
+
+  if (path.startsWith("/app")) {
     response.headers.set("Cache-Control", "private, no-store");
   }
+
   return response;
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|sw.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp|json)$).*)"],
 };
