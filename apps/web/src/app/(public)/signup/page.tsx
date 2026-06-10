@@ -1,15 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { apiBase } from "@/lib/api-base";
 import { normalizeIndiaPhone } from "@/lib/phone-in";
+import { packByKey, type DarbhangaPackKey } from "@/lib/darbhanga-pack";
 
 type Step = "phone" | "code";
 
-export default function SignupPage() {
+function SignupForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const ref = searchParams.get("ref");
+  const pack = searchParams.get("pack") as DarbhangaPackKey | null;
+  const isDarbhanga = ref === "darbhanga" || !!packByKey(pack ?? undefined);
+
   const [step, setStep] = useState<Step>("phone");
   const [phoneRaw, setPhoneRaw] = useState("");
   const [code, setCode] = useState("");
@@ -18,6 +24,21 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false);
 
   const phone = normalizeIndiaPhone(phoneRaw);
+
+  useEffect(() => {
+    if (ref) sessionStorage.setItem("signupRef", ref);
+    if (pack) sessionStorage.setItem("signupPack", pack);
+  }, [ref, pack]);
+
+  function onboardingHref() {
+    const params = new URLSearchParams();
+    const storedRef = ref ?? sessionStorage.getItem("signupRef");
+    const storedPack = pack ?? sessionStorage.getItem("signupPack");
+    if (storedRef) params.set("ref", storedRef);
+    if (storedPack) params.set("pack", storedPack);
+    const q = params.toString();
+    return q ? `/app/onboarding?${q}` : "/app/onboarding";
+  }
 
   async function requestCode() {
     setError(null);
@@ -65,7 +86,11 @@ export default function SignupPage() {
         throw new Error(msg ?? "Invalid code");
       }
       localStorage.setItem("token", data.token);
-      router.replace("/app");
+      if (isDarbhanga) {
+        router.replace(onboardingHref());
+      } else {
+        router.replace("/app");
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed");
     } finally {
@@ -76,11 +101,22 @@ export default function SignupPage() {
   return (
     <div className="pt-6">
       <div className="rounded-3xl border border-emerald-100/80 bg-white/90 p-5 shadow-[0_10px_40px_rgba(5,150,105,0.12)] backdrop-blur">
-        <p className="text-[11px] font-semibold uppercase tracking-wide text-emerald-700">New business</p>
-        <h1 className="mt-1 text-[22px] font-semibold tracking-tight text-zinc-900">Start in one minute</h1>
+        {isDarbhanga ? (
+          <div className="mb-3 rounded-xl bg-emerald-50 px-3 py-2 text-center text-[12px] font-bold text-emerald-800">
+            दरभंगा WhatsApp Pack
+            {packByKey(pack ?? undefined) ? ` · ${packByKey(pack ?? undefined)!.titleHi}` : ""}
+          </div>
+        ) : null}
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-emerald-700">
+          {isDarbhanga ? "Mobile se shuru" : "New business"}
+        </p>
+        <h1 className="mt-1 text-[22px] font-semibold tracking-tight text-zinc-900">
+          {isDarbhanga ? "Ek minute — OTP aayega" : "Start in one minute"}
+        </h1>
         <p className="mt-2 text-[14px] leading-relaxed text-zinc-600">
-          Use your shop mobile. We&apos;ll text a code — no password to remember. Then you add your business name and
-          services.
+          {isDarbhanga
+            ? "Shop ka mobile number daalo। Code aayega — password ki zaroorat nahi।"
+            : "Use your shop mobile. We'll text a code — no password to remember. Then you add your business name and services."}
         </p>
 
         {step === "phone" ? (
@@ -167,5 +203,13 @@ export default function SignupPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense fallback={<div className="pt-6 text-center text-[14px] text-zinc-500">Loading…</div>}>
+      <SignupForm />
+    </Suspense>
   );
 }

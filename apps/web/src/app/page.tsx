@@ -126,6 +126,16 @@ export default async function Home() {
         </div>
       </nav>
 
+      {/* Darbhanga launch banner */}
+      <a
+        href="/darbhanga"
+        className="block border-b border-emerald-200 bg-emerald-600 px-4 py-3 text-center transition hover:bg-emerald-700"
+      >
+        <span className="text-[13px] font-bold text-white">
+          📍 Darbhanga? → WhatsApp Pack — teen cheez, paanch minute, ₹0
+        </span>
+      </a>
+
       {/* ── Hero ──────────────────────────────────────────────────── */}
       <div className="bg-gradient-to-b from-emerald-50 via-white to-white">
         <div className="mx-auto max-w-lg px-4 pt-10 pb-8">

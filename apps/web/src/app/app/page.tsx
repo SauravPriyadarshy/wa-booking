@@ -130,6 +130,17 @@ function SuperAdminHome() {
 
 export default function AppHome() {
   const [user, setUser] = useState<UserInfo | null>(null);
+  const [onboardingQs, setOnboardingQs] = useState("");
+
+  useEffect(() => {
+    const p = new URLSearchParams();
+    const ref = sessionStorage.getItem("signupRef");
+    const pack = sessionStorage.getItem("signupPack");
+    if (ref) p.set("ref", ref);
+    if (pack) p.set("pack", pack);
+    const q = p.toString();
+    setOnboardingQs(q ? `?${q}` : "");
+  }, []);
 
   useEffect(() => {
     const t = localStorage.getItem("token");
@@ -154,19 +165,27 @@ export default function AppHome() {
   if (user.role === "SUPER_ADMIN") return <SuperAdminHome />;
 
   if (!user.hasBusiness) {
+    const isDarbhanga = onboardingQs.includes("darbhanga");
+
     return (
       <div className="px-4 py-4">
         <div className="rounded-2xl border border-zinc-100 bg-white p-5 shadow-sm">
-          <div className="text-[13px] font-medium text-zinc-500">Start here</div>
-          <div className="mt-1 text-xl font-semibold tracking-tight text-zinc-900">Create your business</div>
+          <div className="text-[13px] font-medium text-zinc-500">
+            {isDarbhanga ? "Darbhanga Pack" : "Start here"}
+          </div>
+          <div className="mt-1 text-xl font-semibold tracking-tight text-zinc-900">
+            {isDarbhanga ? "Shop setup — 2 minute" : "Create your business"}
+          </div>
           <p className="mt-2 text-[15px] leading-relaxed text-zinc-600">
-            You&apos;re one step away from your booking link and QR. Most businesses finish in under three minutes.
+            {isDarbhanga
+              ? "Naam likho, pack chuno — booking link turant milega।"
+              : "You're one step away from your booking link and QR. Most businesses finish in under three minutes."}
           </p>
           <a
-            href="/app/onboarding"
+            href={`/app/onboarding${onboardingQs}`}
             className="mt-4 flex h-11 items-center justify-center rounded-xl bg-emerald-600 text-[15px] font-semibold text-white shadow-sm transition hover:bg-emerald-700"
           >
-            Start setup
+            {isDarbhanga ? "Shuru karo →" : "Start setup"}
           </a>
         </div>
         <a

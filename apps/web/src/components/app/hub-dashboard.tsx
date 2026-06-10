@@ -12,6 +12,8 @@ import {
   Zap,
 } from "lucide-react";
 import { BookingLinkPanel } from "@/components/app/booking-link-panel";
+import { DarbhangaLaunchStrip } from "@/components/app/darbhanga-launch-strip";
+import { packByKey } from "@/lib/darbhanga-pack";
 import {
   StatCard,
   StatusBadge,
@@ -334,9 +336,26 @@ export function HubDashboard() {
     role?: string;
   } | null>(null);
   const [businessLabel, setBusinessLabel] = useState("");
+  const [launchMode, setLaunchMode] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [packLabel, setPackLabel] = useState("WhatsApp Pack");
 
   useEffect(() => {
     setOrigin(typeof window !== "undefined" ? window.location.origin : "");
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const fromUrl = params.get("launch") === "1";
+    const fromStorage = localStorage.getItem("darbhangaLaunch") === "1";
+    const dismissed = localStorage.getItem("darbhangaLaunchDismissed") === "1";
+    if ((fromUrl || fromStorage) && !dismissed) {
+      setLaunchMode(true);
+      if (fromUrl) localStorage.setItem("darbhangaLaunch", "1");
+    }
+    const storedPack = localStorage.getItem("darbhangaPack");
+    const label =
+      packByKey(storedPack)?.titleHi ??
+      packByKey(localStorage.getItem("darbhangaPack"))?.titleHi;
+    if (label) setPackLabel(label);
   }, []);
 
   const api = useCallback(
@@ -376,6 +395,13 @@ export function HubDashboard() {
           business?: { categoryKey?: string | null; name?: string | null };
         } | null;
         setCategoryKey(me?.business?.categoryKey ?? null);
+        const catKey = me?.business?.categoryKey ?? null;
+        const storedPack = typeof window !== "undefined" ? localStorage.getItem("darbhangaPack") : null;
+        setPackLabel(
+          packByKey(storedPack)?.titleHi ??
+            packByKey(catKey ?? undefined)?.titleHi ??
+            "WhatsApp Pack",
+        );
         if (me?.user) {
           setMeUser({ name: me.user.name, username: me.user.username, role: me.user.role });
         }
@@ -455,6 +481,29 @@ export function HubDashboard() {
   const waConnected = (wa?.status ?? "").toUpperCase() === "CONNECTED";
   const greeting = getGreeting(categoryKey, greetingName);
 
+  function dismissLaunchMode() {
+    localStorage.setItem("darbhangaLaunchDismissed", "1");
+    setLaunchMode(false);
+  }
+
+  function copyBookingLink() {
+    if (!bookingUrl) return;
+    void navigator.clipboard.writeText(bookingUrl).then(
+      () => toast.success("Link copy ho gaya — WhatsApp pe paste karo"),
+      () => toast.error("Copy nahi hua"),
+    );
+  }
+
+  const showHealthInLaunch =
+    !launchMode || (health != null && (health.level === "needs_attention" || health.level === "critical"));
+  const hasLeakage =
+    leakage != null &&
+    (leakage.missedAppointments > 0 ||
+      leakage.pendingFollowups > 0 ||
+      leakage.pendingFees > 0 ||
+      leakage.inactiveCustomers > 0 ||
+      leakage.unansweredLeads > 0);
+
   return (
     <div className="px-4 pb-8 pt-4">
       {/* 1. Header — greeting + WA status badge */}
@@ -482,71 +531,141 @@ export function HubDashboard() {
         <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-[12px] text-amber-900">{err}</div>
       ) : null}
 
-      {/* 2. Today Workspace — actionable cards */}
-      <section className="mt-5">
-        <h2 className="text-[13px] font-semibold uppercase tracking-wide text-zinc-400">Today Workspace</h2>
-        <div className="mt-3 grid grid-cols-2 gap-2">
-          <WorkspaceCard
-            label="Today's Bookings"
-            count={d.stats.bookingsToday}
-            sub="tap to view"
-            href={`/app/bookings?date=${encodeURIComponent(today)}&view=day`}
-            accent="text-emerald-600"
+      {launchMode ? (
+        <div className="mt-4">
+          <DarbhangaLaunchStrip
+            packLabel={packLabel}
+            waConnected={waConnected}
+            bookingUrl={bookingUrl}
+            onCopyLink={copyBookingLink}
+            onDismiss={dismissLaunchMode}
           />
-          <WorkspaceCard
-            label="Pending Confirm"
-            count={d.stats.pendingConfirmations}
-            sub="need action"
-            href="/app/bookings?view=list&status=PENDING"
-            accent="text-amber-600"
-            urgent={d.stats.pendingConfirmations > 0}
-          />
-          <WorkspaceCard
-            label="Pending Payments"
-            count={d.stats.pendingPayments ?? 0}
-            sub="to verify"
-            href="/app/payments"
-            accent="text-orange-600"
-            urgent={(d.stats.pendingPayments ?? 0) > 0}
-          />
-          <WorkspaceCard
-            label="Follow-ups Due"
-            count={d.stats.followUpsDue ?? 0}
-            sub="leads waiting"
-            href="/app/leads"
-            accent="text-blue-600"
-            urgent={(d.stats.followUpsDue ?? 0) > 0}
-          />
-          <WorkspaceCard
-            label="Missed Customers"
-            count={d.stats.missedCustomers ?? 0}
-            sub="30+ days inactive"
-            href="/app/customers?filter=inactive"
-            accent="text-zinc-700"
-            urgent={(d.stats.missedCustomers ?? 0) > 0}
-          />
-          <WorkspaceCard
-            label="Staff Available"
-            count={d.stats.staffAvailable ?? 0}
-            sub="ready today"
-            href="/app/staff"
-            accent="text-emerald-700"
-          />
-          {(d.stats.noShowToday ?? 0) > 0 ? (
-            <WorkspaceCard
-              label="No-shows Today"
-              count={d.stats.noShowToday ?? 0}
-              sub="follow up"
-              href="/app/bookings?view=list&status=NO_SHOW"
-              accent="text-red-600"
-              urgent
-            />
-          ) : null}
         </div>
-      </section>
+      ) : null}
 
-      {/* Clinic KPIs — only for clinic category */}
-      {categoryKey === "clinic" && clinic ? (
+      {launchMode && ui?.ok && ui.slug && bookingUrl ? (
+        <div className="mt-4">
+          <BookingLinkPanel
+            bookingUrl={bookingUrl}
+            businessName={businessLabel}
+            slug={ui.slug}
+            canRegenerateSlug={meUser?.role === "BUSINESS_ADMIN" || meUser?.role === "SUPER_ADMIN"}
+            api={api}
+            onUiRefresh={refreshUiConfig}
+          />
+        </div>
+      ) : null}
+
+      {/* 2. Today Workspace — simplified in launch mode */}
+      {launchMode && !showAdvanced ? (
+        <section className="mt-5">
+          <div className="grid grid-cols-3 gap-2">
+            <WorkspaceCard
+              label="Aaj"
+              count={d.stats.bookingsToday}
+              sub="booking"
+              href={`/app/bookings?date=${encodeURIComponent(today)}&view=day`}
+              accent="text-emerald-600"
+            />
+            <WorkspaceCard
+              label="Pending"
+              count={d.stats.pendingConfirmations}
+              sub="confirm"
+              href="/app/bookings?view=list&status=PENDING"
+              accent="text-amber-600"
+              urgent={d.stats.pendingConfirmations > 0}
+            />
+            <WorkspaceCard
+              label="Customers"
+              count="→"
+              sub="list dekho"
+              href="/app/customers"
+              accent="text-blue-600"
+            />
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowAdvanced(true)}
+            className="mt-3 w-full rounded-xl border border-dashed border-zinc-200 py-2.5 text-[12px] font-semibold text-zinc-500"
+          >
+            और features देखें ↓
+          </button>
+        </section>
+      ) : (
+        <section className="mt-5">
+          {launchMode ? (
+            <button
+              type="button"
+              onClick={() => setShowAdvanced(false)}
+              className="mb-2 text-[12px] font-semibold text-zinc-400"
+            >
+              ↑ Simple view
+            </button>
+          ) : null}
+          <h2 className="text-[13px] font-semibold uppercase tracking-wide text-zinc-400">Today Workspace</h2>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <WorkspaceCard
+              label="Today's Bookings"
+              count={d.stats.bookingsToday}
+              sub="tap to view"
+              href={`/app/bookings?date=${encodeURIComponent(today)}&view=day`}
+              accent="text-emerald-600"
+            />
+            <WorkspaceCard
+              label="Pending Confirm"
+              count={d.stats.pendingConfirmations}
+              sub="need action"
+              href="/app/bookings?view=list&status=PENDING"
+              accent="text-amber-600"
+              urgent={d.stats.pendingConfirmations > 0}
+            />
+            <WorkspaceCard
+              label="Pending Payments"
+              count={d.stats.pendingPayments ?? 0}
+              sub="to verify"
+              href="/app/payments"
+              accent="text-orange-600"
+              urgent={(d.stats.pendingPayments ?? 0) > 0}
+            />
+            <WorkspaceCard
+              label="Follow-ups Due"
+              count={d.stats.followUpsDue ?? 0}
+              sub="leads waiting"
+              href="/app/leads"
+              accent="text-blue-600"
+              urgent={(d.stats.followUpsDue ?? 0) > 0}
+            />
+            <WorkspaceCard
+              label="Missed Customers"
+              count={d.stats.missedCustomers ?? 0}
+              sub="30+ days inactive"
+              href="/app/customers?filter=inactive"
+              accent="text-zinc-700"
+              urgent={(d.stats.missedCustomers ?? 0) > 0}
+            />
+            <WorkspaceCard
+              label="Staff Available"
+              count={d.stats.staffAvailable ?? 0}
+              sub="ready today"
+              href="/app/staff"
+              accent="text-emerald-700"
+            />
+            {(d.stats.noShowToday ?? 0) > 0 ? (
+              <WorkspaceCard
+                label="No-shows Today"
+                count={d.stats.noShowToday ?? 0}
+                sub="follow up"
+                href="/app/bookings?view=list&status=NO_SHOW"
+                accent="text-red-600"
+                urgent
+              />
+            ) : null}
+          </div>
+        </section>
+      )}
+
+      {/* Clinic KPIs — only for clinic category (hidden in simple launch mode) */}
+      {(!launchMode || showAdvanced) && categoryKey === "clinic" && clinic ? (
         <section className="mt-5">
           <h2 className="text-[13px] font-semibold uppercase tracking-wide text-zinc-400">Clinic Today</h2>
           <div className="mt-3 grid grid-cols-2 gap-2">
@@ -558,8 +677,8 @@ export function HubDashboard() {
         </section>
       ) : null}
 
-      {/* Coaching KPIs — only for coaching category */}
-      {categoryKey === "coaching" && coaching ? (
+      {/* Coaching KPIs — only for coaching category (hidden in simple launch mode) */}
+      {(!launchMode || showAdvanced) && categoryKey === "coaching" && coaching ? (
         <section className="mt-5">
           <h2 className="text-[13px] font-semibold uppercase tracking-wide text-zinc-400">Coaching Today</h2>
           <div className="mt-3 grid grid-cols-2 gap-2">
@@ -602,7 +721,8 @@ export function HubDashboard() {
         </section>
       ) : null}
 
-      {/* Stats strip (compact) */}
+      {/* Stats strip (compact) — hidden in launch simple mode */}
+      {(!launchMode || showAdvanced) ? (
       <div className="mt-5 -mx-1 flex gap-3 overflow-x-auto pb-1 pt-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <StatCard
           label="Today"
@@ -633,16 +753,17 @@ export function HubDashboard() {
           href={`/app/bookings?date=${encodeURIComponent(today)}&view=day`}
         />
       </div>
+      ) : null}
 
       {/* 3. Health Score widget */}
-      {health ? (
+      {health && showHealthInLaunch ? (
         <div className="mt-5">
           <HealthScoreWidget {...health} />
         </div>
       ) : null}
 
-      {/* 4. Revenue Leakage widget */}
-      {leakage ? (
+      {/* 4. Revenue Leakage widget — only when money at risk */}
+      {leakage && (!launchMode || hasLeakage) ? (
         <div className="mt-4">
           <RevenueLeakageWidget data={leakage} />
         </div>
@@ -834,8 +955,8 @@ export function HubDashboard() {
         </div>
       ) : null}
 
-      {/* 8. Booking link panel */}
-      {ui?.ok && ui.slug && bookingUrl ? (
+      {/* 8. Booking link panel — top in launch mode, bottom otherwise */}
+      {!launchMode && ui?.ok && ui.slug && bookingUrl ? (
         <BookingLinkPanel
           bookingUrl={bookingUrl}
           businessName={businessLabel}

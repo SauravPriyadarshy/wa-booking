@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { getSiteContentGroup } from "@/lib/site-content";
+import { DarbhangaBundleLanding } from "@/components/darbhanga/darbhanga-bundle-landing";
 
 export const dynamic = "force-dynamic";
 
@@ -78,15 +79,20 @@ export async function generateMetadata({
     openGraph: {
       title: headline,
       description: subtext,
-      url: `/city/${city}`,
+      url: city === "darbhanga" ? "/darbhanga" : `/city/${city}`,
       type: "website",
     },
-    alternates: { canonical: `/city/${city}` },
+    alternates: { canonical: city === "darbhanga" ? "/darbhanga" : `/city/${city}` },
   };
 }
 
 export default async function CityPage({ params }: { params: Promise<{ city: string }> }) {
   const { city } = await params;
+
+  if (city === "darbhanga") {
+    return <DarbhangaBundleLanding />;
+  }
+
   const [contentEn, contentHi] = await Promise.all([
     getSiteContentGroup("city", "en"),
     getSiteContentGroup("city", "hi"),
