@@ -53,19 +53,23 @@
     "pickServiceTimePhone": "Service, समय और फोन नंबर चुनें — हम WhatsApp पर confirm करेंगे।"
   },
   "hub": {
-    "title": "Hub",
+    "title": "आज",
     "today": "आज",
     "upcoming": "आने वाले",
-    "bookings": "Bookings",
-    "customers": "Customers",
-    "analytics": "Insights",
+    "bookings": "बुकिंग",
+    "customers": "ग्राहक",
+    "analytics": "रिपोर्ट",
     "whatsapp": "WhatsApp",
-    "settings": "Settings",
-    "payments": "Payments",
-    "leads": "Leads",
-    "support": "Support",
-    "templates": "Quick Replies",
-    "inbox": "Inbox"
+    "settings": "सेटिंग",
+    "payments": "भुगतान",
+    "leads": "लीड",
+    "support": "सहायता",
+    "templates": "टेम्पलेट",
+    "inbox": "मैसेज",
+    "messages": "मैसेज",
+    "more": "और",
+    "followup": "फॉलोअप",
+    "services": "सेवाएँ"
   },
   "onboarding": {
     "title": "अपना booking page बनाएं",

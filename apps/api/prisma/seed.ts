@@ -12,8 +12,8 @@ async function seedCategories() {
       templateJson: {
         services: [
           { name: "Consultation", durationMin: 15 },
-          { name: "Follow-up", durationMin: 10 },
-          { name: "Vaccination", durationMin: 20, bufferAfterMin: 5 },
+          { name: "Follow-up Visit", durationMin: 10 },
+          { name: "Health Check", durationMin: 20, bufferAfterMin: 5 },
         ],
       },
     },
@@ -22,9 +22,10 @@ async function seedCategories() {
       name: "Salon",
       templateJson: {
         services: [
-          { name: "Haircut", durationMin: 20 },
-          { name: "Beard", durationMin: 15 },
+          { name: "Hair Cut", durationMin: 20 },
+          { name: "Shaving", durationMin: 15 },
           { name: "Facial", durationMin: 45, bufferAfterMin: 10 },
+          { name: "Hair Color", durationMin: 60, bufferAfterMin: 10 },
         ],
       },
     },
@@ -43,9 +44,54 @@ async function seedCategories() {
       name: "Home Service",
       templateJson: {
         services: [
-          { name: "AC Repair", durationMin: 60, bufferAfterMin: 10 },
-          { name: "Plumbing", durationMin: 45, bufferAfterMin: 10 },
           { name: "Electrician", durationMin: 45, bufferAfterMin: 10 },
+          { name: "Plumber", durationMin: 45, bufferAfterMin: 10 },
+          { name: "AC Repair", durationMin: 60, bufferAfterMin: 10 },
+          { name: "Appliance Repair", durationMin: 45, bufferAfterMin: 10 },
+        ],
+      },
+    },
+    {
+      key: "barber",
+      name: "Barber Shop",
+      templateJson: {
+        services: [
+          { name: "Hair Cut", durationMin: 20 },
+          { name: "Shaving", durationMin: 15 },
+          { name: "Facial", durationMin: 30, bufferAfterMin: 5 },
+          { name: "Hair Color", durationMin: 45, bufferAfterMin: 10 },
+        ],
+      },
+    },
+    {
+      key: "tutor",
+      name: "Tutor",
+      templateJson: {
+        services: [
+          { name: "Demo Class", durationMin: 45 },
+          { name: "Regular Session", durationMin: 60 },
+          { name: "Doubt Session", durationMin: 30 },
+        ],
+      },
+    },
+    {
+      key: "consultant",
+      name: "Consultant",
+      templateJson: {
+        services: [
+          { name: "Initial Consultation", durationMin: 30 },
+          { name: "Follow-up Session", durationMin: 20 },
+        ],
+      },
+    },
+    {
+      key: "tattoo",
+      name: "Tattoo Studio",
+      templateJson: {
+        services: [
+          { name: "Consultation", durationMin: 20 },
+          { name: "Small Tattoo", durationMin: 60, bufferAfterMin: 15 },
+          { name: "Large Tattoo Session", durationMin: 120, bufferAfterMin: 30 },
         ],
       },
     },
@@ -57,17 +103,6 @@ async function seedCategories() {
           { name: "Demo Class", durationMin: 60 },
           { name: "Regular Class", durationMin: 60 },
           { name: "Doubt Session", durationMin: 30 },
-        ],
-      },
-    },
-    {
-      key: "barber",
-      name: "Barber Shop",
-      templateJson: {
-        services: [
-          { name: "Haircut", durationMin: 20 },
-          { name: "Beard Shave", durationMin: 15 },
-          { name: "Head Massage", durationMin: 20 },
         ],
       },
     },

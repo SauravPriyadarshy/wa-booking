@@ -6,6 +6,21 @@ Current state, priorities, and known gaps for the WhatsApp-first Booking + CRM p
 
 ---
 
+## What is built (as of June 2026 — Darbhanga Beta)
+
+### Darbhanga Beta Launch (June 2026)
+- [x] **Today Workspace** — actionable cards: bookings, pending confirm, payments, follow-ups, missed customers, staff
+- [x] **Business Health Score** — category-aware (salon/clinic/coaching), 0–100 with recommendations
+- [x] **Revenue Leakage widget** — estimated loss + one-click actions
+- [x] **Coaching module** — students, attendance, fees (`/app/students`, `/app/fees`)
+- [x] **Customer CRM tags** — VIP/Regular/Inactive/New with spend and preferred service
+- [x] **Hindi landing page** — hero, testimonials, category showcase, floating WhatsApp CTA
+- [x] **Hindi bottom nav** — आज / बुकिंग / ग्राहक / मैसेज / और
+- [x] **Super Admin stats** — `/superadmin/stats` endpoint + dashboard cards
+- [x] **City pages** — Darbhanga, Laheriasarai, Benipur, Baheri, Jale, Mohali + FAQ JSON-LD
+- [x] **Business categories** — salon, barber, clinic, coaching, tutor, spa, home service, consultant, tattoo
+- [x] **Launch docs** — PRODUCTION_READINESS, DARBHANGA_LAUNCH_PLAN, LOCAL_MARKETING_PLAN, BUSINESS_HEALTH_SCORE, COACHING_CENTER_STRATEGY, CLINIC_STRATEGY
+
 ## What is built (as of May 2026)
 
 ### Infrastructure

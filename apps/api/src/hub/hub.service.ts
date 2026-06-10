@@ -224,6 +224,8 @@ export class HubService {
     end.setHours(23, 59, 59, 999);
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
+    const followupDueAt = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+
     const [
       appointmentsToday,
       revenueAgg,
@@ -231,6 +233,9 @@ export class HubService {
       pendingPaymentCount,
       conversationsOpen,
       firstService,
+      followUpsDue,
+      staffAvailable,
+      noShowToday,
     ] = await Promise.all([
       this.prisma.appointment.findMany({
         where: {
@@ -287,6 +292,23 @@ export class HubService {
           durationMin: true,
           bufferBeforeMin: true,
           bufferAfterMin: true,
+        },
+      }),
+      this.prisma.lead.count({
+        where: {
+          businessId,
+          stage: { in: ['NEW', 'INTERESTED', 'FOLLOW_UP'] },
+          updatedAt: { lt: followupDueAt },
+        },
+      }),
+      this.prisma.staffProfile.count({
+        where: { businessId, isAvailable: true },
+      }),
+      this.prisma.appointment.count({
+        where: {
+          businessId,
+          startAt: { gte: start, lte: end },
+          status: AppointmentStatus.NO_SHOW,
         },
       }),
     ]);
@@ -380,9 +402,151 @@ export class HubService {
         revenueTodayCents: revenueAgg._sum.amountCents ?? 0,
         freeSlotsApprox,
         needsReplyCount,
+        pendingPayments: pendingPaymentCount,
+        followUpsDue,
+        missedCustomers: inactiveCustomerCount,
+        staffAvailable,
+        noShowToday,
       },
       suggestion,
       schedule,
+    };
+  }
+
+  async revenueLeakage(businessId: string) {
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const followupDueAt = new Date(now.getTime() - 48 * 60 * 60 * 1000);
+
+    const [
+      missedAppointments,
+      pendingFollowups,
+      inactiveCustomers,
+      unansweredLeads,
+      pendingPayments,
+      pendingFeesAgg,
+      avgServicePrice,
+    ] = await Promise.all([
+      this.prisma.appointment.count({
+        where: {
+          businessId,
+          startAt: { gte: thirtyDaysAgo },
+          status: { in: [AppointmentStatus.NO_SHOW, AppointmentStatus.CANCELLED] },
+        },
+      }),
+      this.prisma.lead.count({
+        where: {
+          businessId,
+          stage: { in: ['NEW', 'INTERESTED', 'FOLLOW_UP'] },
+          updatedAt: { lt: followupDueAt },
+        },
+      }),
+      this.prisma.customer.count({
+        where: {
+          businessId,
+          appointments: {
+            none: {
+              startAt: { gte: thirtyDaysAgo },
+              status: { not: AppointmentStatus.CANCELLED },
+            },
+          },
+        },
+      }),
+      this.prisma.lead.count({
+        where: { businessId, stage: 'NEW', updatedAt: { lt: new Date(now.getTime() - 24 * 60 * 60 * 1000) } },
+      }),
+      this.prisma.payment.count({ where: { businessId, verifiedAt: null } }),
+      this.prisma.feeRecord.aggregate({
+        where: { businessId, paidAt: null },
+        _sum: { amountCents: true },
+        _count: { id: true },
+      }),
+      this.prisma.service.aggregate({
+        where: { businessId, isActive: true, priceCents: { gt: 0 } },
+        _avg: { priceCents: true },
+      }),
+    ]);
+
+    const avgPrice = avgServicePrice._avg.priceCents ?? 50000;
+    const estimatedLossCents =
+      missedAppointments * avgPrice +
+      pendingFollowups * Math.round(avgPrice * 0.5) +
+      inactiveCustomers * Math.round(avgPrice * 0.3) +
+      (pendingFeesAgg._sum.amountCents ?? 0);
+
+    return {
+      missedAppointments,
+      pendingFollowups,
+      pendingFees: pendingFeesAgg._count.id,
+      pendingFeesCents: pendingFeesAgg._sum.amountCents ?? 0,
+      inactiveCustomers,
+      unansweredLeads,
+      pendingPayments,
+      estimatedLossCents,
+      actions: [
+        ...(missedAppointments > 0
+          ? [{ key: 'bookings', label: 'Review missed bookings', href: '/app/bookings?view=list&status=NO_SHOW' }]
+          : []),
+        ...(pendingFollowups > 0
+          ? [{ key: 'followup', label: 'Complete follow-ups', href: '/app/leads' }]
+          : []),
+        ...(pendingFeesAgg._count.id > 0
+          ? [{ key: 'fees', label: 'Collect pending fees', href: '/app/fees' }]
+          : []),
+        ...(inactiveCustomers > 0
+          ? [{ key: 'customers', label: 'Contact missed customers', href: '/app/customers?filter=inactive' }]
+          : []),
+        ...(unansweredLeads > 0
+          ? [{ key: 'leads', label: 'Reply to leads', href: '/app/leads' }]
+          : []),
+      ],
+    };
+  }
+
+  async coachingSnapshot(businessId: string) {
+    const now = new Date();
+    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const dateISO = now.toISOString().split('T')[0];
+
+    const [totalStudents, feesDue, feesDueCents, monthCollected, todayPresent, todayTotal] =
+      await Promise.all([
+        this.prisma.student.count({ where: { businessId, isActive: true } }),
+        this.prisma.feeRecord.count({ where: { businessId, paidAt: null } }),
+        this.prisma.feeRecord.aggregate({
+          where: { businessId, paidAt: null },
+          _sum: { amountCents: true },
+        }),
+        this.prisma.feeRecord.aggregate({
+          where: { businessId, month: currentMonth, paidAt: { not: null } },
+          _sum: { amountCents: true },
+        }),
+        this.prisma.studentAttendance.count({
+          where: {
+            dateISO,
+            present: true,
+            student: { businessId, isActive: true },
+          },
+        }),
+        this.prisma.studentAttendance.count({
+          where: { dateISO, student: { businessId, isActive: true } },
+        }),
+      ]);
+
+    const recentAdmissions = await this.prisma.student.count({
+      where: { businessId, admissionAt: { gte: thirtyDaysAgo } },
+    });
+
+    const attendancePct =
+      todayTotal > 0 ? Math.round((todayPresent / todayTotal) * 100) : null;
+
+    return {
+      totalStudents,
+      feesDue,
+      feesDueCents: feesDueCents._sum.amountCents ?? 0,
+      monthCollectedCents: monthCollected._sum.amountCents ?? 0,
+      attendancePct,
+      newAdmissions: recentAdmissions,
     };
   }
 
@@ -425,17 +589,38 @@ export class HubService {
   async health(businessId: string): Promise<{
     score: number;
     level: 'excellent' | 'good' | 'needs_attention' | 'critical';
+    categoryKey: string | null;
     actions: Array<{ key: string; label: string; href: string }>;
   }> {
     const now = new Date();
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-    const [totalAppts, completedAppts, pendingPayments, waSession, overdueLeads] = await Promise.all([
+    const business = await this.prisma.business.findUnique({
+      where: { id: businessId },
+      select: { category: { select: { key: true } } },
+    });
+    const categoryKey = business?.category?.key ?? null;
+
+    const [
+      totalAppts,
+      completedAppts,
+      noShowAppts,
+      pendingPayments,
+      waSession,
+      overdueLeads,
+      totalCustomers,
+      repeatCustomers,
+      staffTotal,
+      staffAvailable,
+    ] = await Promise.all([
       this.prisma.appointment.count({
         where: { businessId, startAt: { gte: thirtyDaysAgo }, status: { not: 'CANCELLED' } },
       }),
       this.prisma.appointment.count({
         where: { businessId, startAt: { gte: thirtyDaysAgo }, status: { in: ['COMPLETED', 'CONFIRMED'] } },
+      }),
+      this.prisma.appointment.count({
+        where: { businessId, startAt: { gte: thirtyDaysAgo }, status: 'NO_SHOW' },
       }),
       this.prisma.payment.count({ where: { businessId, verifiedAt: null } }),
       this.prisma.whatsAppSession.findUnique({ where: { businessId }, select: { status: true } }),
@@ -446,36 +631,90 @@ export class HubService {
           updatedAt: { lt: new Date(now.getTime() - 48 * 60 * 60 * 1000) },
         },
       }),
+      this.prisma.customer.count({ where: { businessId } }),
+      this.prisma.customer.count({
+        where: {
+          businessId,
+          appointments: {
+            some: {
+              startAt: { gte: thirtyDaysAgo },
+              status: { in: ['COMPLETED', 'CONFIRMED'] },
+            },
+          },
+        },
+      }),
+      this.prisma.staffProfile.count({ where: { businessId } }),
+      this.prisma.staffProfile.count({ where: { businessId, isAvailable: true } }),
     ]);
 
-    let score = 50;
+    let score = 40;
+    const actions: Array<{ key: string; label: string; href: string }> = [];
 
-    if (totalAppts > 0) {
-      const rate = completedAppts / totalAppts;
-      score += Math.round(rate * 30);
-    } else {
+    // WhatsApp connectivity (+15)
+    if (waSession?.status === 'CONNECTED') {
       score += 15;
+    } else {
+      actions.push({ key: 'wa', label: 'Reconnect WhatsApp', href: '/app/whatsapp' });
     }
 
-    if (waSession?.status === 'CONNECTED') score += 15;
+    if (categoryKey === 'coaching') {
+      const [totalStudents, pendingFees, paidFees, totalFees] = await Promise.all([
+        this.prisma.student.count({ where: { businessId, isActive: true } }),
+        this.prisma.feeRecord.count({ where: { businessId, paidAt: null } }),
+        this.prisma.feeRecord.count({
+          where: { businessId, paidAt: { not: null }, dueDate: { gte: thirtyDaysAgo } },
+        }),
+        this.prisma.feeRecord.count({ where: { businessId, dueDate: { gte: thirtyDaysAgo } } }),
+      ]);
+      const feeCollectionPct = totalFees > 0 ? paidFees / totalFees : 0.5;
+      score += Math.round(feeCollectionPct * 25);
+      if (totalStudents > 0) {
+        const activeStudents = await this.prisma.student.count({
+          where: {
+            businessId,
+            isActive: true,
+            attendance: { some: { dateISO: { gte: thirtyDaysAgo.toISOString().split('T')[0] } } },
+          },
+        });
+        score += Math.round((activeStudents / totalStudents) * 20);
+      } else {
+        score += 10;
+      }
+      if (pendingFees > 0)
+        actions.push({ key: 'fees', label: 'Collect pending fees', href: '/app/fees' });
+    } else if (categoryKey === 'clinic') {
+      const attendanceRate = totalAppts > 0 ? (completedAppts - noShowAppts) / totalAppts : 0.5;
+      score += Math.round(attendanceRate * 30);
+      if (noShowAppts > 0)
+        actions.push({ key: 'noshow', label: 'Follow up missed patients', href: '/app/customers?filter=inactive' });
+      if (overdueLeads > 0)
+        actions.push({ key: 'followup', label: 'Complete follow-ups', href: '/app/leads' });
+    } else {
+      // Salon / default
+      const repeatPct = totalCustomers > 0 ? repeatCustomers / totalCustomers : 0;
+      score += Math.round(repeatPct * 25);
+      if (totalAppts > 0) {
+        const utilization = staffTotal > 0 ? completedAppts / (staffTotal * 30) : completedAppts / 30;
+        score += Math.min(15, Math.round(utilization * 15));
+      }
+      if (noShowAppts > 0)
+        actions.push({ key: 'noshow', label: 'Contact missed customers', href: '/app/customers?filter=inactive' });
+    }
 
     score -= Math.min(pendingPayments * 5, 15);
-    score -= Math.min(overdueLeads * 5, 20);
+    score -= Math.min(overdueLeads * 3, 15);
+    if (staffTotal > 0 && staffAvailable === 0) score -= 10;
+
+    if (pendingPayments > 0)
+      actions.push({ key: 'payments', label: 'Verify payments', href: '/app/payments' });
+    if (overdueLeads > 0 && !actions.some((a) => a.key === 'followup'))
+      actions.push({ key: 'followup', label: 'Improve follow-ups', href: '/app/leads' });
 
     score = Math.max(0, Math.min(100, score));
-
     const level =
       score >= 90 ? 'excellent' : score >= 70 ? 'good' : score >= 50 ? 'needs_attention' : 'critical';
 
-    const actions: Array<{ key: string; label: string; href: string }> = [];
-    if (waSession?.status !== 'CONNECTED')
-      actions.push({ key: 'wa', label: 'Connect WhatsApp', href: '/app/whatsapp' });
-    if (pendingPayments > 0)
-      actions.push({ key: 'payments', label: 'Verify payments', href: '/app/payments' });
-    if (overdueLeads > 0)
-      actions.push({ key: 'followup', label: 'Follow up leads', href: '/app/leads' });
-
-    return { score, level, actions };
+    return { score, level, categoryKey, actions: actions.slice(0, 4) };
   }
 }
 

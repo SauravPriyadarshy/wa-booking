@@ -3,7 +3,7 @@ import { getSiteContentGroup } from "@/lib/site-content";
 
 export const dynamic = "force-dynamic";
 
-const SUPPORTED_CITIES = ["darbhanga", "laheriasarai", "benipur", "mohali", "patna", "muzaffarpur"];
+const SUPPORTED_CITIES = ["darbhanga", "laheriasarai", "benipur", "baheri", "jale", "mohali", "patna", "muzaffarpur"];
 
 function capitalize(s: string) {
   if (s === "laheriasarai") return "Laheriasarai";

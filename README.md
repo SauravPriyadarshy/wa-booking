@@ -8,7 +8,7 @@ Multi-tenant, mobile-first booking and CRM SaaS for Indian service businesses (s
 
 | Service | Platform | URL | Status |
 |---------|----------|-----|--------|
-| **Web App** | Vercel | [https://wa-booking-web.vercel.app](https://wa-booking-web.vercel.app) | ✅ Live |
+| **Web App** | Vercel | [https://wa-booking-web.vercel.app](https://wa-booking-web.vercel.app) | ✅ Live (Beta) |
 | **API** | Vercel | [https://wa-booking-api.vercel.app](https://wa-booking-api.vercel.app) | ✅ Live |
 | **WhatsApp Worker** | Render | [https://wa-worker-dewp.onrender.com](https://wa-worker-dewp.onrender.com) | ✅ Live |
 | **BullMQ Worker** | Render | [https://bullmq-worker-u2sl.onrender.com](https://bullmq-worker-u2sl.onrender.com) | ✅ Live |
@@ -20,7 +20,7 @@ Multi-tenant, mobile-first booking and CRM SaaS for Indian service businesses (s
 
 | Role | Username | Password | URL |
 |------|----------|----------|-----|
-| Super Admin | `super` | `Test@123` | [/login](https://wa-booking-web.vercel.app/login) |
+| Super Admin | `admin` or `super` | `Test@123` | [/login](https://wa-booking-web.vercel.app/login) |
 | Business Admin | `demo_admin` | `password123` | [/login](https://wa-booking-web.vercel.app/login) |
 | Customer (no login) | — | — | [/demo-salon](https://wa-booking-web.vercel.app/demo-salon) |
 
@@ -91,7 +91,11 @@ docker-compose.yml    # Local dev: Postgres + Redis
 | [https://wa-booking-web.vercel.app/city/laheriasarai](https://wa-booking-web.vercel.app/city/laheriasarai) | City SEO — Laheriasarai |
 | [https://wa-booking-web.vercel.app/city/mohali](https://wa-booking-web.vercel.app/city/mohali) | City SEO — Mohali |
 | [https://wa-booking-web.vercel.app/city/patna](https://wa-booking-web.vercel.app/city/patna) | City SEO — Patna |
-| [https://wa-booking-web.vercel.app/city/muzaffarpur](https://wa-booking-web.vercel.app/city/muzaffarpur) | City SEO — Muzaffarpur |
+| [https://wa-booking-web.vercel.app/city/benipur](https://wa-booking-web.vercel.app/city/benipur) | City SEO — Benipur |
+| [https://wa-booking-web.vercel.app/city/baheri](https://wa-booking-web.vercel.app/city/baheri) | City SEO — Baheri |
+| [https://wa-booking-web.vercel.app/city/jale](https://wa-booking-web.vercel.app/city/jale) | City SEO — Jale |
+| [https://wa-booking-web.vercel.app/app/students](https://wa-booking-web.vercel.app/app/students) | Coaching — Students |
+| [https://wa-booking-web.vercel.app/app/fees](https://wa-booking-web.vercel.app/app/fees) | Coaching — Fee Dashboard |
 | [https://wa-booking-web.vercel.app/sitemap.xml](https://wa-booking-web.vercel.app/sitemap.xml) | XML sitemap |
 | [https://wa-booking-web.vercel.app/robots.txt](https://wa-booking-web.vercel.app/robots.txt) | robots.txt |
 | [https://wa-booking-api.vercel.app/health](https://wa-booking-api.vercel.app/health) | API health check |
@@ -121,7 +125,7 @@ cp .env.example .env          # fill DATABASE_URL, JWT_SECRET, etc.
 npx prisma migrate deploy
 npx prisma generate
 npm run db:seed               # creates superadmin + demo-salon + 38 SiteContent keys
-npm run start:dev             # http://localhost:3000
+npm run build && node dist/main.js   # if start:dev fails, use this
 ```
 
 ### 2. BullMQ worker
@@ -206,7 +210,7 @@ PUPPETEER_SKIP_DOWNLOAD=1 PORT=3100 npm run dev   # http://localhost:3100
 |--------|-------------|-------|
 | `auth` | `/auth` | JWT login, OTP mobile signup, refresh tokens (O(1) prefix lookup) |
 | `me` | `/me` | Current user profile, UI capabilities |
-| `hub` | `/hub` | Hub stats, schedule, leads/tickets strip |
+| `hub` | `/hub` | Today Workspace, health score, revenue leakage, coaching snapshot |
 | `appointments` | `/appointments` | Bookings CRUD; atomic Redis lock + Prisma TX; WhatsApp notifications on create |
 | `customers` | `/customers` | CRM, timeline |
 | `leads` | `/leads` | Lead pipeline |
@@ -285,4 +289,9 @@ NEXT_PUBLIC_API_URL=http://localhost:3000
 | [`PLANS.md`](./PLANS.md) | Current development status and prioritised next steps |
 | [`User_Test_credential.md`](./User_Test_credential.md) | Demo logins and quick test bullets |
 | [`docs/PRODUCT_TRANSFORMATION_ROADMAP.md`](./docs/PRODUCT_TRANSFORMATION_ROADMAP.md) | Commercial/UX phased roadmap |
-| [`docs/USER_TEST.md`](./docs/USER_TEST.md) | UAT checklist |
+| [`PRODUCTION_READINESS.md`](./PRODUCTION_READINESS.md) | Deployment checklist |
+| [`DARBHANGA_LAUNCH_PLAN.md`](./DARBHANGA_LAUNCH_PLAN.md) | 30-day Darbhanga launch plan |
+| [`LOCAL_MARKETING_PLAN.md`](./LOCAL_MARKETING_PLAN.md) | Local marketing and referral strategy |
+| [`BUSINESS_HEALTH_SCORE.md`](./BUSINESS_HEALTH_SCORE.md) | Health score formula by category |
+| [`COACHING_CENTER_STRATEGY.md`](./COACHING_CENTER_STRATEGY.md) | Coaching vertical go-to-market |
+| [`CLINIC_STRATEGY.md`](./CLINIC_STRATEGY.md) | Clinic vertical scope and roadmap |

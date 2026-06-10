@@ -51,5 +51,17 @@ export class HubController {
   health(@AuthUserDecorator() user: AuthUser) {
     return this.hub.health(user.businessId!);
   }
+
+  @Get('revenue-leakage')
+  @UseGuards(JwtUserGuard, RequireBusinessGuard)
+  revenueLeakage(@AuthUserDecorator() user: AuthUser) {
+    return this.hub.revenueLeakage(user.businessId!);
+  }
+
+  @Get('coaching-snapshot')
+  @UseGuards(JwtUserGuard, RequireBusinessGuard)
+  coachingSnapshot(@AuthUserDecorator() user: AuthUser) {
+    return this.hub.coachingSnapshot(user.businessId!);
+  }
 }
 

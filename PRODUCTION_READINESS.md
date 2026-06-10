@@ -68,7 +68,26 @@
 | Dynamic site content (SiteContent) | ✅ |
 | City landing pages (SEO) | ✅ |
 | Coaching module (students/fees/attendance) | ✅ |
-| Hindi language support | ✅ |
+| Today Workspace (action cards) | ✅ |
+| Business Health Score (category-aware) | ✅ |
+| Revenue Leakage widget | ✅ |
+| Hindi bottom nav + landing page | ✅ |
+| City pages (Darbhanga, Benipur, Baheri, Jale, etc.) | ✅ |
+| Business category templates (9 categories) | ✅ |
+
+---
+
+## 📡 New API Endpoints (Darbhanga Beta)
+
+| Endpoint | Auth | Purpose |
+|----------|------|---------|
+| `GET /hub/health` | Business user | Category-aware health score 0–100 + recommendations |
+| `GET /hub/revenue-leakage` | Business user | Estimated revenue loss + action links |
+| `GET /hub/coaching-snapshot` | Business user | Coaching KPIs (students, fees, attendance) |
+| `GET /superadmin/stats` | Super Admin | Platform-wide business/revenue stats |
+| `GET /coaching/students` | Business user | Student list (coaching category) |
+| `POST /coaching/students` | Business user | Add student |
+| `GET /coaching/fees` | Business user | Fee records dashboard |
 
 ---
 

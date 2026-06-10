@@ -26,7 +26,7 @@ Access all businesses, manage categories, edit all site content, and configure g
 | | Production | Local |
 |-|------------|-------|
 | **Login URL** | [https://wa-booking-web.vercel.app/login](https://wa-booking-web.vercel.app/login) | http://127.0.0.1:3001/login |
-| **Username** | `super` | `super` |
+| **Username** | `admin` or `super` | `admin` or `super` |
 | **Password** | `Test@123` | `Test@123` |
 
 **What to test:**
@@ -55,7 +55,8 @@ Manage services, staff, bookings, and customer relationships for a specific busi
 | **Business Phone** | `+919122000751` | — |
 
 **What to test:**
-- **Hub** (`/app`): KPI cards, schedule strip, Leads & tickets, booking link card
+- **Hub** (`/app`): Today Workspace cards, Health Score, Revenue Leakage, coaching KPIs (if coaching)
+- **Coaching** (`/app/students`, `/app/fees`): Student list, attendance, fee collection (coaching category only)
 - **Analytics** (`/app/analytics`): 7d/30d/90d toggle; daily bookings bar chart; revenue; top services
 - **Bookings** (`/app/bookings`): Day / list view; confirm a booking → customer gets WhatsApp confirmation automatically
 - **WhatsApp** (`/app/whatsapp`): Connect QR → scan with phone → verify CONNECTED status; new bookings send alerts to `+919122000751`
@@ -149,7 +150,10 @@ Self-service booking page. No login required.
 |-------|---------------|
 | API health | [https://wa-booking-api.vercel.app/health](https://wa-booking-api.vercel.app/health) |
 | WA worker health | [https://wa-worker-dewp.onrender.com/health](https://wa-worker-dewp.onrender.com/health) |
-| Super admin login | `curl -X POST https://wa-booking-api.vercel.app/auth/login -H "Content-Type: application/json" -d '{"username":"super","password":"Test@123"}'` |
+| SuperAdmin stats | `GET /superadmin/stats` (authenticated SA) |
+| Hub health score | `GET /hub/health` (authenticated) |
+| Revenue leakage | `GET /hub/revenue-leakage` (authenticated) |
+| Coaching snapshot | `GET /hub/coaching-snapshot` (authenticated) |
 | Business admin login | `curl -X POST https://wa-booking-api.vercel.app/auth/login -H "Content-Type: application/json" -d '{"username":"demo_admin","password":"password123"}'` |
 | WA status | `GET /whatsapp/status` (authenticated) |
 | Business profile | `GET /settings/profile` (authenticated) |

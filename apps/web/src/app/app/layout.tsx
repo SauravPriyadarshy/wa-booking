@@ -48,10 +48,11 @@ function linkActive(pathname: string, href: string) {
 }
 
 const NAV_TABS: Array<{ href: string; label: string; module: string | null; Icon: LucideIcon }> = [
-  { href: "/app", label: "Hub", module: "hub", Icon: Home },
-  { href: "/app/bookings", label: "Bookings", module: "bookings", Icon: CalendarDays },
-  { href: "/app/customers", label: "Customers", module: "customers", Icon: Users },
-  { href: "/app/more", label: "More", module: null, Icon: MoreHorizontal },
+  { href: "/app", label: "आज", module: "hub", Icon: Home },
+  { href: "/app/bookings", label: "बुकिंग", module: "bookings", Icon: CalendarDays },
+  { href: "/app/customers", label: "ग्राहक", module: "customers", Icon: Users },
+  { href: "/app/inbox", label: "मैसेज", module: "whatsapp-connect", Icon: MessageCircle },
+  { href: "/app/more", label: "और", module: null, Icon: MoreHorizontal },
 ];
 
 const SIDEBAR_LINKS: Array<{ href: string; label: string; module: string; Icon: LucideIcon }> = [

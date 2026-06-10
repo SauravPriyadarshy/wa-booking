@@ -2,7 +2,7 @@ import type { MetadataRoute } from "next";
 
 const BASE = process.env.NEXT_PUBLIC_WEB_URL ?? "https://wa-booking-web.vercel.app";
 
-const CITIES = ["darbhanga", "laheriasarai", "benipur", "mohali", "patna", "muzaffarpur"];
+const CITIES = ["darbhanga", "laheriasarai", "benipur", "baheri", "jale", "mohali", "patna", "muzaffarpur"];
 const CATEGORIES = ["salon", "clinic", "coaching", "spa", "home_service"];
 
 async function getBusinessSlugs(): Promise<Array<{ slug: string; updatedAt?: string }>> {

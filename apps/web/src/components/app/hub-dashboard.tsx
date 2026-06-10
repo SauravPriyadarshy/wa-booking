@@ -42,6 +42,11 @@ type DashboardPayload = {
     revenueTodayCents: number;
     freeSlotsApprox: number | null;
     needsReplyCount: number;
+    pendingPayments?: number;
+    followUpsDue?: number;
+    missedCustomers?: number;
+    staffAvailable?: number;
+    noShowToday?: number;
   };
   suggestion: null | {
     id: string;
@@ -65,7 +70,29 @@ type DashboardPayload = {
 type HealthPayload = {
   score: number;
   level: "excellent" | "good" | "needs_attention" | "critical";
+  categoryKey?: string | null;
   actions: Array<{ key: string; label: string; href: string }>;
+};
+
+type RevenueLeakagePayload = {
+  missedAppointments: number;
+  pendingFollowups: number;
+  pendingFees: number;
+  pendingFeesCents: number;
+  inactiveCustomers: number;
+  unansweredLeads: number;
+  pendingPayments: number;
+  estimatedLossCents: number;
+  actions: Array<{ key: string; label: string; href: string }>;
+};
+
+type CoachingSnapshot = {
+  totalStudents: number;
+  feesDue: number;
+  feesDueCents: number;
+  monthCollectedCents: number;
+  attendancePct: number | null;
+  newAdmissions: number;
 };
 
 /* ─── Helpers ───────────────────────────────────────────────────── */
@@ -131,7 +158,100 @@ const LEVEL_LABELS: Record<HealthPayload["level"], string> = {
   critical: "Critical",
 };
 
-/* ─── HealthScoreWidget ─────────────────────────────────────────── */
+/* ─── Workspace action card ─────────────────────────────────────── */
+function WorkspaceCard({
+  label,
+  count,
+  sub,
+  href,
+  accent,
+  urgent,
+}: {
+  label: string;
+  count: string | number;
+  sub: string;
+  href: string;
+  accent: string;
+  urgent?: boolean;
+}) {
+  return (
+    <a
+      href={href}
+      className={`flex min-h-[72px] flex-col justify-between rounded-2xl border p-3 shadow-sm transition active:scale-[0.98] tap-highlight-none ${
+        urgent ? "border-amber-200 bg-amber-50" : "border-zinc-100 bg-white hover:border-emerald-100"
+      }`}
+    >
+      <div className="flex items-start justify-between gap-1">
+        <span className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">{label}</span>
+        {urgent ? <span className="h-2 w-2 shrink-0 rounded-full bg-amber-500" /> : null}
+      </div>
+      <div>
+        <div className={`text-[22px] font-bold leading-none ${accent}`}>{count}</div>
+        <div className="mt-0.5 text-[11px] text-zinc-400">{sub}</div>
+      </div>
+    </a>
+  );
+}
+
+/* ─── Revenue Leakage widget ──────────────────────────────────── */
+function RevenueLeakageWidget({ data }: { data: RevenueLeakagePayload }) {
+  if (
+    data.missedAppointments === 0 &&
+    data.pendingFollowups === 0 &&
+    data.pendingFees === 0 &&
+    data.inactiveCustomers === 0 &&
+    data.unansweredLeads === 0
+  ) {
+    return null;
+  }
+  return (
+    <div className="rounded-2xl border border-red-100 bg-red-50/60 p-4 shadow-sm">
+      <div className="flex items-center justify-between">
+        <div>
+          <div className="text-[11px] font-semibold uppercase tracking-wide text-red-600">Revenue Leakage</div>
+          <div className="mt-0.5 text-[20px] font-bold text-red-700">
+            ~{formatInrFromCents(data.estimatedLossCents)} at risk
+          </div>
+        </div>
+      </div>
+      <div className="mt-3 grid grid-cols-2 gap-2 text-[12px]">
+        {data.missedAppointments > 0 && (
+          <div className="rounded-xl bg-white/80 px-2.5 py-2">
+            <span className="font-bold text-zinc-900">{data.missedAppointments}</span> missed appts
+          </div>
+        )}
+        {data.pendingFollowups > 0 && (
+          <div className="rounded-xl bg-white/80 px-2.5 py-2">
+            <span className="font-bold text-zinc-900">{data.pendingFollowups}</span> follow-ups
+          </div>
+        )}
+        {data.pendingFees > 0 && (
+          <div className="rounded-xl bg-white/80 px-2.5 py-2">
+            <span className="font-bold text-zinc-900">{data.pendingFees}</span> fees pending
+          </div>
+        )}
+        {data.inactiveCustomers > 0 && (
+          <div className="rounded-xl bg-white/80 px-2.5 py-2">
+            <span className="font-bold text-zinc-900">{data.inactiveCustomers}</span> inactive
+          </div>
+        )}
+      </div>
+      {data.actions.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {data.actions.slice(0, 2).map((a) => (
+            <a
+              key={a.key}
+              href={a.href}
+              className="rounded-xl bg-red-600 px-3 py-1.5 text-[11px] font-bold text-white"
+            >
+              {a.label}
+            </a>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 function HealthScoreWidget({ score, level, actions }: HealthPayload) {
   const styles = LEVEL_STYLES[level];
   return (
@@ -187,6 +307,8 @@ export function HubDashboard() {
   const [wa, setWa] = useState<WaStatus | null>(null);
   const [dashboard, setDashboard] = useState<DashboardPayload | null>(null);
   const [health, setHealth] = useState<HealthPayload | null>(null);
+  const [leakage, setLeakage] = useState<RevenueLeakagePayload | null>(null);
+  const [coaching, setCoaching] = useState<CoachingSnapshot | null>(null);
   const [quick, setQuick] = useState<QuickReply[]>([]);
   const [err, setErr] = useState<string | null>(null);
   const [origin, setOrigin] = useState("");
@@ -221,7 +343,7 @@ export function HubDashboard() {
     (async () => {
       try {
         setErr(null);
-        const [meRes, cfg, s, dash, qr, , healthRes] = await Promise.all([
+        const [meRes, cfg, s, dash, qr, , healthRes, leakageRes, coachingRes] = await Promise.all([
           api("/me").catch(() => null),
           api("/me/ui"),
           api("/whatsapp/status").catch(() => null),
@@ -229,6 +351,8 @@ export function HubDashboard() {
           api("/hub/quick-replies").catch(() => []),
           api("/staff").catch(() => []),
           api("/hub/health").catch(() => null),
+          api("/hub/revenue-leakage").catch(() => null),
+          api("/hub/coaching-snapshot").catch(() => null),
         ]);
 
         const me = meRes as {
@@ -245,6 +369,9 @@ export function HubDashboard() {
         setDashboard(dash as DashboardPayload);
         setQuick((qr as QuickReply[]) ?? []);
         setHealth((healthRes as HealthPayload) ?? null);
+        setLeakage((leakageRes as RevenueLeakagePayload) ?? null);
+        const cat = me?.business?.categoryKey ?? null;
+        setCoaching(cat === "coaching" ? ((coachingRes as CoachingSnapshot) ?? null) : null);
       } catch (e) {
         setErr(e instanceof Error ? e.message : "Failed");
         setUi({ ok: false });
@@ -336,7 +463,73 @@ export function HubDashboard() {
         <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-[12px] text-amber-900">{err}</div>
       ) : null}
 
-      {/* 2. Stats strip */}
+      {/* 2. Today Workspace — actionable cards */}
+      <section className="mt-5">
+        <h2 className="text-[13px] font-semibold uppercase tracking-wide text-zinc-400">Today Workspace</h2>
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <WorkspaceCard
+            label="Today's Bookings"
+            count={d.stats.bookingsToday}
+            sub="tap to view"
+            href={`/app/bookings?date=${encodeURIComponent(today)}&view=day`}
+            accent="text-emerald-600"
+          />
+          <WorkspaceCard
+            label="Pending Confirm"
+            count={d.stats.pendingConfirmations}
+            sub="need action"
+            href="/app/bookings?view=list&status=PENDING"
+            accent="text-amber-600"
+            urgent={d.stats.pendingConfirmations > 0}
+          />
+          <WorkspaceCard
+            label="Pending Payments"
+            count={d.stats.pendingPayments ?? 0}
+            sub="to verify"
+            href="/app/payments"
+            accent="text-orange-600"
+            urgent={(d.stats.pendingPayments ?? 0) > 0}
+          />
+          <WorkspaceCard
+            label="Follow-ups Due"
+            count={d.stats.followUpsDue ?? 0}
+            sub="leads waiting"
+            href="/app/leads"
+            accent="text-blue-600"
+            urgent={(d.stats.followUpsDue ?? 0) > 0}
+          />
+          <WorkspaceCard
+            label="Missed Customers"
+            count={d.stats.missedCustomers ?? 0}
+            sub="30+ days inactive"
+            href="/app/customers?filter=inactive"
+            accent="text-zinc-700"
+            urgent={(d.stats.missedCustomers ?? 0) > 0}
+          />
+          <WorkspaceCard
+            label="Staff Available"
+            count={d.stats.staffAvailable ?? 0}
+            sub="ready today"
+            href="/app/staff"
+            accent="text-emerald-700"
+          />
+        </div>
+      </section>
+
+      {/* Coaching KPIs — only for coaching category */}
+      {categoryKey === "coaching" && coaching ? (
+        <section className="mt-5">
+          <h2 className="text-[13px] font-semibold uppercase tracking-wide text-zinc-400">Coaching Today</h2>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <WorkspaceCard label="Students" count={coaching.totalStudents} sub="active" href="/app/students" accent="text-blue-600" />
+            <WorkspaceCard label="Fees Due" count={coaching.feesDue} sub={formatInrFromCents(coaching.feesDueCents)} href="/app/fees" accent="text-red-600" urgent={coaching.feesDue > 0} />
+            <WorkspaceCard label="Attendance" count={coaching.attendancePct != null ? `${coaching.attendancePct}%` : "—"} sub="today" href="/app/students" accent="text-emerald-600" />
+            <WorkspaceCard label="New Admissions" count={coaching.newAdmissions} sub="last 30 days" href="/app/students" accent="text-purple-600" />
+          </div>
+        </section>
+      ) : null}
+
+      {/* Stats strip (compact) */}
       <div className="mt-5 -mx-1 flex gap-3 overflow-x-auto pb-1 pt-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <StatCard
           label="Today"
@@ -375,7 +568,14 @@ export function HubDashboard() {
         </div>
       ) : null}
 
-      {/* 4. Today's schedule */}
+      {/* 4. Revenue Leakage widget */}
+      {leakage ? (
+        <div className="mt-4">
+          <RevenueLeakageWidget data={leakage} />
+        </div>
+      ) : null}
+
+      {/* 5. Today's schedule */}
       <section className="mt-6">
         <div className="flex items-center justify-between">
           <h2 className="text-[15px] font-semibold text-zinc-900">Today&apos;s schedule</h2>
@@ -391,8 +591,8 @@ export function HubDashboard() {
           <div className="mt-3 rounded-2xl border border-zinc-100 bg-white">
             <EmptyState
               icon="calendar"
-              title="No bookings today"
-              description="Share your booking link or add one in a few taps."
+              title="आज कोई बुकिंग नहीं"
+              description="Booking link share करें या नई बुकिंग add करें।"
               action={
                 <a
                   href="/app/bookings?new=1"
@@ -479,53 +679,33 @@ export function HubDashboard() {
         </div>
       </section>
 
-      {/* 6. WhatsApp status strip — only if module is enabled */}
+      {/* 6. WhatsApp Status Card */}
       {showWhatsAppConnect ? (
         <section className="mt-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-[15px] font-semibold text-zinc-900">WhatsApp</h2>
-            <span
-              className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
-                waConnected ? "bg-emerald-100 text-emerald-800" : "bg-zinc-100 text-zinc-600"
-              }`}
-            >
-              {waConnected ? "Connected" : (wa?.status ?? "Offline")}
-            </span>
-          </div>
-          <div className="mt-3 rounded-2xl border border-zinc-100 bg-white p-3 shadow-sm">
-            <div className="flex items-center justify-between gap-2">
-              <div>
-                <div className="text-[20px] font-semibold leading-none text-zinc-900">{d.stats.needsReplyCount}</div>
-                <div className="mt-1 text-[12px] font-medium text-zinc-500">likely need a reply</div>
+          <div className="rounded-2xl border border-zinc-100 bg-white p-4 shadow-sm">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className={`grid h-10 w-10 place-items-center rounded-xl ${waConnected ? "bg-emerald-100" : "bg-zinc-100"}`}>
+                  <MessageCircle className={`h-5 w-5 ${waConnected ? "text-emerald-600" : "text-zinc-400"}`} />
+                </div>
+                <div>
+                  <div className="text-[14px] font-bold text-zinc-900">
+                    {waConnected ? "WhatsApp Connected" : wa?.status === "QR_REQUIRED" ? "Scan QR to Connect" : "WhatsApp Disconnected"}
+                  </div>
+                  <div className="text-[12px] text-zinc-500">
+                    {waConnected
+                      ? `${d.stats.needsReplyCount} messages need reply`
+                      : "Reconnect to send automatic reminders"}
+                  </div>
+                </div>
               </div>
               <a
-                href="/app/inbox"
-                className="flex h-10 shrink-0 items-center rounded-xl bg-zinc-900 px-3 text-[12px] font-semibold text-white"
+                href={waConnected ? "/app/inbox" : "/app/whatsapp"}
+                className={`shrink-0 rounded-xl px-3 py-2 text-[12px] font-bold text-white ${waConnected ? "bg-zinc-900" : "bg-emerald-600"}`}
               >
-                Inbox
+                {waConnected ? "Inbox" : "Reconnect"}
               </a>
             </div>
-            {quick.length > 0 ? (
-              <div className="mt-3 flex flex-wrap gap-2">
-                {quick.slice(0, 6).map((q) => (
-                  <button
-                    key={q.id}
-                    type="button"
-                    onClick={async () => {
-                      try {
-                        await navigator.clipboard?.writeText(q.body);
-                        toast.success("Copied — paste in WhatsApp");
-                      } catch {
-                        toast.error("Could not copy");
-                      }
-                    }}
-                    className="rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1.5 text-[12px] font-semibold text-emerald-800 transition hover:bg-emerald-100"
-                  >
-                    {q.title}
-                  </button>
-                ))}
-              </div>
-            ) : null}
           </div>
         </section>
       ) : null}
