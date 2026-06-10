@@ -1,9 +1,14 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import { apiBase } from "@/lib/api-base";
-import { HubDashboard } from "@/components/app/hub-dashboard";
 import { DashboardSkeleton } from "@/components/ui";
+
+const HubDashboard = dynamic(
+  () => import("@/components/app/hub-dashboard").then((m) => m.HubDashboard),
+  { loading: () => <DashboardSkeleton /> },
+);
 
 type UserInfo = {
   role: "SUPER_ADMIN" | "BUSINESS_ADMIN" | "STAFF" | null;
@@ -16,10 +21,13 @@ type SuperStats = {
   inactive: number;
   newThisWeek: number;
   newThisMonth: number;
+  waConnected?: number;
+  withBookings?: number;
   byCategory: Array<{ key: string; name: string; count: number }>;
 };
 
 const SUPER_ACTIONS = [
+  { href: "/app/superadmin", label: "Dashboard", sub: "Platform KPIs & overview", icon: "📊", color: "bg-zinc-50 border-zinc-200 text-zinc-800" },
   { href: "/app/superadmin/businesses", label: "Businesses", sub: "Create & manage all tenants", icon: "🏢", color: "bg-emerald-50 border-emerald-200 text-emerald-800" },
   { href: "/app/superadmin/features", label: "Feature Flags", sub: "Enable/disable per business", icon: "⚙️", color: "bg-blue-50 border-blue-200 text-blue-800" },
   { href: "/app/superadmin/content", label: "Content Editor", sub: "Landing, SEO, WA templates", icon: "✏️", color: "bg-amber-50 border-amber-200 text-amber-800" },
@@ -70,8 +78,9 @@ function SuperAdminHome() {
           <>
             <StatCard value={stats.total} label="Total Businesses" sublabel="All time" colorClass="bg-zinc-50 border-zinc-200 text-zinc-800" />
             <StatCard value={stats.active} label="Active" sublabel={`${stats.inactive} inactive`} colorClass="bg-emerald-50 border-emerald-200 text-emerald-800" />
-            <StatCard value={stats.newThisWeek} label="New this week" colorClass="bg-blue-50 border-blue-200 text-blue-800" />
-            <StatCard value={stats.newThisMonth} label="New this month" colorClass="bg-purple-50 border-purple-200 text-purple-800" />
+            <StatCard value={stats.waConnected ?? "—"} label="WA Connected" colorClass="bg-green-50 border-green-200 text-green-800" />
+            <StatCard value={stats.withBookings ?? "—"} label="With Bookings" sublabel="Last 30 days" colorClass="bg-blue-50 border-blue-200 text-blue-800" />
+            <StatCard value={stats.newThisWeek} label="New this week" colorClass="bg-purple-50 border-purple-200 text-purple-800" />
           </>
         ) : null}
       </div>

@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
 import { apiBase } from "@/lib/api-base";
 import { ToastProvider } from "@/components/ui";
+import { LangSwitcher } from "@/components/lang-switcher";
 import {
   Home,
   CalendarDays,
@@ -108,9 +109,14 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         {/* Desktop sidebar */}
         <aside className="sticky top-0 hidden h-screen w-[240px] flex-shrink-0 flex-col border-r border-zinc-200 bg-white md:flex">
           <div className="border-b border-zinc-100 px-4 py-4">
-            <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-400">Workspace</div>
-            <div className="mt-1 truncate text-[15px] font-semibold text-zinc-900">
-              {me?.ok && me.business?.name ? me.business.name : "Dashboard"}
+            <div className="flex items-center justify-between gap-2">
+              <div className="min-w-0 flex-1">
+                <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-400">Workspace</div>
+                <div className="mt-1 truncate text-[15px] font-semibold text-zinc-900">
+                  {me?.ok && me.business?.name ? me.business.name : "Dashboard"}
+                </div>
+              </div>
+              <LangSwitcher />
             </div>
           </div>
           <nav className="flex flex-1 flex-col gap-0.5 p-2">
@@ -139,7 +145,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             {isSuperAdmin && (
               <div className="px-4 pt-3">
                 <a
-                  href="/app/superadmin/businesses"
+                  href="/app/superadmin"
                   className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[12px] font-semibold text-amber-800"
                 >
                   <span aria-hidden>⚡</span> Super Admin Panel

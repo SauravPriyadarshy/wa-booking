@@ -199,7 +199,7 @@ export default function SupportPage() {
           </div>
         ) : items.length === 0 ? (
           <div className="mt-4">
-            <EmptyState icon="support" title="No tickets" description="Great — or create one when a customer escalates." />
+            <EmptyState icon="support" title="कोई ticket नहीं" description="सब ठीक है — customer issue होने पर ticket बनाएं।" />
           </div>
         ) : (
           <ul className="mt-4 grid gap-2">

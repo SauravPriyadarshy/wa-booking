@@ -95,6 +95,18 @@ type CoachingSnapshot = {
   newAdmissions: number;
 };
 
+type ClinicSnapshot = {
+  patientsToday: number;
+  noShowToday: number;
+  followUpsDue: number;
+  waitingCount: number;
+  revenueTodayCents: number;
+};
+
+type InboxItem =
+  | { type: "lead"; id: string; title: string; subtitle: string; updatedAt: string }
+  | { type: "ticket"; id: string; title: string; subtitle: string; updatedAt: string };
+
 /* ─── Helpers ───────────────────────────────────────────────────── */
 
 function formatInrFromCents(cents: number) {
@@ -121,7 +133,7 @@ function appointmentBadgeStatus(status: string): "confirmed" | "pending" | "canc
 function getGreeting(categoryKey: string | null, displayName: string): { title: string; subtitle: string } {
   const greetings: Record<string, { title: string; subtitle: string }> = {
     salon: { title: `नमस्ते ${displayName}! 💈`, subtitle: "Today's salon schedule" },
-    clinic: { title: `Good morning, Dr. ${displayName}!`, subtitle: "Today's patient queue" },
+    clinic: { title: `नमस्ते Dr. ${displayName}!`, subtitle: "आज का patient queue" },
     coaching: { title: `नमस्ते ${displayName}! 📚`, subtitle: "Today's classes & fees" },
     spa: { title: `Welcome back, ${displayName}! 🧖`, subtitle: "Today's spa bookings" },
     home_service: { title: `Good morning, ${displayName}! 🔧`, subtitle: "Today's jobs" },
@@ -309,6 +321,8 @@ export function HubDashboard() {
   const [health, setHealth] = useState<HealthPayload | null>(null);
   const [leakage, setLeakage] = useState<RevenueLeakagePayload | null>(null);
   const [coaching, setCoaching] = useState<CoachingSnapshot | null>(null);
+  const [clinic, setClinic] = useState<ClinicSnapshot | null>(null);
+  const [inboxItems, setInboxItems] = useState<InboxItem[]>([]);
   const [quick, setQuick] = useState<QuickReply[]>([]);
   const [err, setErr] = useState<string | null>(null);
   const [origin, setOrigin] = useState("");
@@ -343,7 +357,7 @@ export function HubDashboard() {
     (async () => {
       try {
         setErr(null);
-        const [meRes, cfg, s, dash, qr, , healthRes, leakageRes, coachingRes] = await Promise.all([
+        const [meRes, cfg, s, dash, qr, , healthRes, leakageRes, coachingRes, clinicRes, inboxRes] = await Promise.all([
           api("/me").catch(() => null),
           api("/me/ui"),
           api("/whatsapp/status").catch(() => null),
@@ -353,6 +367,8 @@ export function HubDashboard() {
           api("/hub/health").catch(() => null),
           api("/hub/revenue-leakage").catch(() => null),
           api("/hub/coaching-snapshot").catch(() => null),
+          api("/hub/clinic-snapshot").catch(() => null),
+          api("/hub/inbox").catch(() => ({ items: [] })),
         ]);
 
         const me = meRes as {
@@ -372,6 +388,9 @@ export function HubDashboard() {
         setLeakage((leakageRes as RevenueLeakagePayload) ?? null);
         const cat = me?.business?.categoryKey ?? null;
         setCoaching(cat === "coaching" ? ((coachingRes as CoachingSnapshot) ?? null) : null);
+        setClinic(cat === "clinic" ? ((clinicRes as ClinicSnapshot) ?? null) : null);
+        const inbox = inboxRes as { items?: InboxItem[] };
+        setInboxItems((inbox?.items ?? []).slice(0, 6));
       } catch (e) {
         setErr(e instanceof Error ? e.message : "Failed");
         setUi({ ok: false });
@@ -513,8 +532,31 @@ export function HubDashboard() {
             href="/app/staff"
             accent="text-emerald-700"
           />
+          {(d.stats.noShowToday ?? 0) > 0 ? (
+            <WorkspaceCard
+              label="No-shows Today"
+              count={d.stats.noShowToday ?? 0}
+              sub="follow up"
+              href="/app/bookings?view=list&status=NO_SHOW"
+              accent="text-red-600"
+              urgent
+            />
+          ) : null}
         </div>
       </section>
+
+      {/* Clinic KPIs — only for clinic category */}
+      {categoryKey === "clinic" && clinic ? (
+        <section className="mt-5">
+          <h2 className="text-[13px] font-semibold uppercase tracking-wide text-zinc-400">Clinic Today</h2>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <WorkspaceCard label="Patients" count={clinic.patientsToday} sub="today" href="/app/queue" accent="text-blue-600" />
+            <WorkspaceCard label="In Queue" count={clinic.waitingCount} sub="waiting" href="/app/queue" accent="text-emerald-600" urgent={clinic.waitingCount > 0} />
+            <WorkspaceCard label="Follow-ups" count={clinic.followUpsDue} sub="due" href="/app/leads" accent="text-amber-600" urgent={clinic.followUpsDue > 0} />
+            <WorkspaceCard label="Revenue" count={formatInrFromCents(clinic.revenueTodayCents)} sub="today" href="/app/payments" accent="text-zinc-700" />
+          </div>
+        </section>
+      ) : null}
 
       {/* Coaching KPIs — only for coaching category */}
       {categoryKey === "coaching" && coaching ? (
@@ -526,6 +568,37 @@ export function HubDashboard() {
             <WorkspaceCard label="Attendance" count={coaching.attendancePct != null ? `${coaching.attendancePct}%` : "—"} sub="today" href="/app/students" accent="text-emerald-600" />
             <WorkspaceCard label="New Admissions" count={coaching.newAdmissions} sub="last 30 days" href="/app/students" accent="text-purple-600" />
           </div>
+        </section>
+      ) : null}
+
+      {/* Leads & tickets strip */}
+      {inboxItems.length > 0 ? (
+        <section className="mt-5">
+          <div className="flex items-center justify-between">
+            <h2 className="text-[13px] font-semibold uppercase tracking-wide text-zinc-400">Leads & Tickets</h2>
+            <a href="/app/leads" className="text-[12px] font-semibold text-emerald-700">
+              View all
+            </a>
+          </div>
+          <ul className="mt-2 grid gap-2">
+            {inboxItems.map((item) => (
+              <li key={`${item.type}-${item.id}`}>
+                <a
+                  href={item.type === "lead" ? "/app/leads" : "/app/support"}
+                  className="flex items-center gap-3 rounded-2xl border border-zinc-100 bg-white p-3 shadow-sm"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-[14px] font-semibold text-zinc-900">{item.title}</div>
+                    <div className="truncate text-[12px] text-zinc-500">{item.subtitle}</div>
+                  </div>
+                  <span className="shrink-0 rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-bold uppercase text-zinc-600">
+                    {item.type}
+                  </span>
+                  <ChevronRight className="h-4 w-4 shrink-0 text-zinc-400" />
+                </a>
+              </li>
+            ))}
+          </ul>
         </section>
       ) : null}
 
@@ -573,6 +646,29 @@ export function HubDashboard() {
         <div className="mt-4">
           <RevenueLeakageWidget data={leakage} />
         </div>
+      ) : null}
+
+      {/* Quick replies */}
+      {quick.length > 0 ? (
+        <section className="mt-6">
+          <div className="flex items-center justify-between">
+            <h2 className="text-[15px] font-semibold text-zinc-900">Quick replies</h2>
+            <a href="/app/templates" className="text-[12px] font-semibold text-emerald-700">
+              Manage
+            </a>
+          </div>
+          <div className="mt-2 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {quick.slice(0, 6).map((q) => (
+              <a
+                key={q.id}
+                href="/app/templates"
+                className="shrink-0 rounded-xl border border-zinc-100 bg-white px-3 py-2 text-[12px] font-semibold text-zinc-700"
+              >
+                {q.title}
+              </a>
+            ))}
+          </div>
+        </section>
       ) : null}
 
       {/* 5. Today's schedule */}

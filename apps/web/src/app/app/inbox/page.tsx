@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { apiBase } from "@/lib/api-base";
+import { EmptyState } from "@/components/ui";
 
 type Conversation = {
   id: string;
@@ -87,7 +88,16 @@ export default function InboxPage() {
           </div>
 
           {convos.length === 0 ? (
-            <div className="mt-2 text-xs text-zinc-500">No conversations yet. Connect WhatsApp worker first.</div>
+            <EmptyState
+              icon="inbox"
+              title="अभी कोई message नहीं"
+              description="WhatsApp connect करें — customer messages यहाँ आएंगे।"
+              action={
+                <a href="/app/whatsapp" className="inline-flex h-10 items-center rounded-xl bg-emerald-600 px-4 text-[13px] font-semibold text-white">
+                  WhatsApp Connect करें
+                </a>
+              }
+            />
           ) : (
             <div className="mt-3 grid gap-2">
               {convos.slice(0, 8).map((c) => (

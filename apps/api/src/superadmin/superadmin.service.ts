@@ -118,16 +118,25 @@ export class SuperAdminService {
     const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
     const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-    const [total, active, newThisWeek, newThisMonth, categories] = await Promise.all([
-      this.prisma.business.count(),
-      this.prisma.business.count({ where: { isActive: true } }),
-      this.prisma.business.count({ where: { createdAt: { gte: weekAgo } } }),
-      this.prisma.business.count({ where: { createdAt: { gte: monthAgo } } }),
-      this.prisma.businessCategory.findMany({
-        select: { key: true, name: true, _count: { select: { businesses: true } } },
-        orderBy: { createdAt: 'asc' },
-      }),
-    ]);
+    const [total, active, newThisWeek, newThisMonth, categories, waConnected, withBookings] =
+      await Promise.all([
+        this.prisma.business.count(),
+        this.prisma.business.count({ where: { isActive: true } }),
+        this.prisma.business.count({ where: { createdAt: { gte: weekAgo } } }),
+        this.prisma.business.count({ where: { createdAt: { gte: monthAgo } } }),
+        this.prisma.businessCategory.findMany({
+          select: { key: true, name: true, _count: { select: { businesses: true } } },
+          orderBy: { createdAt: 'asc' },
+        }),
+        this.prisma.whatsAppSession.count({ where: { status: 'CONNECTED' } }),
+        this.prisma.business.count({
+          where: {
+            appointments: {
+              some: { createdAt: { gte: monthAgo } },
+            },
+          },
+        }),
+      ]);
 
     return {
       total,
@@ -135,6 +144,8 @@ export class SuperAdminService {
       inactive: total - active,
       newThisWeek,
       newThisMonth,
+      waConnected,
+      withBookings,
       byCategory: categories.map((c) => ({ key: c.key, name: c.name, count: c._count.businesses })),
     };
   }

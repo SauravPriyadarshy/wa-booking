@@ -82,5 +82,13 @@
     "next": "आगे",
     "finish": "Setup पूरा करें",
     "step": "Step {current} में से {total}"
+  "empty": {
+    "noStaff": "अभी कोई staff नहीं",
+    "noServices": "अभी कोई service नहीं",
+    "noLeads": "अभी कोई lead नहीं",
+    "noPayments": "कोई pending payment नहीं",
+    "noMessages": "अभी कोई message नहीं",
+    "noStudents": "अभी कोई student नहीं",
+    "noBookings": "आज कोई बुकिंग नहीं"
   }
 }

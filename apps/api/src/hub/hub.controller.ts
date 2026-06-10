@@ -63,5 +63,17 @@ export class HubController {
   coachingSnapshot(@AuthUserDecorator() user: AuthUser) {
     return this.hub.coachingSnapshot(user.businessId!);
   }
+
+  @Get('queue')
+  @UseGuards(JwtUserGuard, RequireBusinessGuard)
+  queue(@AuthUserDecorator() user: AuthUser) {
+    return this.hub.queue(user.businessId!);
+  }
+
+  @Get('clinic-snapshot')
+  @UseGuards(JwtUserGuard, RequireBusinessGuard)
+  clinicSnapshot(@AuthUserDecorator() user: AuthUser) {
+    return this.hub.clinicSnapshot(user.businessId!);
+  }
 }
 

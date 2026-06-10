@@ -76,6 +76,10 @@ export default function MorePage() {
           </div>
         )}
 
+        {(cat === "clinic" || enabled.has("queue")) ? (
+          <Card href="/app/queue" title="🏥 Patient Queue" subtitle="Today's waiting list & current patient" />
+        ) : null}
+
         {(cat === "coaching" || enabled.has("coaching")) ? (
           <>
             <Card href="/app/students" title="📚 Students" subtitle="Manage students, attendance, fees" />
@@ -85,6 +89,7 @@ export default function MorePage() {
 
         {role === "SUPER_ADMIN" ? (
           <>
+            <Card href="/app/superadmin" title="Super Admin Dashboard" subtitle="Platform overview & KPIs" />
             <Card
               href="/app/superadmin/businesses"
               title="Super Admin: Businesses"

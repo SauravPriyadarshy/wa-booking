@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { apiBase } from "@/lib/api-base";
+import { EmptyState } from "@/components/ui";
 
 type Staff = {
   id: string;
@@ -134,7 +135,7 @@ export default function StaffPage() {
         ) : (
           <div className="mt-3 rounded-3xl bg-white p-5 shadow-[0_10px_30px_rgba(0,0,0,0.08)]">
           <div className="text-base font-semibold">Add staff</div>
-          <form className="mt-4 grid gap-3" onSubmit={form.handleSubmit(create)}>
+          <form id="staff-form" className="mt-4 grid gap-3" onSubmit={form.handleSubmit(create)}>
             <input
               className="h-12 rounded-2xl border border-zinc-200 bg-white px-4 outline-none focus:ring-4 focus:ring-emerald-100"
               placeholder="Name"
@@ -165,7 +166,20 @@ export default function StaffPage() {
           {loading ? (
             <div className="text-sm text-zinc-500">Loading...</div>
           ) : items.length === 0 ? (
-            <div className="text-sm text-zinc-500">No staff yet.</div>
+            <EmptyState
+              icon="users"
+              title="अभी कोई staff नहीं"
+              description="Staff add करें ताकि booking assign हो सके।"
+              action={
+                <button
+                  type="button"
+                  onClick={() => document.getElementById("staff-form")?.scrollIntoView({ behavior: "smooth" })}
+                  className="inline-flex h-10 items-center rounded-xl bg-emerald-600 px-4 text-[13px] font-semibold text-white"
+                >
+                  Staff add करें
+                </button>
+              }
+            />
           ) : (
             items.map((s) => (
               <div

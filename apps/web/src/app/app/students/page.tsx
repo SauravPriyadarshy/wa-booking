@@ -144,7 +144,7 @@ export default function StudentsPage() {
         {loading ? (
           <><div className="h-20 animate-pulse rounded-2xl bg-zinc-100" /><div className="h-20 animate-pulse rounded-2xl bg-zinc-100" /></>
         ) : filtered.length === 0 ? (
-          <EmptyState icon="users" title="No students yet" description="Add your first student to start tracking attendance and fees." />
+            <EmptyState icon="users" title="अभी कोई student नहीं" description="पहला student add करें — attendance और fees track होगी।" />
         ) : (
           filtered.map((s) => (
             <a key={s.id} href={`/app/students/${s.id}`} className="block">

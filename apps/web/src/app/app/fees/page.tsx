@@ -132,7 +132,7 @@ export default function FeesPage() {
             <div className="text-[13px] font-bold text-zinc-900">Pending Fee Collection</div>
             {dashboard.pendingFeesList.length === 0 ? (
               <div className="mt-3">
-                <EmptyState icon="calendar" title="All fees collected!" description="No pending fees. Great job!" />
+                <EmptyState icon="calendar" title="सब fees collect हो गई!" description="बढ़िया काम — कोई pending fee नहीं।" />
               </div>
             ) : (
               Object.entries(byMonth)

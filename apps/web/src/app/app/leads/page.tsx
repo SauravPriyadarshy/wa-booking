@@ -5,6 +5,7 @@ import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { apiBase } from "@/lib/api-base";
+import { EmptyState } from "@/components/ui";
 
 type LeadStage = "NEW" | "INTERESTED" | "FOLLOW_UP" | "CONVERTED" | "LOST";
 type Lead = {
@@ -204,7 +205,11 @@ export default function LeadsPage() {
           </div>
 
           {items.length === 0 ? (
-            <div className="mt-2 text-xs text-zinc-500">No leads.</div>
+            <EmptyState
+              icon="users"
+              title="अभी कोई lead नहीं"
+              description="WhatsApp inquiry या walk-in lead यहाँ दिखेगा।"
+            />
           ) : (
             <div className="mt-3 grid gap-2">
               {items.map((l) => (

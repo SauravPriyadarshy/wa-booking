@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { apiBase } from "@/lib/api-base";
+import { EmptyState } from "@/components/ui";
 
 type Service = {
   id: string;
@@ -158,7 +159,11 @@ export default function ServicesPage() {
           {loading ? (
             <div className="text-sm text-zinc-500">Loading...</div>
           ) : items.length === 0 ? (
-            <div className="text-sm text-zinc-500">No services yet.</div>
+            <EmptyState
+              icon="calendar"
+              title="अभी कोई service नहीं"
+              description="Services add करें — customer booking page पर दिखेंगी।"
+            />
           ) : (
             items.map((s) => (
               <div

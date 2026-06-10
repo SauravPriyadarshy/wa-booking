@@ -503,6 +503,128 @@ export class HubService {
     };
   }
 
+  async queue(businessId: string) {
+    const now = new Date();
+    const start = new Date(now);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(now);
+    end.setHours(23, 59, 59, 999);
+
+    const appointments = await this.prisma.appointment.findMany({
+      where: {
+        businessId,
+        startAt: { gte: start, lte: end },
+        status: { not: AppointmentStatus.CANCELLED },
+      },
+      orderBy: { startAt: 'asc' },
+      select: {
+        id: true,
+        startAt: true,
+        endAt: true,
+        status: true,
+        customer: { select: { id: true, name: true, phone: true } },
+        service: { select: { name: true, durationMin: true } },
+        staff: { select: { user: { select: { name: true } } } },
+      },
+    });
+
+    const mapRow = (a: (typeof appointments)[number]) => ({
+      id: a.id,
+      startAt: a.startAt.toISOString(),
+      endAt: a.endAt.toISOString(),
+      status: a.status,
+      customerName: a.customer.name ?? 'Patient',
+      phone: a.customer.phone,
+      serviceName: a.service.name,
+      staffName: a.staff?.user?.name ?? null,
+      durationMin: a.service.durationMin,
+    });
+
+    const completed = appointments.filter((a) => a.status === AppointmentStatus.COMPLETED);
+    const missed = appointments.filter((a) => a.status === AppointmentStatus.NO_SHOW);
+    const waiting = appointments.filter(
+      (a) =>
+        (a.status === AppointmentStatus.PENDING || a.status === AppointmentStatus.CONFIRMED) &&
+        a.startAt > now,
+    );
+    const current =
+      appointments.find(
+        (a) => a.status === AppointmentStatus.CONFIRMED && a.startAt <= now,
+      ) ??
+      appointments.find((a) => a.status === AppointmentStatus.CONFIRMED) ??
+      null;
+
+    const avgDuration =
+      appointments.reduce((sum, a) => sum + (a.service.durationMin ?? 15), 0) /
+      Math.max(1, waiting.length || appointments.length || 1);
+
+    return {
+      current: current ? mapRow(current) : null,
+      waiting: waiting.map(mapRow),
+      completed: completed.map(mapRow),
+      missed: missed.map(mapRow),
+      estimatedWaitMin: Math.round(waiting.length * avgDuration),
+      counts: {
+        waiting: waiting.length,
+        completed: completed.length,
+        missed: missed.length,
+        total: appointments.length,
+      },
+    };
+  }
+
+  async clinicSnapshot(businessId: string) {
+    const now = new Date();
+    const start = new Date(now);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(now);
+    end.setHours(23, 59, 59, 999);
+    const followupDueAt = new Date(now.getTime() - 48 * 60 * 60 * 1000);
+
+    const [patientsToday, noShowToday, followUpsDue, revenueAgg, waitingCount] = await Promise.all([
+      this.prisma.appointment.count({
+        where: {
+          businessId,
+          startAt: { gte: start, lte: end },
+          status: { not: AppointmentStatus.CANCELLED },
+        },
+      }),
+      this.prisma.appointment.count({
+        where: {
+          businessId,
+          startAt: { gte: start, lte: end },
+          status: AppointmentStatus.NO_SHOW,
+        },
+      }),
+      this.prisma.lead.count({
+        where: {
+          businessId,
+          stage: { in: ['NEW', 'INTERESTED', 'FOLLOW_UP'] },
+          updatedAt: { lt: followupDueAt },
+        },
+      }),
+      this.prisma.payment.aggregate({
+        where: { businessId, verifiedAt: { gte: start, lte: end } },
+        _sum: { amountCents: true },
+      }),
+      this.prisma.appointment.count({
+        where: {
+          businessId,
+          startAt: { gt: now, lte: end },
+          status: { in: [AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED] },
+        },
+      }),
+    ]);
+
+    return {
+      patientsToday,
+      noShowToday,
+      followUpsDue,
+      waitingCount,
+      revenueTodayCents: revenueAgg._sum.amountCents ?? 0,
+    };
+  }
+
   async coachingSnapshot(businessId: string) {
     const now = new Date();
     const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;

@@ -85,7 +85,8 @@
 | `GET /hub/revenue-leakage` | Business user | Estimated revenue loss + action links |
 | `GET /hub/coaching-snapshot` | Business user | Coaching KPIs (students, fees, attendance) |
 | `GET /superadmin/stats` | Super Admin | Platform-wide business/revenue stats |
-| `GET /coaching/students` | Business user | Student list (coaching category) |
+| `GET /hub/queue` | Business user | Clinic patient queue (current, waiting, completed, missed) |
+| `GET /hub/clinic-snapshot` | Business user | Clinic KPIs for hub dashboard |
 | `POST /coaching/students` | Business user | Add student |
 | `GET /coaching/fees` | Business user | Fee records dashboard |
 

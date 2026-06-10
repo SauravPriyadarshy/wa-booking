@@ -5,6 +5,7 @@ import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { apiBase } from "@/lib/api-base";
+import { EmptyState } from "@/components/ui";
 
 type QuickReply = { id: string; title: string; body: string; tags: string[]; isActive: boolean };
 
@@ -117,7 +118,7 @@ export default function TemplatesPage() {
         <div className="rounded-3xl bg-white p-4 shadow-[0_8px_24px_rgba(0,0,0,0.06)]">
           <div className="text-sm font-semibold">Saved ({items.length})</div>
           {items.length === 0 ? (
-            <div className="mt-2 text-xs text-zinc-500">No quick replies yet.</div>
+            <EmptyState icon="inbox" title="अभी कोई quick reply नहीं" description="1-tap WhatsApp messages save करें।" />
           ) : (
             <div className="mt-3 grid gap-2">
               {items.map((q) => (

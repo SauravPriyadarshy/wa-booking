@@ -5,6 +5,7 @@ import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { apiBase } from "@/lib/api-base";
+import { EmptyState } from "@/components/ui";
 
 type PaymentConfig = { id: string; upiId: string | null; upiQrUrl: string | null; allowCash: boolean };
 type PendingPayment = {
@@ -149,7 +150,11 @@ export default function PaymentsPage() {
         <div className="rounded-3xl bg-white p-4 shadow-[0_8px_24px_rgba(0,0,0,0.06)]">
           <div className="text-sm font-semibold">Pending verification ({pending.length})</div>
           {pending.length === 0 ? (
-            <div className="mt-2 text-xs text-zinc-500">No pending payments.</div>
+            <EmptyState
+              icon="calendar"
+              title="कोई pending payment नहीं"
+              description="सब verify हो गया — बढ़िया!"
+            />
           ) : (
             <div className="mt-3 grid gap-2">
               {pending.map((p) => (

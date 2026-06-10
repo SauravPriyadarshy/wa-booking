@@ -141,8 +141,8 @@ export default function SuperAdminBusinessesPage() {
             ))}
           </div>
         ) : (
-          <div className="mt-6 rounded-2xl border border-dashed border-zinc-200 bg-white p-6 text-center text-[13px] text-zinc-400">
-            No businesses yet. Click "+ Add Business" to create one.
+          <div className="mt-6 rounded-2xl border border-dashed border-zinc-200 bg-white p-6 text-center text-[13px] text-zinc-500">
+            अभी कोई business नहीं। &quot;+ Add Business&quot; से पहला business बनाएं।
           </div>
         )}
 
