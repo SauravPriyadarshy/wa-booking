@@ -29,6 +29,7 @@ import { WaEventsModule } from './wa-events/wa-events.module';
 import { ConversationsModule } from './conversations/conversations.module';
 import { QueuesModule } from './queues/queues.module';
 import { SiteContentModule } from './site-content/site-content.module';
+import { CoachingModule } from './coaching/coaching.module';
 
 @Module({
   imports: [
@@ -61,6 +62,7 @@ import { SiteContentModule } from './site-content/site-content.module';
     WaEventsModule,
     ConversationsModule,
     PublicModule,
+    CoachingModule,
   ],
   controllers: [AppController],
   providers: [

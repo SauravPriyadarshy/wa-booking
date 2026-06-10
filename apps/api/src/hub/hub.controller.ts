@@ -45,5 +45,11 @@ export class HubController {
   createTicket(@AuthUserDecorator() user: AuthUser, @Body() dto: HubCreateTicketDto) {
     return this.hub.createTicket(user.businessId!, dto);
   }
+
+  @Get('health')
+  @UseGuards(JwtUserGuard, RequireBusinessGuard)
+  health(@AuthUserDecorator() user: AuthUser) {
+    return this.hub.health(user.businessId!);
+  }
 }
 

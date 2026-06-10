@@ -49,6 +49,28 @@ async function seedCategories() {
         ],
       },
     },
+    {
+      key: "coaching",
+      name: "Coaching Center",
+      templateJson: {
+        services: [
+          { name: "Demo Class", durationMin: 60 },
+          { name: "Regular Class", durationMin: 60 },
+          { name: "Doubt Session", durationMin: 30 },
+        ],
+      },
+    },
+    {
+      key: "barber",
+      name: "Barber Shop",
+      templateJson: {
+        services: [
+          { name: "Haircut", durationMin: 20 },
+          { name: "Beard Shave", durationMin: 15 },
+          { name: "Head Massage", durationMin: 20 },
+        ],
+      },
+    },
   ];
 
   for (const item of templates) {
@@ -552,6 +574,53 @@ async function seedSiteContent() {
       group: "city",
       label: "Mohali Page — Headline",
       value: "WhatsApp Booking System for Mohali Businesses",
+    },
+
+    // ── Landing extra keys ───────────────────────────────────────────────
+    {
+      key: "landing.whatsapp_number",
+      locale: "en",
+      group: "landing",
+      label: "WhatsApp CTA phone number (digits only, with country code)",
+      value: "919122000751",
+    },
+    {
+      key: "city.laheriasarai.subtext",
+      locale: "en",
+      group: "city",
+      label: "Laheriasarai Page — Subtext",
+      value:
+        "Salons, clinics, and coaching centers in Laheriasarai are using BookNow to manage bookings and send WhatsApp reminders automatically.",
+    },
+    {
+      key: "city.laheriasarai.subtext",
+      locale: "hi",
+      group: "city",
+      label: "Laheriasarai Page — Subtext (Hindi)",
+      value:
+        "Laheriasarai के salons, clinics और coaching centers BookNow use कर रहे हैं — bookings manage करने और WhatsApp reminders भेजने के लिए।",
+    },
+    {
+      key: "city.mohali.subtext",
+      locale: "en",
+      group: "city",
+      label: "Mohali Page — Subtext",
+      value:
+        "Businesses in Mohali are using BookNow for appointment scheduling, WhatsApp automation, and customer retention.",
+    },
+    {
+      key: "city.mohali.headline",
+      locale: "hi",
+      group: "city",
+      label: "Mohali Page — Headline (Hindi)",
+      value: "Mohali के businesses के लिए WhatsApp Booking System",
+    },
+    {
+      key: "city.laheriasarai.headline",
+      locale: "hi",
+      group: "city",
+      label: "Laheriasarai Page — Headline (Hindi)",
+      value: "Laheriasarai के businesses के लिए WhatsApp Booking System",
     },
 
     // ── Onboarding ────────────────────────────────────────────────────────

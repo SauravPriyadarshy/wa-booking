@@ -32,5 +32,10 @@ export class SuperAdminController {
   setFeature(@Body() dto: SetBusinessFeatureDto) {
     return this.superadmin.setBusinessFeature(dto);
   }
+
+  @Get('stats')
+  stats() {
+    return this.superadmin.stats();
+  }
 }
 

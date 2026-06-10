@@ -421,5 +421,61 @@ export class HubService {
       select: { id: true, status: true, updatedAt: true },
     });
   }
+
+  async health(businessId: string): Promise<{
+    score: number;
+    level: 'excellent' | 'good' | 'needs_attention' | 'critical';
+    actions: Array<{ key: string; label: string; href: string }>;
+  }> {
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    const [totalAppts, completedAppts, pendingPayments, waSession, overdueLeads] = await Promise.all([
+      this.prisma.appointment.count({
+        where: { businessId, startAt: { gte: thirtyDaysAgo }, status: { not: 'CANCELLED' } },
+      }),
+      this.prisma.appointment.count({
+        where: { businessId, startAt: { gte: thirtyDaysAgo }, status: { in: ['COMPLETED', 'CONFIRMED'] } },
+      }),
+      this.prisma.payment.count({ where: { businessId, verifiedAt: null } }),
+      this.prisma.whatsAppSession.findUnique({ where: { businessId }, select: { status: true } }),
+      this.prisma.lead.count({
+        where: {
+          businessId,
+          stage: { in: ['NEW', 'INTERESTED', 'FOLLOW_UP'] },
+          updatedAt: { lt: new Date(now.getTime() - 48 * 60 * 60 * 1000) },
+        },
+      }),
+    ]);
+
+    let score = 50;
+
+    if (totalAppts > 0) {
+      const rate = completedAppts / totalAppts;
+      score += Math.round(rate * 30);
+    } else {
+      score += 15;
+    }
+
+    if (waSession?.status === 'CONNECTED') score += 15;
+
+    score -= Math.min(pendingPayments * 5, 15);
+    score -= Math.min(overdueLeads * 5, 20);
+
+    score = Math.max(0, Math.min(100, score));
+
+    const level =
+      score >= 90 ? 'excellent' : score >= 70 ? 'good' : score >= 50 ? 'needs_attention' : 'critical';
+
+    const actions: Array<{ key: string; label: string; href: string }> = [];
+    if (waSession?.status !== 'CONNECTED')
+      actions.push({ key: 'wa', label: 'Connect WhatsApp', href: '/app/whatsapp' });
+    if (pendingPayments > 0)
+      actions.push({ key: 'payments', label: 'Verify payments', href: '/app/payments' });
+    if (overdueLeads > 0)
+      actions.push({ key: 'followup', label: 'Follow up leads', href: '/app/leads' });
+
+    return { score, level, actions };
+  }
 }
 

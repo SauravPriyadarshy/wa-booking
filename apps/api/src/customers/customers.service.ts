@@ -1,23 +1,70 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
+const CUSTOMER_SELECT = {
+  id: true,
+  name: true,
+  phone: true,
+  notes: true,
+  tags: true,
+  birthday: true,
+  createdAt: true,
+  updatedAt: true,
+} as const;
+
 @Injectable()
 export class CustomersService {
   constructor(private prisma: PrismaService) {}
 
-  list(businessId: string) {
-    return this.prisma.customer.findMany({
+  async list(businessId: string) {
+    const customers = await this.prisma.customer.findMany({
       where: { businessId },
       orderBy: { updatedAt: 'desc' },
-      select: { id: true, name: true, phone: true, notes: true, createdAt: true, updatedAt: true },
-      take: 50,
+      select: {
+        ...CUSTOMER_SELECT,
+        _count: { select: { appointments: true } },
+      },
+      take: 200,
     });
+
+    // Enrich with last visit and total spend
+    const enriched = await Promise.all(
+      customers.map(async (c) => {
+        const [lastAppt, spendAgg] = await Promise.all([
+          this.prisma.appointment.findFirst({
+            where: { businessId, customerId: c.id, status: { in: ['COMPLETED', 'CONFIRMED'] } },
+            orderBy: { startAt: 'desc' },
+            select: { startAt: true, service: { select: { name: true } } },
+          }),
+          this.prisma.payment.aggregate({
+            where: { businessId, appointment: { customerId: c.id }, verifiedAt: { not: null } },
+            _sum: { amountCents: true },
+          }),
+        ]);
+        return {
+          ...c,
+          totalVisits: c._count.appointments,
+          lastVisitAt: lastAppt?.startAt?.toISOString() ?? null,
+          lastService: lastAppt?.service?.name ?? null,
+          totalSpendCents: spendAgg._sum.amountCents ?? 0,
+        };
+      }),
+    );
+
+    return enriched;
   }
 
   create(businessId: string, data: any) {
     return this.prisma.customer.create({
-      data: { businessId, ...data },
-      select: { id: true, name: true, phone: true, notes: true, createdAt: true, updatedAt: true },
+      data: {
+        businessId,
+        name: data.name,
+        phone: data.phone,
+        notes: data.notes,
+        tags: data.tags ?? [],
+        birthday: data.birthday ? new Date(data.birthday) : undefined,
+      },
+      select: CUSTOMER_SELECT,
     });
   }
 
@@ -28,19 +75,68 @@ export class CustomersService {
 
     return this.prisma.customer.update({
       where: { id },
-      data,
-      select: { id: true, name: true, phone: true, notes: true, createdAt: true, updatedAt: true },
+      data: {
+        name: data.name,
+        phone: data.phone,
+        notes: data.notes,
+        tags: data.tags,
+        birthday: data.birthday ? new Date(data.birthday) : undefined,
+      },
+      select: CUSTOMER_SELECT,
     });
   }
 
   async get(businessId: string, id: string) {
     const c = await this.prisma.customer.findUnique({
       where: { id },
-      select: { id: true, businessId: true, name: true, phone: true, notes: true, createdAt: true, updatedAt: true },
+      select: {
+        id: true,
+        businessId: true,
+        name: true,
+        phone: true,
+        notes: true,
+        tags: true,
+        birthday: true,
+        createdAt: true,
+        updatedAt: true,
+      },
     });
     if (!c || c.businessId !== businessId) throw new BadRequestException('Customer not found');
+
+    const [totalVisits, spendAgg, preferredService, lastAppt] = await Promise.all([
+      this.prisma.appointment.count({ where: { businessId, customerId: id, status: { in: ['COMPLETED', 'CONFIRMED'] } } }),
+      this.prisma.payment.aggregate({
+        where: { businessId, appointment: { customerId: id }, verifiedAt: { not: null } },
+        _sum: { amountCents: true },
+      }),
+      this.prisma.appointment.groupBy({
+        by: ['serviceId'],
+        where: { businessId, customerId: id, status: { in: ['COMPLETED', 'CONFIRMED'] } },
+        _count: { id: true },
+        orderBy: { _count: { id: 'desc' } },
+        take: 1,
+      }),
+      this.prisma.appointment.findFirst({
+        where: { businessId, customerId: id, status: { in: ['COMPLETED', 'CONFIRMED'] } },
+        orderBy: { startAt: 'desc' },
+        select: { startAt: true },
+      }),
+    ]);
+
+    let preferredServiceName: string | null = null;
+    if (preferredService.length > 0) {
+      const svc = await this.prisma.service.findUnique({ where: { id: preferredService[0].serviceId }, select: { name: true } });
+      preferredServiceName = svc?.name ?? null;
+    }
+
     const { businessId: _biz, ...rest } = c;
-    return rest;
+    return {
+      ...rest,
+      totalVisits,
+      totalSpendCents: spendAgg._sum.amountCents ?? 0,
+      preferredService: preferredServiceName,
+      lastVisitAt: lastAppt?.startAt?.toISOString() ?? null,
+    };
   }
 
   async timeline(businessId: string, customerId: string) {
@@ -78,13 +174,7 @@ export class CustomersService {
         where: { businessId, appointment: { customerId } },
         orderBy: { updatedAt: 'desc' },
         take: 20,
-        select: {
-          id: true,
-          method: true,
-          amountCents: true,
-          verifiedAt: true,
-          updatedAt: true,
-        },
+        select: { id: true, method: true, amountCents: true, verifiedAt: true, updatedAt: true },
       }),
     ]);
 
@@ -126,21 +216,13 @@ export class CustomersService {
   }
 
   async findOrCreateByPhone(businessId: string, phone: string, name?: string) {
-    const existing = await this.prisma.customer.findFirst({
-      where: { businessId, phone },
-    });
+    const existing = await this.prisma.customer.findFirst({ where: { businessId, phone } });
     if (existing) {
       if (name && !existing.name) {
-        return this.prisma.customer.update({
-          where: { id: existing.id },
-          data: { name },
-        });
+        return this.prisma.customer.update({ where: { id: existing.id }, data: { name } });
       }
       return existing;
     }
-    return this.prisma.customer.create({
-      data: { businessId, phone, name },
-    });
+    return this.prisma.customer.create({ data: { businessId, phone, name } });
   }
 }
-

@@ -76,6 +76,13 @@ export default function MorePage() {
           </div>
         )}
 
+        {(cat === "coaching" || enabled.has("coaching")) ? (
+          <>
+            <Card href="/app/students" title="📚 Students" subtitle="Manage students, attendance, fees" />
+            <Card href="/app/fees" title="💰 Fee Collection" subtitle="Monthly fee dashboard" />
+          </>
+        ) : null}
+
         {role === "SUPER_ADMIN" ? (
           <>
             <Card

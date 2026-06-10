@@ -9,7 +9,13 @@ type Customer = {
   name: string | null;
   phone: string | null;
   notes: string | null;
+  tags: string[];
+  birthday: string | null;
   createdAt: string;
+  totalVisits: number;
+  totalSpendCents: number;
+  preferredService: string | null;
+  lastVisitAt: string | null;
 };
 
 type Timeline = {
@@ -17,7 +23,31 @@ type Timeline = {
   items: Array<{ type: string; id: string; at: string; title: string; subtitle: string }>;
 };
 
-type Tab = "timeline" | "notes";
+type Tab = "timeline" | "notes" | "stats";
+
+const ALL_TAGS = ["VIP", "Regular", "Inactive", "New"] as const;
+
+const TAG_COLORS: Record<string, { bg: string; text: string; border: string }> = {
+  VIP: { bg: "bg-amber-100", text: "text-amber-800", border: "border-amber-200" },
+  Regular: { bg: "bg-blue-100", text: "text-blue-800", border: "border-blue-200" },
+  Inactive: { bg: "bg-zinc-100", text: "text-zinc-600", border: "border-zinc-200" },
+  New: { bg: "bg-emerald-100", text: "text-emerald-800", border: "border-emerald-200" },
+};
+
+const TIMELINE_ICONS: Record<string, string> = {
+  booking: "📅",
+  payment: "💰",
+  support: "🎫",
+  lead: "📋",
+};
+
+function formatINR(cents: number) {
+  return `₹${Math.round(cents / 100).toLocaleString("en-IN")}`;
+}
+
+function daysSince(dateStr: string) {
+  return Math.floor((Date.now() - new Date(dateStr).getTime()) / (24 * 60 * 60 * 1000));
+}
 
 export default function CustomerDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -27,10 +57,14 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
   const [tl, setTl] = useState<Timeline | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [savingTag, setSavingTag] = useState<string | null>(null);
 
-  async function api(path: string) {
+  async function apiCall(path: string, init?: RequestInit) {
     if (!token) throw new Error("Please login");
-    const res = await fetch(`${apiBase()}${path}`, { headers: { authorization: `Bearer ${token}` } });
+    const res = await fetch(`${apiBase()}${path}`, {
+      ...init,
+      headers: { ...(init?.headers ?? {}), authorization: `Bearer ${token}` },
+    });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error((data as { message?: string })?.message ?? "Request failed");
     return data;
@@ -43,8 +77,8 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
         setErr(null);
         setLoading(true);
         const [cust, timeline] = await Promise.all([
-          api(`/customers/${encodeURIComponent(id)}`),
-          api(`/customers/${encodeURIComponent(id)}/timeline`),
+          apiCall(`/customers/${encodeURIComponent(id)}`),
+          apiCall(`/customers/${encodeURIComponent(id)}/timeline`),
         ]);
         setC(cust as Customer);
         setTl(timeline as Timeline);
@@ -56,6 +90,25 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  async function toggleTag(tag: string) {
+    if (!c) return;
+    setSavingTag(tag);
+    const currentTags = c.tags ?? [];
+    const newTags = currentTags.includes(tag) ? currentTags.filter((t) => t !== tag) : [...currentTags, tag];
+    try {
+      const updated = await apiCall(`/customers/${encodeURIComponent(id)}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ tags: newTags }),
+      });
+      setC((prev) => prev ? { ...prev, tags: (updated as Customer).tags ?? newTags } : prev);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Failed to update tag");
+    } finally {
+      setSavingTag(null);
+    }
+  }
 
   const waHref = useMemo(() => {
     const raw = (c?.phone ?? "").replace(/\s+/g, "");
@@ -74,49 +127,99 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
     );
   }
 
+  const lastVisitDays = c?.lastVisitAt ? daysSince(c.lastVisitAt) : null;
+
   return (
     <div className="px-4 pb-28 pt-4 md:pb-8">
-      <a href="/app/customers" className="text-[13px] font-semibold text-emerald-700">
-        ← Customers
-      </a>
+      <a href="/app/customers" className="text-[13px] font-semibold text-emerald-700">← Customers</a>
 
-      {err ? (
+      {err && (
         <div className="mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[13px] text-red-800">{err}</div>
-      ) : null}
+      )}
 
-      <div className="mt-4">
-        <h1 className="text-[20px] font-semibold text-zinc-900">{c?.name ?? "Customer"}</h1>
-        <p className="text-[14px] text-zinc-600">{c?.phone ?? "—"}</p>
-        <p className="mt-1 text-[12px] text-zinc-400">
-          Since {c?.createdAt ? new Date(c.createdAt).toLocaleDateString("en-IN") : "—"}
-        </p>
-        <div className="mt-3 flex flex-wrap gap-2">
-          {waHref ? (
-            <a
-              href={waHref}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex h-10 items-center rounded-xl bg-emerald-600 px-4 text-[13px] font-semibold text-white"
-            >
-              Message
-            </a>
-          ) : null}
-          <a
-            href="/app/bookings?new=1"
-            className="inline-flex h-10 items-center rounded-xl border border-zinc-200 bg-white px-4 text-[13px] font-semibold text-zinc-800"
-          >
-            Book
-          </a>
+      {/* Customer header */}
+      <div className="mt-4 flex items-start gap-3">
+        <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-emerald-100 text-[20px] font-bold text-emerald-700">
+          {(c?.name ?? "?")[0]?.toUpperCase()}
+        </div>
+        <div className="min-w-0 flex-1">
+          <h1 className="text-[20px] font-bold text-zinc-900">{c?.name ?? "Customer"}</h1>
+          <p className="text-[14px] text-zinc-500">{c?.phone ?? "—"}</p>
+          <p className="mt-0.5 text-[11px] text-zinc-400">
+            Customer since {c?.createdAt ? new Date(c.createdAt).toLocaleDateString("en-IN", { month: "short", year: "numeric" }) : "—"}
+          </p>
         </div>
       </div>
 
+      {/* Action buttons */}
+      <div className="mt-3 flex gap-2">
+        {waHref && (
+          <a href={waHref} target="_blank" rel="noreferrer"
+            className="flex h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-[#25D366] text-[13px] font-bold text-white">
+            💬 WhatsApp
+          </a>
+        )}
+        <a href="/app/bookings?new=1"
+          className="flex h-10 flex-1 items-center justify-center rounded-xl border border-zinc-200 bg-white text-[13px] font-semibold text-zinc-800">
+          📅 Book
+        </a>
+      </div>
+
+      {/* Tags */}
+      <div className="mt-4 rounded-2xl border border-zinc-100 bg-white p-4 shadow-sm">
+        <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-400">Tags</div>
+        <div className="mt-2 flex flex-wrap gap-2">
+          {ALL_TAGS.map((tag) => {
+            const active = c?.tags?.includes(tag) ?? false;
+            const colors = TAG_COLORS[tag];
+            return (
+              <button
+                key={tag}
+                type="button"
+                onClick={() => toggleTag(tag)}
+                disabled={savingTag === tag}
+                className={`rounded-full border px-3 py-1.5 text-[12px] font-bold transition active:scale-95 ${
+                  active
+                    ? `${colors.bg} ${colors.text} ${colors.border}`
+                    : "border-zinc-200 bg-zinc-50 text-zinc-500 hover:bg-zinc-100"
+                } ${savingTag === tag ? "opacity-50" : ""}`}
+              >
+                {active ? "✓ " : ""}{tag}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Stats strip */}
+      <div className="mt-3 grid grid-cols-3 gap-2">
+        <div className="rounded-2xl border border-zinc-100 bg-white p-3 text-center shadow-sm">
+          <div className="text-[18px] font-bold text-zinc-900">{c?.totalVisits ?? 0}</div>
+          <div className="text-[11px] text-zinc-500">Visits</div>
+        </div>
+        <div className="rounded-2xl border border-zinc-100 bg-white p-3 text-center shadow-sm">
+          <div className="text-[18px] font-bold text-emerald-600">
+            {c?.totalSpendCents ? formatINR(c.totalSpendCents) : "—"}
+          </div>
+          <div className="text-[11px] text-zinc-500">Spent</div>
+        </div>
+        <div className="rounded-2xl border border-zinc-100 bg-white p-3 text-center shadow-sm">
+          <div className="text-[18px] font-bold text-zinc-900">
+            {lastVisitDays !== null ? (lastVisitDays === 0 ? "Today" : `${lastVisitDays}d`) : "—"}
+          </div>
+          <div className="text-[11px] text-zinc-500">Last visit</div>
+        </div>
+      </div>
+
+      {c?.preferredService && (
+        <div className="mt-2 rounded-xl bg-emerald-50 px-4 py-2.5 text-[13px] text-emerald-700">
+          ⭐ Preferred: <span className="font-semibold">{c.preferredService}</span>
+        </div>
+      )}
+
+      {/* Tabs */}
       <div className="mt-5 flex rounded-xl bg-zinc-100 p-1">
-        {(
-          [
-            ["timeline", "Timeline"],
-            ["notes", "Notes"],
-          ] as const
-        ).map(([k, label]) => (
+        {([["timeline", "Timeline"], ["stats", "Activity"], ["notes", "Notes"]] as const).map(([k, label]) => (
           <button
             key={k}
             type="button"
@@ -130,45 +233,75 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
         ))}
       </div>
 
-      {tab === "notes" ? (
+      {tab === "notes" && (
         <Card className="mt-4 !p-4">
           <div className="text-[13px] font-semibold text-zinc-900">Staff notes</div>
           <p className="mt-2 whitespace-pre-wrap text-[14px] leading-relaxed text-zinc-700">
-            {c?.notes?.trim() ? c.notes : "No notes yet. Edit from your admin tools when supported."}
+            {c?.notes?.trim() ? c.notes : "No notes yet."}
           </p>
         </Card>
-      ) : !tl && !err ? (
-        <div className="mt-4 text-[13px] text-zinc-500">Loading timeline…</div>
-      ) : !tl && err ? (
-        <div className="mt-4 text-[13px] text-zinc-500">Timeline unavailable.</div>
-      ) : tl && tl.items.length === 0 ? (
-        <div className="mt-4">
-          <EmptyState icon="calendar" title="No history yet" description="Bookings and payments will appear here." />
-        </div>
-      ) : tl ? (
-        <ul className="mt-4 grid gap-2">
-          {tl.items.slice(0, 20).map((it) => (
-            <li key={`${it.type}:${it.id}`}>
-              <Card className="!p-3">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <div className="text-[14px] font-semibold text-zinc-900">{it.title}</div>
-                    <div className="text-[12px] text-zinc-600">{it.subtitle}</div>
-                  </div>
-                  <time className="shrink-0 text-[10px] font-semibold text-zinc-400">
-                    {new Date(it.at).toLocaleString("en-IN", {
-                      month: "short",
-                      day: "numeric",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </time>
+      )}
+
+      {tab === "stats" && (
+        <div className="mt-4 space-y-3">
+          <Card className="!p-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-400">Total visits</div>
+                <div className="mt-1 text-[22px] font-bold text-zinc-900">{c?.totalVisits ?? 0}</div>
+              </div>
+              <div>
+                <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-400">Total spend</div>
+                <div className="mt-1 text-[22px] font-bold text-emerald-600">
+                  {c?.totalSpendCents ? formatINR(c.totalSpendCents) : "₹0"}
                 </div>
-              </Card>
-            </li>
-          ))}
-        </ul>
-      ) : null}
+              </div>
+              <div>
+                <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-400">Last visit</div>
+                <div className="mt-1 text-[14px] font-semibold text-zinc-900">
+                  {c?.lastVisitAt ? new Date(c.lastVisitAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "Never"}
+                </div>
+              </div>
+              <div>
+                <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-400">Preferred</div>
+                <div className="mt-1 text-[14px] font-semibold text-zinc-900">{c?.preferredService ?? "—"}</div>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {tab === "timeline" && (
+        <>
+          {!tl && !err && <div className="mt-4 text-[13px] text-zinc-500">Loading…</div>}
+          {!tl && err && <div className="mt-4 text-[13px] text-zinc-500">Timeline unavailable.</div>}
+          {tl?.items.length === 0 && (
+            <div className="mt-4">
+              <EmptyState icon="calendar" title="कोई history नहीं" description="Bookings and payments will appear here." />
+            </div>
+          )}
+          {tl && tl.items.length > 0 && (
+            <ul className="mt-4 grid gap-2">
+              {tl.items.slice(0, 30).map((it) => (
+                <li key={`${it.type}:${it.id}`}>
+                  <Card className="!p-3">
+                    <div className="flex items-start gap-3">
+                      <span className="mt-0.5 shrink-0 text-lg">{TIMELINE_ICONS[it.type] ?? "📌"}</span>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-[14px] font-semibold text-zinc-900">{it.title}</div>
+                        <div className="text-[12px] text-zinc-500">{it.subtitle}</div>
+                      </div>
+                      <time className="shrink-0 text-[10px] font-semibold text-zinc-400">
+                        {new Date(it.at).toLocaleDateString("en-IN", { month: "short", day: "numeric" })}
+                      </time>
+                    </div>
+                  </Card>
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
+      )}
     </div>
   );
 }

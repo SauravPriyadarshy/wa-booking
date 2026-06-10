@@ -263,6 +263,8 @@ model Business {
   quickReplies    QuickReply[]
   auditLogs       AuditLog[]
   conversations   Conversation[]
+  students        Student[]
+  feeRecords      FeeRecord[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -411,13 +413,15 @@ model Customer {
   businessId String
   business   Business @relation(fields: [businessId], references: [id])
 
-  phone String?
-  name  String?
-  notes String?
+  phone    String?
+  name     String?
+  notes    String?
+  tags     String[]  @default([]) // ["VIP", "Regular", "Inactive", "New"]
+  birthday DateTime?
 
-  appointments Appointment[]
-  leads        Lead[]
-  tickets      SupportTicket[]
+  appointments  Appointment[]
+  leads         Lead[]
+  tickets       SupportTicket[]
   conversations Conversation[]
 
   createdAt DateTime @default(now())
@@ -539,4 +543,65 @@ model SiteContent {
 
   @@unique([key, locale])
   @@index([group, locale])
+}
+
+// ── Coaching Center Module ──────────────────────────────────────────────────
+
+model Student {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id])
+
+  name       String
+  parentName String?
+  phone      String?
+  classGrade String?
+  batch      String?
+  course     String?
+  isActive   Boolean  @default(true)
+
+  admissionAt DateTime @default(now())
+  attendance  StudentAttendance[]
+  feeRecords  FeeRecord[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([businessId, isActive])
+  @@index([businessId, batch])
+}
+
+model StudentAttendance {
+  id        String  @id @default(cuid())
+  studentId String
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  dateISO String  // YYYY-MM-DD
+  present Boolean
+
+  createdAt DateTime @default(now())
+
+  @@unique([studentId, dateISO])
+  @@index([studentId])
+}
+
+model FeeRecord {
+  id         String   @id @default(cuid())
+  studentId  String
+  student    Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id])
+
+  amountCents Int
+  dueDate     DateTime
+  paidAt      DateTime?
+  month       String    // "2026-06"
+  notes       String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([businessId, month])
+  @@index([studentId])
+  @@index([businessId, paidAt])
 }

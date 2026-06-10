@@ -5,6 +5,17 @@ import { useEffect, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
 import { apiBase } from "@/lib/api-base";
 import { ToastProvider } from "@/components/ui";
+import {
+  Home,
+  CalendarDays,
+  Users,
+  MoreHorizontal,
+  MessageCircle,
+  BarChart2,
+  LifeBuoy,
+  Settings,
+  type LucideIcon,
+} from "lucide-react";
 
 type MeResponse =
   | { ok: false }
@@ -36,95 +47,22 @@ function linkActive(pathname: string, href: string) {
   return p === h || p.startsWith(`${h}/`);
 }
 
-/* ─── Nav icons ────────────────────────────────────────────────── */
-function HubIcon({ active }: { active: boolean }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.2 : 1.8} className="h-5 w-5">
-      <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M9 22V12h6v10" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-function BookingsIcon({ active }: { active: boolean }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.2 : 1.8} className="h-5 w-5">
-      <rect x="3" y="4" width="18" height="18" rx="2" strokeLinecap="round" />
-      <path d="M16 2v4M8 2v4M3 10h18" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-function CustomersIcon({ active }: { active: boolean }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.2 : 1.8} className="h-5 w-5">
-      <circle cx="9" cy="7" r="4" strokeLinecap="round" />
-      <path d="M3 21v-2a4 4 0 014-4h4a4 4 0 014 4v2" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M19 8v6m-3-3h6" strokeLinecap="round" />
-    </svg>
-  );
-}
-function MoreIcon({ active }: { active: boolean }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.2 : 1.8} className="h-5 w-5">
-      <circle cx="5" cy="12" r="1.5" fill="currentColor" />
-      <circle cx="12" cy="12" r="1.5" fill="currentColor" />
-      <circle cx="19" cy="12" r="1.5" fill="currentColor" />
-    </svg>
-  );
-}
-function WhatsAppIcon({ active }: { active: boolean }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.2 : 1.8} className="h-5 w-5">
-      <path
-        d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-function ChartIcon({ active }: { active: boolean }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.2 : 1.8} className="h-5 w-5">
-      <path d="M18 20V10M12 20V4M6 20v-6" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-function SupportIcon({ active }: { active: boolean }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.2 : 1.8} className="h-5 w-5">
-      <circle cx="12" cy="12" r="10" strokeLinecap="round" />
-      <path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3M12 17h.01" strokeLinecap="round" />
-    </svg>
-  );
-}
-function SettingsIcon({ active }: { active: boolean }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.2 : 1.8} className="h-5 w-5">
-      <circle cx="12" cy="12" r="3" strokeLinecap="round" />
-      <path
-        d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
+const NAV_TABS: Array<{ href: string; label: string; module: string | null; Icon: LucideIcon }> = [
+  { href: "/app", label: "Hub", module: "hub", Icon: Home },
+  { href: "/app/bookings", label: "Bookings", module: "bookings", Icon: CalendarDays },
+  { href: "/app/customers", label: "Customers", module: "customers", Icon: Users },
+  { href: "/app/more", label: "More", module: null, Icon: MoreHorizontal },
+];
 
-const NAV_TABS = [
-  { href: "/app", label: "Hub", module: "hub", Icon: HubIcon },
-  { href: "/app/bookings", label: "Bookings", module: "bookings", Icon: BookingsIcon },
-  { href: "/app/customers", label: "Customers", module: "customers", Icon: CustomersIcon },
-  { href: "/app/more", label: "More", module: null, Icon: MoreIcon },
-] as const;
-
-const SIDEBAR_LINKS = [
-  { href: "/app", label: "Hub", module: "hub" as const, Icon: HubIcon },
-  { href: "/app/bookings", label: "Bookings", module: "bookings" as const, Icon: BookingsIcon },
-  { href: "/app/customers", label: "Customers", module: "customers" as const, Icon: CustomersIcon },
-  { href: "/app/whatsapp", label: "WhatsApp", module: "whatsapp-connect" as const, Icon: WhatsAppIcon },
-  { href: "/app/support", label: "Support", module: "support" as const, Icon: SupportIcon },
-  { href: "/app/analytics", label: "Insights", module: "analytics" as const, Icon: ChartIcon },
-  { href: "/app/settings", label: "Settings", module: "more" as const, Icon: SettingsIcon },
-] as const;
+const SIDEBAR_LINKS: Array<{ href: string; label: string; module: string; Icon: LucideIcon }> = [
+  { href: "/app", label: "Hub", module: "hub", Icon: Home },
+  { href: "/app/bookings", label: "Bookings", module: "bookings", Icon: CalendarDays },
+  { href: "/app/customers", label: "Customers", module: "customers", Icon: Users },
+  { href: "/app/whatsapp", label: "WhatsApp", module: "whatsapp-connect", Icon: MessageCircle },
+  { href: "/app/support", label: "Support", module: "support", Icon: LifeBuoy },
+  { href: "/app/analytics", label: "Insights", module: "analytics", Icon: BarChart2 },
+  { href: "/app/settings", label: "Settings", module: "more", Icon: Settings },
+];
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -186,7 +124,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                   }`}
                 >
                   <span className={active ? "text-emerald-600" : "text-zinc-400"}>
-                    <Icon active={active} />
+                    <Icon className="h-5 w-5" strokeWidth={active ? 2.2 : 1.8} />
                   </span>
                   {label}
                 </a>
@@ -235,7 +173,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                         active ? "text-emerald-600" : "text-zinc-400"
                       }`}
                     >
-                      <Icon active={active} />
+                      <Icon className="h-5 w-5" strokeWidth={active ? 2.2 : 1.8} />
                       <span
                         className={`text-[10px] font-semibold leading-none ${active ? "text-emerald-600" : "text-zinc-400"}`}
                       >
