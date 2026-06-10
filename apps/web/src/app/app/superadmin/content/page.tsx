@@ -19,6 +19,9 @@ type GroupedRows = Record<string, ContentRow[]>;
 const GROUP_LABELS: Record<string, string> = {
   landing: "Landing Page",
   seo: "SEO Metadata",
+  platform: "Platform Settings (phone, banner, stats)",
+  darbhanga: "Darbhanga Launch Pack",
+  pwa: "PWA / App Wrapper",
   wa_templates: "WhatsApp Templates",
   city: "City Landing Pages",
   onboarding: "Onboarding",

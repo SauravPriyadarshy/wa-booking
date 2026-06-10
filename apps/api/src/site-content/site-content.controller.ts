@@ -24,6 +24,12 @@ export class SiteContentController {
     return this.siteContent.getKey(key, locale || 'en');
   }
 
+  /** Public: merged config for PWA shells and client widgets. */
+  @Get('bundle')
+  getBundle(@Query('locale') locale?: string) {
+    return this.siteContent.getPublicBundle(locale || 'en');
+  }
+
   /** Super Admin: list all content rows (for editor UI). */
   @Get('all')
   @UseGuards(JwtUserGuard, RolesGuard)

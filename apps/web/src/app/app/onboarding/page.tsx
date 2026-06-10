@@ -4,7 +4,8 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { apiBase } from "@/lib/api-base";
 import { Button, FormField, FieldInput } from "@/components/ui";
-import { DARBHANGA_PACKS, DARBHANGA_SHARE_TEMPLATE, packByKey, type DarbhangaPackKey } from "@/lib/darbhanga-pack";
+import { DARBHANGA_PACKS, packByKey, type DarbhangaPack, type DarbhangaPackKey } from "@/lib/darbhanga-pack";
+import { formatShareTemplate } from "@/lib/platform-content";
 
 type Category = { id: string; key: string; name: string };
 
@@ -35,8 +36,28 @@ function OnboardingForm() {
   );
   const [categoryId, setCategoryId] = useState("");
   const [bookingSlug, setBookingSlug] = useState("");
+  const [packs, setPacks] = useState<DarbhangaPack[]>(DARBHANGA_PACKS);
+  const [shareTemplate, setShareTemplate] = useState(
+    "नमस्ते! {shopName} पर online booking शुरू हो गई है।\n\nLink: {link}\n\nQR scan करके book करें — कोई app नहीं चाहिए।",
+  );
 
   const pack = packByKey(selectedPack)!;
+
+  useEffect(() => {
+    fetch(`${apiBase()}/site-content/bundle?locale=en`)
+      .then((r) => r.json())
+      .then((d: { darbhanga?: Record<string, string>; platform?: Record<string, string> }) => {
+        try {
+          const raw = d.darbhanga?.["darbhanga.packs"];
+          if (raw) setPacks(JSON.parse(raw) as DarbhangaPack[]);
+        } catch {
+          /* keep defaults */
+        }
+        const tpl = d.platform?.["platform.share_template"];
+        if (tpl) setShareTemplate(tpl);
+      })
+      .catch(() => {});
+  }, []);
 
   const resolvedCategoryId = useMemo(() => {
     if (!isDarbhanga) return categoryId;
@@ -120,7 +141,7 @@ function OnboardingForm() {
       : "";
 
   if (done && isDarbhanga) {
-    const shareText = bookingUrl ? DARBHANGA_SHARE_TEMPLATE(name.trim(), bookingUrl) : "";
+    const shareText = bookingUrl ? formatShareTemplate(shareTemplate, name.trim(), bookingUrl) : "";
     return (
       <div className="min-h-screen bg-emerald-50 px-4 py-8">
         <div className="mx-auto max-w-md text-center">
@@ -220,7 +241,7 @@ function OnboardingForm() {
               <div>
                 <div className="text-[13px] font-medium text-zinc-800">Apna pack (sirf ek)</div>
                 <div className="mt-2 grid gap-2">
-                  {DARBHANGA_PACKS.map((p) => (
+                  {packs.map((p) => (
                     <button
                       key={p.key}
                       type="button"

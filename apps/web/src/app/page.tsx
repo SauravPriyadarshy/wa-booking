@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { getSiteContentGroup, parseJson } from "@/lib/site-content";
+import { loadPlatformConfig } from "@/lib/platform-content";
 import { MarketingShell } from "@/components/layout/marketing-shell";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -21,8 +22,6 @@ export async function generateMetadata(): Promise<Metadata> {
 type FaqItem = { q: string; a: string };
 type PricingPlan = { name: string; price: string; period: string; features: string[]; cta: string; href: string; highlighted: boolean };
 type PricingSection = { headline: string; plans: PricingPlan[] };
-type Testimonial = { name: string; business: string; city: string; text: string };
-type Category = { key: string; name: string; icon: string; nameHi: string };
 
 const DEFAULT_PRICING: PricingSection = {
   headline: "Simple pricing. No surprises.",
@@ -61,47 +60,14 @@ const DEFAULT_FAQS: FaqItem[] = [
   { q: "क्या यह clinic और coaching के लिए भी काम करता है?", a: "हाँ — salons, clinics, spas, coaching centers, tutors — कोई भी appointment-based business।" },
 ];
 
-const CATEGORIES: Category[] = [
-  { key: "salon", name: "Salon & Barber", nameHi: "सैलून / बाल कटाई", icon: "💈" },
-  { key: "clinic", name: "Clinic & Doctor", nameHi: "क्लिनिक / डॉक्टर", icon: "🏥" },
-  { key: "coaching", name: "Coaching Center", nameHi: "कोचिंग सेंटर", icon: "📚" },
-  { key: "spa", name: "Spa & Wellness", nameHi: "स्पा / वेलनेस", icon: "🧖" },
-  { key: "home_service", name: "Home Services", nameHi: "होम सर्विस", icon: "🔧" },
-  { key: "other", name: "Any Business", nameHi: "कोई भी बिज़नेस", icon: "🏪" },
-];
-
-const TESTIMONIALS: Testimonial[] = [
-  {
-    name: "Rakesh Kumar",
-    business: "Raj Hair Studio",
-    city: "Darbhanga",
-    text: "पहले WhatsApp पर manually booking लेता था, बहुत confusion होती थी। अब सब system में है, missed bookings बंद हो गए।",
-  },
-  {
-    name: "Dr. Priya Singh",
-    business: "Singh Clinic",
-    city: "Laheriasarai",
-    text: "Patients को automatically reminder जाता है। No-show 60% कम हो गए। बहुत अच्छा system है।",
-  },
-  {
-    name: "Amit Jha",
-    business: "Success Coaching Center",
-    city: "Darbhanga",
-    text: "Students की fees और attendance दोनों एक जगह। Parents को WhatsApp reminders automatically जाते हैं।",
-  },
-];
-
-const HOW_IT_WORKS = [
-  { step: "1", title: "Business बनाएं", desc: "अपनी category चुनें — services automatically सुझाई जाती हैं। 2 मिनट में setup।", icon: "🏪" },
-  { step: "2", title: "Booking link share करें", desc: "QR code print करें या WhatsApp पर link भेजें। Customers easily book करते हैं।", icon: "📱" },
-  { step: "3", title: "WhatsApp से manage करें", desc: "Confirmations, reminders और customer messages — सब automatic।", icon: "✅" },
-];
-
 const CITIES = ["Darbhanga", "Laheriasarai", "Benipur", "Baheri", "Jale", "Mohali", "Patna"];
 
 export default async function Home() {
-  const landing = await getSiteContentGroup("landing", "hi");
-  const landingEn = await getSiteContentGroup("landing", "en");
+  const [landing, landingEn, platform] = await Promise.all([
+    getSiteContentGroup("landing", "hi"),
+    getSiteContentGroup("landing", "en"),
+    loadPlatformConfig(),
+  ]);
 
   const heroTitleHi = landing["landing.hero.title"] ?? "अब Booking, Reminder और Customer Management सब WhatsApp से";
   const heroSubtitleHi = landing["landing.hero.subtitle"] ?? "Salon, Clinic, Coaching और Service Business के लिए आसान सिस्टम। Setup में सिर्फ 5 मिनट।";
@@ -110,7 +76,8 @@ export default async function Home() {
   const trustText = landing["landing.trust"] ?? "Darbhanga, Laheriasarai और Mohali के 100+ businesses का भरोसा";
   const pricing = parseJson<PricingSection>(landingEn["landing.pricing"], DEFAULT_PRICING);
   const faqs = parseJson<FaqItem[]>(landing["landing.faq"] ?? landingEn["landing.faq"], DEFAULT_FAQS);
-  const waNumber = landingEn["landing.whatsapp_number"] ?? "917500002221";
+  const waNumber = platform.whatsappNumber;
+  const { stats, categories, testimonials, howItWorks, beforeAfter, darbhangaBanner } = platform;
 
   return (
     <MarketingShell
@@ -119,9 +86,7 @@ export default async function Home() {
           href="/darbhanga"
           className="block border-b border-emerald-200 bg-emerald-600 py-3 text-center transition hover:bg-emerald-700"
         >
-          <span className="text-[13px] font-bold text-white">
-            📍 Darbhanga? → WhatsApp Pack — teen cheez, paanch minute, ₹0
-          </span>
+          <span className="text-[13px] font-bold text-white">{darbhangaBanner}</span>
         </a>
       }
     >
@@ -170,11 +135,7 @@ export default async function Home() {
       <div className="border-y border-zinc-100 bg-zinc-50 py-5">
         <div className="shell">
           <div className="grid grid-cols-3 gap-4 text-center">
-            {[
-              { n: "100+", label: "Businesses" },
-              { n: "5000+", label: "Bookings/month" },
-              { n: "6", label: "Cities" },
-            ].map(({ n, label }) => (
+            {stats.map(({ n, label }) => (
               <div key={label}>
                 <div className="text-[22px] font-bold text-emerald-600">{n}</div>
                 <div className="text-[11px] font-medium text-zinc-500">{label}</div>
@@ -191,7 +152,7 @@ export default async function Home() {
           <h2 className="mt-2 text-[22px] font-bold text-zinc-900">हर type के business के लिए</h2>
         </div>
         <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
-          {CATEGORIES.map((cat) => (
+          {categories.map((cat) => (
             <a
               key={cat.key}
               href="/signup"
@@ -215,7 +176,7 @@ export default async function Home() {
             <h2 className="mt-2 text-[22px] font-bold text-zinc-900">3 steps में शुरू करें</h2>
           </div>
           <div className="mt-6 grid gap-4">
-            {HOW_IT_WORKS.map((step) => (
+            {howItWorks.map((step) => (
               <div key={step.step} className="flex items-start gap-4 rounded-2xl bg-white p-4 shadow-sm">
                 <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-emerald-600 text-xl font-bold text-white">
                   {step.icon}
@@ -250,13 +211,7 @@ export default async function Home() {
         <div className="mt-6 grid grid-cols-2 gap-3">
           <div className="rounded-2xl border border-red-100 bg-red-50 p-4">
             <div className="mb-3 text-[12px] font-bold uppercase tracking-wide text-red-500">पहले 😰</div>
-            {[
-              "WhatsApp पर हर booking manually",
-              "Reminder भूल जाते थे",
-              "Customer का record नहीं",
-              "Payment track नहीं होती",
-              "Staff को काम याद दिलाना",
-            ].map((t) => (
+            {beforeAfter.before.map((t) => (
               <div key={t} className="flex items-start gap-1.5 py-1">
                 <span className="mt-0.5 text-[11px] text-red-400">✗</span>
                 <span className="text-[12px] leading-snug text-red-700">{t}</span>
@@ -265,13 +220,7 @@ export default async function Home() {
           </div>
           <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
             <div className="mb-3 text-[12px] font-bold uppercase tracking-wide text-emerald-600">अब 😊</div>
-            {[
-              "Online booking link से auto",
-              "WhatsApp reminders automatic",
-              "पूरा CRM एक जगह",
-              "Payment verify हो जाती है",
-              "Staff को notifications",
-            ].map((t) => (
+            {beforeAfter.after.map((t) => (
               <div key={t} className="flex items-start gap-1.5 py-1">
                 <span className="mt-0.5 text-[11px] text-emerald-500">✓</span>
                 <span className="text-[12px] leading-snug text-emerald-700">{t}</span>
@@ -289,7 +238,7 @@ export default async function Home() {
             <h2 className="mt-2 text-[22px] font-bold text-zinc-900">Real businesses, real results</h2>
           </div>
           <div className="mt-6 grid gap-4">
-            {TESTIMONIALS.map((t) => (
+            {testimonials.map((t) => (
               <div key={t.name} className="rounded-2xl bg-white p-5 shadow-sm">
                 <div className="flex text-amber-400">
                   {"★★★★★".split("").map((s, i) => <span key={i} className="text-[14px]">{s}</span>)}

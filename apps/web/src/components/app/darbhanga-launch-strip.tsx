@@ -1,7 +1,8 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Link2, MessageCircle, CalendarDays, ChevronDown } from "lucide-react";
-import { DARBHANGA_CONTACT_PHONE } from "@/lib/darbhanga-pack";
+import { apiBase } from "@/lib/api-base";
 
 type Props = {
   packLabel: string;
@@ -9,9 +10,33 @@ type Props = {
   bookingUrl: string;
   onCopyLink: () => void;
   onDismiss?: () => void;
+  contactPhone?: string;
 };
 
-export function DarbhangaLaunchStrip({ packLabel, waConnected, bookingUrl, onCopyLink, onDismiss }: Props) {
+export function DarbhangaLaunchStrip({
+  packLabel,
+  waConnected,
+  bookingUrl,
+  onCopyLink,
+  onDismiss,
+  contactPhone: contactPhoneProp,
+}: Props) {
+  const [contactPhone, setContactPhone] = useState(contactPhoneProp ?? "7500002221");
+
+  useEffect(() => {
+    if (contactPhoneProp) {
+      setContactPhone(contactPhoneProp);
+      return;
+    }
+    fetch(`${apiBase()}/site-content/bundle?locale=en`)
+      .then((r) => r.json())
+      .then((d: { platform?: Record<string, string> }) => {
+        const phone = d.platform?.["platform.contact_phone"];
+        if (phone) setContactPhone(phone);
+      })
+      .catch(() => {});
+  }, [contactPhoneProp]);
+
   return (
     <section className="animate-slide-up rounded-2xl border-2 border-emerald-200 bg-gradient-to-br from-emerald-50 to-white p-4 shadow-sm">
       <div className="flex items-start justify-between gap-2">
@@ -81,8 +106,8 @@ export function DarbhangaLaunchStrip({ packLabel, waConnected, bookingUrl, onCop
         </summary>
         <p className="pb-2 text-center text-[11px] text-zinc-400">
           Help chahiye?{" "}
-          <a href={`tel:+91${DARBHANGA_CONTACT_PHONE}`} className="font-semibold text-emerald-700">
-            Call {DARBHANGA_CONTACT_PHONE}
+          <a href={`tel:+91${contactPhone}`} className="font-semibold text-emerald-700">
+            Call {contactPhone}
           </a>
         </p>
       </details>

@@ -61,24 +61,38 @@ export class SiteContentService {
     });
   }
 
-  /** Upsert a single content key. Invalidates Redis cache for the group. */
+  /** Upsert a single content key. Creates row if missing (group = first key segment). */
   async upsert(key: string, locale: string, value: string, updatedBy: string) {
     const existing = await this.prisma.siteContent.findUnique({
       where: { key_locale: { key, locale } },
       select: { group: true, label: true },
     });
-    if (!existing) {
-      throw new Error(`Content key "${key}" locale "${locale}" does not exist. Keys must be seeded first.`);
-    }
 
-    const row = await this.prisma.siteContent.update({
-      where: { key_locale: { key, locale } },
-      data: { value, updatedBy },
-      select: { key: true, group: true, locale: true, updatedAt: true },
-    });
+    const group = key.split('.')[0] ?? 'misc';
+    const row = existing
+      ? await this.prisma.siteContent.update({
+          where: { key_locale: { key, locale } },
+          data: { value, updatedBy },
+          select: { key: true, group: true, locale: true, updatedAt: true },
+        })
+      : await this.prisma.siteContent.create({
+          data: { key, locale, group, label: key, value, updatedBy },
+          select: { key: true, group: true, locale: true, updatedAt: true },
+        });
 
     await this.invalidateCache(row.group, row.locale);
     return { ok: true, key: row.key, updatedAt: row.updatedAt };
+  }
+
+  /** Public bundle for client shells — platform, darbhanga, pwa, landing. */
+  async getPublicBundle(locale = 'en') {
+    const [platform, darbhanga, pwa, landing] = await Promise.all([
+      this.getGroup('platform', locale),
+      this.getGroup('darbhanga', locale),
+      this.getGroup('pwa', locale),
+      this.getGroup('landing', locale),
+    ]);
+    return { platform, darbhanga, pwa, landing };
   }
 
   /** Bulk upsert — only updates existing keys, ignores unknown ones. */
