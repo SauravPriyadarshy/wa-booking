@@ -109,7 +109,7 @@ export default async function Home() {
   const trustText = landing["landing.trust"] ?? "Darbhanga, Laheriasarai और Mohali के 100+ businesses का भरोसा";
   const pricing = parseJson<PricingSection>(landingEn["landing.pricing"], DEFAULT_PRICING);
   const faqs = parseJson<FaqItem[]>(landing["landing.faq"] ?? landingEn["landing.faq"], DEFAULT_FAQS);
-  const waNumber = landingEn["landing.whatsapp_number"] ?? "919122000751";
+  const waNumber = landingEn["landing.whatsapp_number"] ?? "917500002221";
 
   return (
     <div className="min-h-screen bg-white">

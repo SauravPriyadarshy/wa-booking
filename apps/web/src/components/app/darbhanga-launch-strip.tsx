@@ -1,6 +1,7 @@
 "use client";
 
 import { Link2, MessageCircle, CalendarDays, ChevronDown } from "lucide-react";
+import { DARBHANGA_CONTACT_PHONE } from "@/lib/darbhanga-pack";
 
 type Props = {
   packLabel: string;
@@ -79,9 +80,9 @@ export function DarbhangaLaunchStrip({ packLabel, waConnected, bookingUrl, onCop
           Samajh nahi aaya? Demo WhatsApp pe
         </summary>
         <p className="pb-2 text-center text-[11px] text-zinc-400">
-          Help chahiye toh{" "}
-          <a href="https://wa.me/919122000751" className="font-semibold text-emerald-700">
-            WhatsApp karo
+          Help chahiye?{" "}
+          <a href={`tel:+91${DARBHANGA_CONTACT_PHONE}`} className="font-semibold text-emerald-700">
+            Call {DARBHANGA_CONTACT_PHONE}
           </a>
         </p>
       </details>

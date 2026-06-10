@@ -73,9 +73,11 @@ QR scan करके book करें — कोई app नहीं चाह�
 
 ---
 
-## Demo / support WhatsApp
+## Demo / support
 
-`+91 91220 00751` — message: "Darbhanga Pack demo chahiye"
+**Call: 7500002221**
+
+WhatsApp same number pe bhi message kar sakte hain.
 
 ---
 

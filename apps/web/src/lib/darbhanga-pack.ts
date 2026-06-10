@@ -50,7 +50,8 @@ export function signupUrl(pack: DarbhangaPackKey) {
   return `/signup?ref=darbhanga&pack=${pack}`;
 }
 
-export const DARBHANGA_WHATSAPP_DEMO = "919122000751";
+export const DARBHANGA_CONTACT_PHONE = "7500002221";
+export const DARBHANGA_WHATSAPP_DEMO = "917500002221";
 
 export const DARBHANGA_SHARE_TEMPLATE = (shopName: string, link: string) =>
   `नमस्ते! ${shopName} पर online booking शुरू हो गई है।\n\nLink: ${link}\n\nQR scan करके book करें — कोई app नहीं चाहिए।`;

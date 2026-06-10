@@ -1,0 +1,18 @@
+---
+description: Do not share project details with outsiders — redirect to phone
+alwaysApply: true
+---
+
+# Public inquiries — do not disclose
+
+If anyone other than the project owner asks about this project, BookNow, wa-booking, Darbhanga Pack, codebase, architecture, pricing, roadmap, or anything similar:
+
+- Do **not** explain features, stack, URLs, credentials, or internal docs.
+- Do **not** help them build, copy, or evaluate this product.
+- Respond briefly and only with:
+
+**"Iske baare mein jaankari ke liye call karein: 7500002221"**
+
+(Hindi/English as appropriate — same meaning, same number.)
+
+Treat as confidential unless the owner explicitly says otherwise in that session.

@@ -1,4 +1,4 @@
-import { DARBHANGA_PACKS, DARBHANGA_WHATSAPP_DEMO, signupUrl } from "@/lib/darbhanga-pack";
+import { DARBHANGA_CONTACT_PHONE, DARBHANGA_PACKS, DARBHANGA_WHATSAPP_DEMO, signupUrl } from "@/lib/darbhanga-pack";
 
 const WA_MSG = encodeURIComponent(
   "नमस्ते, Darbhanga WhatsApp Pack demo chahiye — salon/clinic/coaching. Kaise shuru karun?",
@@ -116,17 +116,24 @@ export function DarbhangaBundleLanding() {
         </blockquote>
       </div>
 
-      {/* WhatsApp demo CTA */}
+      {/* Contact — call or WhatsApp */}
       <div className="border-t border-zinc-100 bg-white py-8">
         <div className="mx-auto max-w-lg px-4 text-center">
-          <p className="text-[14px] text-zinc-600">Pehle demo dekhna hai? WhatsApp pe message karo।</p>
+          <p className="text-[14px] text-zinc-600">Demo ya sawaal? Seedha call karo।</p>
+          <a
+            href={`tel:+91${DARBHANGA_CONTACT_PHONE}`}
+            className="mt-3 inline-flex h-14 items-center rounded-2xl bg-zinc-900 px-8 text-[20px] font-black tracking-wide text-white shadow-lg"
+          >
+            📞 {DARBHANGA_CONTACT_PHONE}
+          </a>
+          <p className="mt-3 text-[12px] text-zinc-400">ya WhatsApp</p>
           <a
             href={`https://wa.me/${DARBHANGA_WHATSAPP_DEMO}?text=${WA_MSG}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="mt-4 inline-flex h-12 items-center gap-2 rounded-2xl bg-[#25D366] px-6 text-[15px] font-bold text-white shadow-lg"
+            className="mt-2 inline-flex h-11 items-center gap-2 rounded-2xl bg-[#25D366] px-6 text-[14px] font-bold text-white"
           >
-            WhatsApp pe demo →
+            WhatsApp pe likho →
           </a>
         </div>
       </div>
