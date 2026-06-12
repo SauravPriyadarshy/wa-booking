@@ -14,6 +14,12 @@ export class CategoriesController {
     return this.categories.listActive();
   }
 
+  /** Public — upserts default specializations then returns categories (onboarding). */
+  @Post('sync-subcategories')
+  syncSubcategories() {
+    return this.categories.syncAndList();
+  }
+
   // convenience seed for local dev; SUPER_ADMIN only
   @Post('seed-defaults')
   @UseGuards(JwtUserGuard, RolesGuard)

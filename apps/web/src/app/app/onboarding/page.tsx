@@ -4,20 +4,44 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { apiBase } from "@/lib/api-base";
+import { normalizeIndiaPhone } from "@/lib/phone-in";
 import { resolveLocale, type AppLocale } from "@/lib/locale";
-import { Button, FormField, FieldInput } from "@/components/ui";
+import { Button, FormField, FieldInput, IndiaPhoneInput, StepHint } from "@/components/ui";
 import { DARBHANGA_PACKS, packByKey, type DarbhangaPack, type DarbhangaPackKey } from "@/lib/darbhanga-pack";
 import { formatShareTemplate } from "@/lib/platform-content";
 
 type Subcategory = { id: string; key: string; name: string; nameHi?: string | null; isOther?: boolean };
 type Category = { id: string; key: string; name: string; subcategories?: Subcategory[] };
 type Service = { id: string; name: string; durationMin: number; isActive?: boolean };
+type HourRow = { weekday: number; startMin: number; endMin: number; isClosed: boolean };
 
-const STANDARD_STEPS = 7;
+const STANDARD_STEPS = 5;
+const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 function subLabel(sub: Subcategory, locale: AppLocale) {
   if (locale === "en") return sub.name;
   return sub.nameHi || sub.name;
+}
+
+function minToTime(min: number) {
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
+function timeToMin(time: string) {
+  const [h, m] = time.split(":").map(Number);
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return 540;
+  return h * 60 + m;
+}
+
+function defaultHourRows(): HourRow[] {
+  return [0, 1, 2, 3, 4, 5, 6].map((weekday) => ({
+    weekday,
+    startMin: 540,
+    endMin: 1080,
+    isClosed: weekday === 0,
+  }));
 }
 
 export default function OnboardingPage() {
@@ -51,7 +75,7 @@ function OnboardingForm() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
+  const [phoneRaw, setPhoneRaw] = useState("");
   const [activationCode, setActivationCode] = useState("");
   const [selectedPack, setSelectedPack] = useState<DarbhangaPackKey>(
     packParam && packByKey(packParam) ? packParam : "salon",
@@ -61,15 +85,17 @@ function OnboardingForm() {
   const [customSpecialization, setCustomSpecialization] = useState("");
   const [bookingSlug, setBookingSlug] = useState("");
   const [services, setServices] = useState<Service[]>([]);
+  const [newServiceName, setNewServiceName] = useState("");
+  const [newServiceDuration, setNewServiceDuration] = useState("30");
+  const [hourRows, setHourRows] = useState<HourRow[]>(defaultHourRows);
   const [staffName, setStaffName] = useState("");
-  const [waStatus, setWaStatus] = useState<string>("DISCONNECTED");
-  const [waQr, setWaQr] = useState<string | null>(null);
   const [packs, setPacks] = useState<DarbhangaPack[]>(DARBHANGA_PACKS);
   const [shareTemplate, setShareTemplate] = useState(
     "नमस्ते! {shopName} पर online booking शुरू हो गई है।\n\nLink: {link}\n\nQR scan करके book करें — कोई app नहीं चाहिए।",
   );
 
   const pack = packByKey(selectedPack)!;
+  const normalizedPhone = normalizeIndiaPhone(phoneRaw);
 
   useEffect(() => {
     setLocale(readLocaleCookie());
@@ -91,6 +117,10 @@ function OnboardingForm() {
       })
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (step === 4) setHourRows(defaultHourRows());
+  }, [step]);
 
   const selectedCategory = useMemo(
     () => categories.find((c) => c.id === categoryId) ?? null,
@@ -116,20 +146,43 @@ function OnboardingForm() {
   }, [isDarbhanga, selectedPack]);
 
   useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetch(`${apiBase()}/categories`);
-        const data = (await res.json()) as Category[];
-        setCategories(data);
-        if (isDarbhanga && packParam) {
-          const match = data.find((c) => packByKey(packParam)?.categoryKeys.includes(c.key));
-          if (match) setCategoryId(match.id);
-        }
-      } finally {
-        setLoadingCats(false);
-      }
-    })();
+    void loadCategories();
   }, [isDarbhanga, packParam]);
+
+  useEffect(() => {
+    if (!categoryId || loadingCats) return;
+    const cat = categories.find((c) => c.id === categoryId);
+    if (cat && (!cat.subcategories || cat.subcategories.length === 0)) {
+      void loadCategories(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only when category selection changes
+  }, [categoryId]);
+
+  async function loadCategories(forceSync = false) {
+    setLoadingCats(true);
+    try {
+      let res = await fetch(`${apiBase()}/categories`, { cache: "no-store" });
+      let data = (await res.json()) as Category[];
+      const needsSync =
+        forceSync || data.some((c) => !Array.isArray(c.subcategories) || c.subcategories.length === 0);
+      if (needsSync) {
+        const syncRes = await fetch(`${apiBase()}/categories/sync-subcategories`, {
+          method: "POST",
+          cache: "no-store",
+        });
+        if (syncRes.ok) {
+          data = (await syncRes.json()) as Category[];
+        }
+      }
+      setCategories(data);
+      if (isDarbhanga && packParam) {
+        const match = data.find((c) => packByKey(packParam)?.categoryKeys.includes(c.key));
+        if (match) setCategoryId(match.id);
+      }
+    } finally {
+      setLoadingCats(false);
+    }
+  }
 
   function authHeaders() {
     const token = localStorage.getItem("token");
@@ -149,15 +202,7 @@ function OnboardingForm() {
 
   function stepTitle(s: number) {
     if (isDarbhanga) return s === 1 ? t("darbhangaStep1Title") : t("darbhangaStep2Title");
-    const titles = [
-      t("step1Title"),
-      t("step2Title"),
-      t("step3Title"),
-      t("step4Title"),
-      t("step5Title"),
-      t("step6Title"),
-      t("step7Title"),
-    ];
+    const titles = [t("step1Title"), t("step2Title"), t("step3Title"), t("step4Title"), t("step5Title")];
     return titles[s - 1] ?? t("businessBasics");
   }
 
@@ -165,6 +210,10 @@ function OnboardingForm() {
     setError(null);
     if (name.trim().length < 2) {
       setError(isDarbhanga ? t("enterShopName") : t("enterBusinessName"));
+      return;
+    }
+    if (!isDarbhanga && normalizedPhone.length < 12) {
+      setError(t("enterBusinessPhone"));
       return;
     }
     if (isDarbhanga) {
@@ -183,8 +232,13 @@ function OnboardingForm() {
       setError(t("pickCategory"));
       return false;
     }
-    if (!subcategoryId) {
+    const subs = selectedCategory?.subcategories ?? [];
+    if (subs.length > 0 && !subcategoryId) {
       setError(t("selectSubcategory"));
+      return false;
+    }
+    if (subs.length === 0) {
+      setError(t("subcategoryLoading"));
       return false;
     }
     if (selectedSub?.isOther && customSpecialization.trim().length < 2) {
@@ -206,7 +260,7 @@ function OnboardingForm() {
           categoryId,
           subcategoryId,
           customSpecialization: selectedSub?.isOther ? customSpecialization.trim() : undefined,
-          phone: phone.trim() || undefined,
+          phone: normalizedPhone,
           activationCode: activationCode.trim() || undefined,
         }),
       })) as { business?: { slug?: string }; templateServicesCreated?: number };
@@ -222,20 +276,50 @@ function OnboardingForm() {
     }
   }
 
-  async function saveDefaultHours() {
+  async function patchService(id: string, patch: { name?: string; durationMin?: number }) {
+    const updated = (await apiFetch(`/services/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(patch),
+    })) as Service;
+    setServices((prev) => prev.map((s) => (s.id === id ? { ...s, ...updated } : s)));
+  }
+
+  async function addService() {
+    setError(null);
+    const svcName = newServiceName.trim();
+    const durationMin = Number.parseInt(newServiceDuration, 10);
+    if (svcName.length < 2) {
+      setError(t("serviceNameRequired"));
+      return;
+    }
+    if (!Number.isFinite(durationMin) || durationMin < 5) {
+      setError(t("serviceDurationInvalid"));
+      return;
+    }
+    setSaving(true);
+    try {
+      const created = (await apiFetch("/services", {
+        method: "POST",
+        body: JSON.stringify({ name: svcName, durationMin }),
+      })) as Service;
+      setServices((prev) => [...prev, created]);
+      setNewServiceName("");
+      setNewServiceDuration("30");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t("setupFailed"));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function saveHoursAndContinue() {
     setSaving(true);
     setError(null);
     try {
-      for (let weekday = 0; weekday <= 6; weekday++) {
-        const isSunday = weekday === 0;
+      for (const row of hourRows) {
         await apiFetch("/settings/hours", {
           method: "POST",
-          body: JSON.stringify({
-            weekday,
-            startMin: 540,
-            endMin: 1080,
-            isClosed: isSunday,
-          }),
+          body: JSON.stringify(row),
         });
       }
       setStep(5);
@@ -246,7 +330,7 @@ function OnboardingForm() {
     }
   }
 
-  async function saveStaffAndContinue() {
+  async function finishOnboarding() {
     setSaving(true);
     setError(null);
     try {
@@ -256,58 +340,13 @@ function OnboardingForm() {
           body: JSON.stringify({ name: staffName.trim() }),
         });
       }
-      setStep(6);
+      setDone(true);
     } catch (e) {
       setError(e instanceof Error ? e.message : t("setupFailed"));
     } finally {
       setSaving(false);
     }
   }
-
-  async function connectWhatsApp() {
-    setSaving(true);
-    setError(null);
-    try {
-      const s = (await apiFetch("/whatsapp/connect", { method: "POST" })) as {
-        status?: string;
-        qrDataUrl?: string;
-        message?: string;
-      };
-      setWaStatus(s.status ?? "DISCONNECTED");
-      setWaQr(s.qrDataUrl ?? null);
-      if (s.status === "CONNECTED") setStep(7);
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : t("setupFailed");
-      if (msg.toLowerCase().includes("waking up") || msg.toLowerCase().includes("try again")) {
-        setError(t("waWakingUp"));
-      } else {
-        setError(msg);
-      }
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function refreshWaStatus() {
-    try {
-      const s = (await apiFetch("/whatsapp/status")) as {
-        status?: string;
-        qrDataUrl?: string;
-      };
-      setWaStatus(s.status ?? "DISCONNECTED");
-      setWaQr(s.qrDataUrl ?? null);
-      if (s.status === "CONNECTED") setStep(7);
-    } catch {
-      setWaStatus("DISCONNECTED");
-    }
-  }
-
-  useEffect(() => {
-    if (step !== 6 || isDarbhanga) return;
-    void refreshWaStatus();
-    const id = setInterval(() => void refreshWaStatus(), 4000);
-    return () => clearInterval(id);
-  }, [step, isDarbhanga]);
 
   async function finishDarbhanga() {
     setError(null);
@@ -318,7 +357,7 @@ function OnboardingForm() {
         body: JSON.stringify({
           name: name.trim(),
           categoryId: resolvedCategoryId,
-          phone: phone.trim() || undefined,
+          phone: phoneRaw.trim() ? normalizeIndiaPhone(phoneRaw) : undefined,
         }),
       })) as { business?: { slug?: string } };
 
@@ -335,6 +374,37 @@ function OnboardingForm() {
 
   const bookingUrl =
     typeof window !== "undefined" && bookingSlug ? `${window.location.origin}/${bookingSlug}` : "";
+
+  function DoneScreen() {
+    return (
+      <div className="min-h-screen bg-emerald-50 px-4 py-8">
+        <div className="mx-auto max-w-md text-center">
+          <div className="text-5xl">🎉</div>
+          <h1 className="mt-4 text-[24px] font-black text-zinc-900">{t("doneTitle")}</h1>
+          <p className="mt-2 text-[15px] leading-relaxed text-zinc-600">{t("doneBody")}</p>
+          {bookingUrl ? (
+            <div className="mt-5 rounded-2xl border border-emerald-200 bg-white p-4 text-left">
+              <div className="text-[11px] font-bold uppercase text-zinc-400">{t("viewBookingLink")}</div>
+              <div className="mt-1 break-all text-[13px] font-semibold text-emerald-800">{bookingUrl}</div>
+              <button
+                type="button"
+                className="mt-3 w-full rounded-xl bg-emerald-600 py-3 text-[14px] font-bold text-white"
+                onClick={() => void navigator.clipboard.writeText(bookingUrl)}
+              >
+                {t("copyLink")}
+              </button>
+            </div>
+          ) : null}
+          <p className="mt-4 text-[13px] text-zinc-500">{t("servicesNote")}</p>
+          <a href="/app?launch=1" className="mt-6 flex h-12 items-center justify-center rounded-2xl bg-zinc-900 text-[15px] font-bold text-white">
+            {t("finishSetup")}
+          </a>
+        </div>
+      </div>
+    );
+  }
+
+  if (done && !isDarbhanga) return <DoneScreen />;
 
   if (done && isDarbhanga) {
     const shareText = bookingUrl ? formatShareTemplate(shareTemplate, name.trim(), bookingUrl) : "";
@@ -378,34 +448,6 @@ function OnboardingForm() {
     );
   }
 
-  if (step === 7 && !isDarbhanga) {
-    return (
-      <div className="min-h-screen bg-emerald-50 px-4 py-8">
-        <div className="mx-auto max-w-md text-center">
-          <div className="text-5xl">🎉</div>
-          <h1 className="mt-4 text-[24px] font-black text-zinc-900">{t("step7Title")}</h1>
-          <p className="mt-2 text-[15px] leading-relaxed text-zinc-600">{t("doneBody")}</p>
-          {bookingUrl ? (
-            <div className="mt-5 rounded-2xl border border-emerald-200 bg-white p-4 text-left">
-              <div className="text-[11px] font-bold uppercase text-zinc-400">{t("viewBookingLink")}</div>
-              <div className="mt-1 break-all text-[13px] font-semibold text-emerald-800">{bookingUrl}</div>
-              <button
-                type="button"
-                className="mt-3 w-full rounded-xl bg-emerald-600 py-3 text-[14px] font-bold text-white"
-                onClick={() => void navigator.clipboard.writeText(bookingUrl)}
-              >
-                {t("copyLink")}
-              </button>
-            </div>
-          ) : null}
-          <a href="/app?launch=1" className="mt-6 flex h-12 items-center justify-center rounded-2xl bg-zinc-900 text-[15px] font-bold text-white">
-            {t("finishSetup")}
-          </a>
-        </div>
-      </div>
-    );
-  }
-
   const totalSteps = isDarbhanga ? 2 : STANDARD_STEPS;
 
   return (
@@ -433,7 +475,6 @@ function OnboardingForm() {
             <div className="mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[13px] text-red-800">{error}</div>
           ) : null}
 
-          {/* Darbhanga step 1 */}
           {step === 1 && isDarbhanga ? (
             <div className="mt-5 grid gap-4">
               <FormField label={t("shopNameLabel")} required>
@@ -472,14 +513,13 @@ function OnboardingForm() {
             </div>
           ) : null}
 
-          {/* Darbhanga step 2 */}
           {step === 2 && isDarbhanga ? (
             <div className="mt-5 grid gap-4">
               <p className="text-[14px] leading-relaxed text-zinc-600">
                 {t("darbhangaStep2Body", { name: name.trim(), pack: pack.titleHi })}
               </p>
               <FormField label={t("shopMobileOptional")}>
-                <FieldInput placeholder="9876543210" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
+                <IndiaPhoneInput value={phoneRaw} onChange={setPhoneRaw} />
               </FormField>
               <div className="flex gap-2">
                 <Button type="button" variant="ghost" size="md" className="flex-1" onClick={() => setStep(1)}>
@@ -492,14 +532,14 @@ function OnboardingForm() {
             </div>
           ) : null}
 
-          {/* Standard step 1 — business info */}
           {step === 1 && !isDarbhanga ? (
             <div className="mt-5 grid gap-4">
+              <StepHint icon="🏪" title={t("step1HintTitle")} body={t("step1HintBody")} />
               <FormField label={t("businessName")} required>
                 <FieldInput placeholder={t("businessNamePlaceholder")} value={name} onChange={(e) => setName(e.target.value)} />
               </FormField>
-              <FormField label={t("businessPhoneOptional")}>
-                <FieldInput placeholder="9876543210" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
+              <FormField label={t("businessPhone")} required>
+                <IndiaPhoneInput value={phoneRaw} onChange={setPhoneRaw} />
               </FormField>
               <FormField label={t("activationCodeOptional")}>
                 <FieldInput
@@ -514,9 +554,9 @@ function OnboardingForm() {
             </div>
           ) : null}
 
-          {/* Standard step 2 — category + subcategory */}
           {step === 2 && !isDarbhanga ? (
             <div className="mt-5 grid gap-4">
+              <StepHint icon="🎯" title={t("step2HintTitle")} body={t("step2HintBody")} />
               <FormField label={t("category")} required>
                 <select
                   className="h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 text-[14px] outline-none focus-emerald"
@@ -536,20 +576,45 @@ function OnboardingForm() {
                   ))}
                 </select>
               </FormField>
-              {selectedCategory?.subcategories?.length ? (
+              {categoryId ? (
                 <FormField label={t("subcategory")} required>
-                  <select
-                    className="h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 text-[14px] outline-none focus-emerald"
-                    value={subcategoryId}
-                    onChange={(e) => setSubcategoryId(e.target.value)}
-                  >
-                    <option value="">{t("selectSubcategory")}</option>
-                    {selectedCategory.subcategories.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {subLabel(s, locale)}
-                      </option>
-                    ))}
-                  </select>
+                  {loadingCats ? (
+                    <div className="rounded-xl border border-zinc-100 bg-zinc-50 px-3 py-4 text-center text-[13px] text-zinc-500">
+                      {tc("loading")}
+                    </div>
+                  ) : (selectedCategory?.subcategories?.length ?? 0) > 0 ? (
+                    <>
+                      <p className="mb-2 text-[12px] text-zinc-500">{t("subcategoryHelp")}</p>
+                      <select
+                        className="h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 text-[14px] outline-none focus-emerald"
+                        value={subcategoryId}
+                        onChange={(e) => {
+                          const id = e.target.value;
+                          setSubcategoryId(id);
+                          const sub = selectedCategory?.subcategories?.find((s) => s.id === id);
+                          if (!sub?.isOther) setCustomSpecialization("");
+                        }}
+                      >
+                        <option value="">{t("selectSubcategory")}</option>
+                        {selectedCategory!.subcategories!.map((s) => (
+                          <option key={s.id} value={s.id}>
+                            {subLabel(s, locale)}
+                          </option>
+                        ))}
+                      </select>
+                    </>
+                  ) : (
+                    <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 text-[13px] text-amber-900">
+                      <p>{t("subcategoryEmpty")}</p>
+                      <button
+                        type="button"
+                        className="mt-2 font-semibold text-emerald-700 underline"
+                        onClick={() => void loadCategories(true)}
+                      >
+                        {t("reloadSpecializations")}
+                      </button>
+                    </div>
+                  )}
                 </FormField>
               ) : null}
               {selectedSub?.isOther ? (
@@ -579,89 +644,149 @@ function OnboardingForm() {
             </div>
           ) : null}
 
-          {/* Standard step 3 — services */}
           {step === 3 && !isDarbhanga ? (
             <div className="mt-5 grid gap-4">
+              <StepHint icon="✂️" title={t("step3HintTitle")} body={t("step3HintBody")} />
               <p className="text-[14px] text-zinc-600">{t("servicesAdded")}</p>
-              <ul className="divide-y divide-zinc-100 rounded-xl border border-zinc-100">
+              <div className="divide-y divide-zinc-100 rounded-xl border border-zinc-100">
                 {services.map((s) => (
-                  <li key={s.id} className="flex items-center justify-between px-3 py-2.5 text-[14px]">
-                    <span className="font-medium text-zinc-800">{s.name}</span>
-                    <span className="text-[12px] text-zinc-400">{s.durationMin} min</span>
-                  </li>
+                  <div key={s.id} className="grid gap-2 px-3 py-3 sm:grid-cols-[1fr_88px] sm:items-center">
+                    <FieldInput
+                      value={s.name}
+                      onChange={(e) => setServices((prev) => prev.map((x) => (x.id === s.id ? { ...x, name: e.target.value } : x)))}
+                      onBlur={() => void patchService(s.id, { name: s.name.trim() }).catch(() => {})}
+                    />
+                    <div className="flex items-center gap-1">
+                      <FieldInput
+                        type="number"
+                        min={5}
+                        inputMode="numeric"
+                        className="text-center"
+                        value={String(s.durationMin)}
+                        onChange={(e) =>
+                          setServices((prev) =>
+                            prev.map((x) => (x.id === s.id ? { ...x, durationMin: Number.parseInt(e.target.value, 10) || x.durationMin } : x)),
+                          )
+                        }
+                        onBlur={() => void patchService(s.id, { durationMin: s.durationMin }).catch(() => {})}
+                      />
+                      <span className="shrink-0 text-[12px] text-zinc-400">min</span>
+                    </div>
+                  </div>
                 ))}
                 {services.length === 0 ? (
-                  <li className="px-3 py-4 text-center text-[13px] text-zinc-400">{tc("loading")}</li>
+                  <div className="px-3 py-4 text-center text-[13px] text-zinc-400">{tc("loading")}</div>
                 ) : null}
-              </ul>
+              </div>
+              <div className="rounded-xl border border-dashed border-emerald-200 bg-emerald-50/40 p-3">
+                <div className="text-[12px] font-semibold text-emerald-800">{t("addService")}</div>
+                <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_88px_auto] sm:items-end">
+                  <FieldInput
+                    placeholder={t("serviceNamePlaceholder")}
+                    value={newServiceName}
+                    onChange={(e) => setNewServiceName(e.target.value)}
+                  />
+                  <FieldInput
+                    type="number"
+                    min={5}
+                    inputMode="numeric"
+                    value={newServiceDuration}
+                    onChange={(e) => setNewServiceDuration(e.target.value)}
+                  />
+                  <Button type="button" variant="secondary" size="md" loading={saving} onClick={() => void addService()}>
+                    {t("addServiceBtn")}
+                  </Button>
+                </div>
+              </div>
               <Button type="button" variant="primary" size="lg" className="w-full" onClick={() => setStep(4)}>
                 {t("continue")}
               </Button>
             </div>
           ) : null}
 
-          {/* Standard step 4 — hours */}
           {step === 4 && !isDarbhanga ? (
             <div className="mt-5 grid gap-4">
-              <div className="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-[14px] font-medium text-emerald-900">
-                {t("hoursPreset")}
-              </div>
+              <StepHint icon="🕐" title={t("step4HintTitle")} body={t("step4HintBody")} />
               <p className="text-[13px] text-zinc-500">{t("hoursNote")}</p>
+              <div className="divide-y divide-zinc-100 rounded-xl border border-zinc-100">
+                {hourRows.map((row) => (
+                  <div key={row.weekday} className="flex flex-wrap items-center gap-2 px-3 py-2.5">
+                    <span className="w-10 shrink-0 text-[13px] font-semibold text-zinc-700">{WEEKDAY_LABELS[row.weekday]}</span>
+                    <label className="flex items-center gap-1.5 text-[12px] text-zinc-600">
+                      <input
+                        type="checkbox"
+                        checked={row.isClosed}
+                        onChange={(e) =>
+                          setHourRows((prev) =>
+                            prev.map((h) => (h.weekday === row.weekday ? { ...h, isClosed: e.target.checked } : h)),
+                          )
+                        }
+                      />
+                      {t("closed")}
+                    </label>
+                    {!row.isClosed ? (
+                      <>
+                        <input
+                          type="time"
+                          className="h-9 rounded-lg border border-zinc-200 px-2 text-[13px]"
+                          value={minToTime(row.startMin)}
+                          onChange={(e) =>
+                            setHourRows((prev) =>
+                              prev.map((h) =>
+                                h.weekday === row.weekday ? { ...h, startMin: timeToMin(e.target.value) } : h,
+                              ),
+                            )
+                          }
+                        />
+                        <span className="text-zinc-400">–</span>
+                        <input
+                          type="time"
+                          className="h-9 rounded-lg border border-zinc-200 px-2 text-[13px]"
+                          value={minToTime(row.endMin)}
+                          onChange={(e) =>
+                            setHourRows((prev) =>
+                              prev.map((h) =>
+                                h.weekday === row.weekday ? { ...h, endMin: timeToMin(e.target.value) } : h,
+                              ),
+                            )
+                          }
+                        />
+                      </>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
               <div className="flex gap-2">
                 <Button type="button" variant="ghost" size="md" className="flex-1" onClick={() => setStep(3)}>
                   {tc("back").replace("← ", "")}
                 </Button>
-                <Button type="button" variant="primary" size="md" className="flex-1" loading={saving} onClick={() => void saveDefaultHours()}>
+                <Button type="button" variant="primary" size="md" className="flex-1" loading={saving} onClick={() => void saveHoursAndContinue()}>
                   {t("continue")}
                 </Button>
               </div>
             </div>
           ) : null}
 
-          {/* Standard step 5 — staff */}
           {step === 5 && !isDarbhanga ? (
             <div className="mt-5 grid gap-4">
+              <StepHint icon="👥" title={t("step5HintTitle")} body={t("step5HintBody")} />
               <p className="text-[14px] text-zinc-600">{t("staffOptional")}</p>
               <FormField label={t("staffNamePlaceholder")}>
                 <FieldInput placeholder={t("staffNamePlaceholder")} value={staffName} onChange={(e) => setStaffName(e.target.value)} />
               </FormField>
-              <div className="flex gap-2">
-                <Button type="button" variant="ghost" size="md" className="flex-1" onClick={() => setStep(6)}>
-                  {t("staffSkip")}
+              <div className="flex flex-col gap-2">
+                <Button type="button" variant="ghost" size="md" className="w-full" onClick={() => setStep(4)}>
+                  {tc("back").replace("← ", "")}
                 </Button>
-                <Button type="button" variant="primary" size="md" className="flex-1" loading={saving} onClick={() => void saveStaffAndContinue()}>
-                  {t("continue")}
-                </Button>
+                <div className="flex gap-2">
+                  <Button type="button" variant="ghost" size="md" className="flex-1" onClick={() => void finishOnboarding()}>
+                    {t("staffSkip")}
+                  </Button>
+                  <Button type="button" variant="primary" size="md" className="flex-1" loading={saving} onClick={() => void finishOnboarding()}>
+                    {t("continue")}
+                  </Button>
+                </div>
               </div>
-            </div>
-          ) : null}
-
-          {/* Standard step 6 — WhatsApp */}
-          {step === 6 && !isDarbhanga ? (
-            <div className="mt-5 grid gap-4">
-              <p className="text-[14px] text-zinc-600">{t("waConnectBody")}</p>
-              {waStatus === "CONNECTED" ? (
-                <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-center text-[14px] font-semibold text-emerald-800">
-                  ✅ {t("waConnected")}
-                </div>
-              ) : waQr ? (
-                <div className="text-center">
-                  <p className="mb-2 text-[13px] text-zinc-500">{t("waWaiting")}</p>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={waQr} alt="WhatsApp QR" className="mx-auto max-w-[220px] rounded-xl border border-zinc-200" />
-                  <p className="mt-2 text-[11px] text-zinc-500">{t("waScanHint")}</p>
-                </div>
-              ) : (
-                <div className="rounded-xl border border-zinc-100 bg-zinc-50 px-4 py-3 text-center text-[13px] text-zinc-600">
-                  {t("waTapConnect")}
-                </div>
-              )}
-              <Button type="button" variant="primary" size="lg" className="w-full" loading={saving} onClick={() => void connectWhatsApp()}>
-                {waQr ? t("waRefreshQr") : t("waConnectBtn")}
-              </Button>
-              <Button type="button" variant="ghost" size="lg" className="w-full" onClick={() => setStep(7)}>
-                {t("waSkip")}
-              </Button>
             </div>
           ) : null}
         </div>

@@ -14,10 +14,11 @@ Use this document for **manual QA** of the WhatsApp Business Assistant. Complete
 |------|--------|----------|
 | 1.0 | Open `/`, tap **Start free**. | Lands on `/signup`. |
 | 1.0b | Open `/business-success`, pick Coaching. | Simulator loads (API or fallback); no crash on `.map`. |
-| 1.1 | On `/signup`, enter mobile → **Get verification code**. | Step 2; message says code sent to WhatsApp (code not shown in UI). |
-| 1.1b | Enter OTP (use `1234` in dev/staging only). | Token stored; redirect `/app` or onboarding. |
-| 1.2 | Enter code → **Continue**. | Token stored; redirect `/app` or onboarding. |
-| 1.3 | *(Alternate)* `/login` as **business admin** (`demo_admin` / `password123`). | Redirect to `/app` (Hub). |
+| 1.1 | On `/signup`, enter mobile → **Get verification code**. | Step 2; dev code shown locally; or WhatsApp message in prod. |
+| 1.1b | Enter OTP + create password (6+ chars). | Account created; redirect onboarding or `/app`. |
+| 1.2 | *(Alternate)* `/login` with mobile + password. | Redirect to `/app` (Hub). |
+| 1.2b | `/forgot-password` — OTP + new password. | Password updated; can login. |
+| 1.3 | *(Legacy)* `/login` as **business admin** (`demo_admin` / `password123`). | Redirect to `/app` (Hub). |
 | 1.4 | Hub shows greeting with a **name** (not generic “there” if profile has a name). | Personalized greeting. |
 | 1.5 | On **Free plan**: usage bars visible (customers, staff, bookings). | PlanUsageBar shown. |
 | 1.6 | Tap **Today** KPI card (if shown). | Opens bookings **day** view for today. |

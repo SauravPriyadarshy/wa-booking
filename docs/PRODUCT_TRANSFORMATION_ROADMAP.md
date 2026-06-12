@@ -25,7 +25,8 @@
 | Coaching module | Students, fees, attendance (Plus+) |
 | Clinic queue | `/app/queue` reception dashboard (Plus+) |
 | WhatsApp | Connect flow, inbox, BullMQ automation (confirm, remind, post-visit, inactive cron) |
-| Onboarding | 7-step standard; Darbhanga 2-step fast path with subcategories |
+| Onboarding | 5-step standard + subcategory auto-seed; Darbhanga 2-step fast path |
+| Auth | Signup OTP → password; login mobile+password; forgot password |
 | City SEO | 9 city pages + sitemap |
 | Roles | `BUSINESS_ADMIN`, `STAFF`, `SUPER_ADMIN` — UI gated via `/me` + `/me/ui` |
 | Production | Vercel (web + API) + Render (workers) + Neon (12 migrations) |

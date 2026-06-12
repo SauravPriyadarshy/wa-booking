@@ -7,13 +7,13 @@ import { useTranslations } from "next-intl";
 import { apiBase } from "@/lib/api-base";
 import { normalizeIndiaPhone } from "@/lib/phone-in";
 import { packByKey, type DarbhangaPackKey } from "@/lib/darbhanga-pack";
+import { IndiaPhoneInput, StepHint } from "@/components/ui";
 
 type Step = "phone" | "code";
 type OtpChannel = "whatsapp" | "email";
 
 function SignupForm() {
   const t = useTranslations("auth");
-  const tm = useTranslations("marketing");
   const router = useRouter();
   const searchParams = useSearchParams();
   const ref = searchParams.get("ref");
@@ -22,11 +22,11 @@ function SignupForm() {
 
   const [step, setStep] = useState<Step>("phone");
   const [phoneRaw, setPhoneRaw] = useState("");
-  const [email, setEmail] = useState("");
-  const [channel, setChannel] = useState<OtpChannel>("whatsapp");
   const [code, setCode] = useState("");
-  const [sentVia, setSentVia] = useState<OtpChannel | null>(null);
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [devCodeHint, setDevCodeHint] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const phone = normalizeIndiaPhone(phoneRaw);
@@ -48,12 +48,9 @@ function SignupForm() {
 
   async function requestCode() {
     setError(null);
+    setDevCodeHint(null);
     if (phone.length < 12) {
       setError(t("phoneInvalid"));
-      return;
-    }
-    if (channel === "email" && !email.trim()) {
-      setError(t("emailRequired"));
       return;
     }
     setLoading(true);
@@ -61,34 +58,43 @@ function SignupForm() {
       const res = await fetch(`${apiBase()}/auth/otp/request`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          phone,
-          channel: "whatsapp",
-        }),
+        body: JSON.stringify({ phone, channel: "whatsapp" }),
       });
       const data = (await res.json()) as {
         ok?: boolean;
-        devCode?: string;
         channel?: OtpChannel;
+        devCode?: string;
         message?: string | string[];
       };
       if (!res.ok) {
         const msg = Array.isArray(data.message) ? data.message.join(", ") : data.message;
         throw new Error(msg ?? t("otpSendFailed"));
       }
-      setSentVia(data.channel ?? channel);
+      if (data.devCode) setDevCodeHint(data.devCode);
       setStep("code");
     } catch (e) {
-      setError(e instanceof Error ? e.message : t("otpSendFailed"));
+      if (e instanceof TypeError && /fetch/i.test(e.message)) {
+        setError(t("serverUnavailable"));
+      } else {
+        setError(e instanceof Error ? e.message : t("otpSendFailed"));
+      }
     } finally {
       setLoading(false);
     }
   }
 
-  async function verifyCode() {
+  async function verifyAndCreateAccount() {
     setError(null);
     if (code.trim().length < 4) {
       setError(t("otpInvalid"));
+      return;
+    }
+    if (password.length < 6) {
+      setError(t("passwordTooShort"));
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError(t("passwordMismatch"));
       return;
     }
     setLoading(true);
@@ -96,17 +102,26 @@ function SignupForm() {
       const res = await fetch(`${apiBase()}/auth/otp/verify`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ phone, code: code.trim() }),
+        body: JSON.stringify({ phone, code: code.trim(), password }),
       });
-      const data = (await res.json()) as { token?: string; message?: string | string[] };
+      const data = (await res.json()) as {
+        token?: string;
+        user?: { businessId?: string | null };
+        message?: string | string[];
+      };
       if (!res.ok || !data.token) {
         const msg = Array.isArray(data.message) ? data.message.join(", ") : data.message;
         throw new Error(msg ?? t("otpError"));
       }
       localStorage.setItem("token", data.token);
-      router.replace(isDarbhanga ? onboardingHref() : "/app");
+      const dest = data.user?.businessId ? "/app" : onboardingHref();
+      router.replace(isDarbhanga || !data.user?.businessId ? onboardingHref() : dest);
     } catch (e) {
-      setError(e instanceof Error ? e.message : t("otpError"));
+      if (e instanceof TypeError && /fetch/i.test(e.message)) {
+        setError(t("serverUnavailable"));
+      } else {
+        setError(e instanceof Error ? e.message : t("otpError"));
+      }
     } finally {
       setLoading(false);
     }
@@ -121,44 +136,29 @@ function SignupForm() {
             {packByKey(pack ?? undefined) ? ` · ${packByKey(pack ?? undefined)!.titleHi}` : ""}
           </div>
         ) : null}
-        <p className="text-[11px] font-semibold uppercase tracking-wide text-emerald-700">
-          {isDarbhanga ? tm("mobileSignup") : t("signupTitle")}
-        </p>
-        <h1 className="mt-1 text-[22px] font-semibold tracking-tight text-zinc-900">
-          {step === "code" ? t("otpTitle") : t("signupTitle")}
+
+        <StepHint
+          icon="🚀"
+          title={step === "phone" ? t("signupHintTitle") : t("signupVerifyHintTitle")}
+          body={step === "phone" ? t("signupHintBody") : t("signupVerifyHintBody")}
+        />
+
+        <h1 className="mt-4 text-[22px] font-semibold tracking-tight text-zinc-900">
+          {step === "code" ? t("createAccountTitle") : t("signupTitle")}
         </h1>
         <p className="mt-2 text-[14px] leading-relaxed text-zinc-600">
-          {step === "code" ? t("otpSubtitle") : t("signupSubtitle")}
+          {step === "code" ? t("createAccountSubtitle") : t("signupSubtitle")}
         </p>
 
         {step === "phone" ? (
           <div className="mt-6 grid gap-3">
             <label className="grid gap-1.5">
               <span className="text-[13px] font-medium text-zinc-800">{t("phone")}</span>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[13px] font-medium text-zinc-500 select-none">
-                  +91
-                </span>
-                <input
-                  className="h-12 w-full rounded-2xl border border-zinc-200 bg-white pl-12 pr-4 text-[16px] outline-none ring-emerald-100 focus:border-emerald-400 focus:ring-4"
-                  inputMode="numeric"
-                  pattern="[0-9]{10}"
-                  maxLength={10}
-                  autoComplete="tel"
-                  placeholder={t("phonePlaceholder")}
-                  value={phoneRaw}
-                  onChange={(e) => setPhoneRaw(e.target.value.replace(/\D/g, "").slice(0, 10))}
-                />
-              </div>
+              <IndiaPhoneInput value={phoneRaw} onChange={setPhoneRaw} placeholder={t("phonePlaceholder")} />
             </label>
-
-            <div className="grid gap-1.5">
-              <span className="text-[13px] font-medium text-zinc-800">{t("otpDelivery")}</span>
-              <p className="rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2 text-[13px] font-medium text-emerald-800">
-                {t("otpViaWhatsApp")}
-              </p>
-            </div>
-
+            <p className="rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2 text-[13px] font-medium text-emerald-800">
+              {t("otpViaWhatsApp")}
+            </p>
             {error ? (
               <div className="rounded-2xl border border-red-200 bg-red-50 px-3 py-2 text-[13px] text-red-800">{error}</div>
             ) : null}
@@ -173,9 +173,13 @@ function SignupForm() {
           </div>
         ) : (
           <div className="mt-6 grid gap-3">
-            <p className="text-[13px] text-zinc-600">
-              {t("otpSentWhatsApp", { phone })}
-            </p>
+            <p className="text-[13px] text-zinc-600">{t("otpSentWhatsApp", { phone })}</p>
+            {devCodeHint ? (
+              <div className="rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-[13px] text-amber-900">
+                {t("devOtpHint", { code: devCodeHint })}
+              </div>
+            ) : null}
+            <p className="text-[12px] text-zinc-500">{t("otpFallback1234")}</p>
             <label className="grid gap-1.5">
               <span className="text-[13px] font-medium text-zinc-800">{t("otpPlaceholder")}</span>
               <input
@@ -188,16 +192,38 @@ function SignupForm() {
                 onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
               />
             </label>
+            <label className="grid gap-1.5">
+              <span className="text-[13px] font-medium text-zinc-800">{t("createPassword")}</span>
+              <input
+                type="password"
+                className="h-12 rounded-2xl border border-zinc-200 bg-white px-4 outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
+                autoComplete="new-password"
+                placeholder={t("passwordHint")}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </label>
+            <label className="grid gap-1.5">
+              <span className="text-[13px] font-medium text-zinc-800">{t("confirmPassword")}</span>
+              <input
+                type="password"
+                className="h-12 rounded-2xl border border-zinc-200 bg-white px-4 outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
+                autoComplete="new-password"
+                placeholder={t("passwordHint")}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+              />
+            </label>
             {error ? (
               <div className="rounded-2xl border border-red-200 bg-red-50 px-3 py-2 text-[13px] text-red-800">{error}</div>
             ) : null}
             <button
               type="button"
               disabled={loading}
-              onClick={() => void verifyCode()}
+              onClick={() => void verifyAndCreateAccount()}
               className="h-12 rounded-2xl bg-emerald-600 text-[15px] font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-60 active:scale-[0.99]"
             >
-              {loading ? t("verifyingOtp") : t("verifyButton")}
+              {loading ? t("creatingAccount") : t("createAccountBtn")}
             </button>
             <button
               type="button"
@@ -205,6 +231,7 @@ function SignupForm() {
               onClick={() => {
                 setStep("phone");
                 setCode("");
+                setDevCodeHint(null);
                 setError(null);
               }}
             >

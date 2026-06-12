@@ -9,6 +9,7 @@ import { apiBase } from "@/lib/api-base";
 import { ToastProvider } from "@/components/ui";
 import { LangSwitcher } from "@/components/lang-switcher";
 import { AppSupportChat } from "@/components/app/app-support-chat";
+import { SidebarWhatsAppNav } from "@/components/app/sidebar-whatsapp-nav";
 import {
   Home,
   CalendarDays,
@@ -78,7 +79,7 @@ const NAV_ITEMS: Array<{
   { href: "/app", labelKey: "today", module: "hub", Icon: Home, tab: true, side: true },
   { href: "/app/bookings", labelKey: "bookings", module: "bookings", Icon: CalendarDays, tab: true, side: true },
   { href: "/app/customers", labelKey: "customers", module: "customers", Icon: Users, tab: true, side: true },
-  { href: "/app/whatsapp", labelKey: "whatsapp", module: "whatsapp-connect", Icon: MessageCircle, tab: true, side: true },
+  { href: "/app/whatsapp", labelKey: "whatsapp", module: "whatsapp-connect", Icon: MessageCircle, tab: false, side: false },
   { href: "/app/more", labelKey: "more", module: null, Icon: MoreHorizontal, tab: true, side: false },
   { href: "/app/support", labelKey: "support", module: "support", Icon: LifeBuoy, tab: false, side: true },
   { href: "/app/analytics", labelKey: "insights", module: "analytics", Icon: BarChart2, tab: false, side: true },
@@ -163,6 +164,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                 </a>
               );
             })}
+            {show("whatsapp-connect") ? <SidebarWhatsAppNav /> : null}
             <button
               type="button"
               onClick={logout}

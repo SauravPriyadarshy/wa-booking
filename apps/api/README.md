@@ -55,7 +55,8 @@ npm run worker:dev     # BullMQ worker (separate terminal)
 
 | Module | Prefix | Notes |
 |--------|--------|-------|
-| `auth` | `/auth` | Login, OTP signup (WhatsApp/Email), refresh |
+| `categories` | `/categories` | Categories + subcategories; `POST /categories/sync-subcategories` to seed |
+| `auth` | `/auth` | Login (mobile+password), OTP signup, forgot password, refresh |
 | `me` | `/me` | Profile, UI capabilities, plan features |
 | `plans` | `/plans` | `GET /plans/me` — limits + usage |
 | `hub` | `/hub` | Dashboard, health, leakage, reactivation |

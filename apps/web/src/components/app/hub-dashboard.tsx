@@ -467,8 +467,6 @@ export function HubDashboard() {
     return `${o}/${ui.slug}`;
   }, [origin, ui]);
 
-  const showWhatsAppConnect = ui?.ok && ui.modules.includes("whatsapp-connect");
-
   const greetingName = useMemo(() => {
     const rawName = meUser?.name?.trim();
     if (rawName) {
@@ -533,44 +531,32 @@ export function HubDashboard() {
 
   return (
     <div className="pb-8 pt-4">
-      {/* 1. Header — greeting + WA status badge */}
-      <div className="animate-slide-up flex items-start justify-between gap-3">
-        <div>
-          <h1 className="text-[20px] font-semibold tracking-tight text-zinc-900">{greeting.title}</h1>
-          <p className="mt-0.5 text-[13px] font-medium text-zinc-500">{greeting.subtitle}</p>
-          <p className="mt-0.5 text-[12px] capitalize text-zinc-400">{d.dateLabel}</p>
-        </div>
-        <div className="shrink-0 pt-1">
-          <span
-            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold ${
-              waConnected ? "bg-emerald-100 text-emerald-800" : "bg-zinc-100 text-zinc-500"
-            }`}
-          >
-            <span
-              className={`h-1.5 w-1.5 rounded-full ${waConnected ? "bg-emerald-500" : "bg-zinc-400"}`}
-            />
-            {waConnected ? "WA Live" : "WA Off"}
-          </span>
-        </div>
+      {/* 1. Header */}
+      <div className="animate-slide-up">
+        <h1 className="text-[20px] font-semibold tracking-tight text-zinc-900">{greeting.title}</h1>
+        <p className="mt-0.5 text-[13px] font-medium text-zinc-500">{greeting.subtitle}</p>
+        <p className="mt-0.5 text-[12px] capitalize text-zinc-400">{d.dateLabel}</p>
       </div>
 
       {err ? (
         <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-[12px] text-amber-900">{err}</div>
       ) : null}
 
-      {!waConnected && !launchMode ? (
-        <div className="mt-4 flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
-          <div className="text-2xl shrink-0">💬</div>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium text-emerald-900">{th("waConnectTitle")}</p>
-            <p className="mt-1 text-xs text-emerald-700">{th("waConnectSub")}</p>
+      {!waConnected ? (
+        <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4">
+          <div className="flex items-start gap-3">
+            <span className="text-2xl shrink-0">💬</span>
+            <div className="min-w-0 flex-1">
+              <p className="text-[14px] font-semibold text-amber-900">{th("waConnectTitle")}</p>
+              <p className="mt-1 text-[12px] leading-relaxed text-amber-800">{th("waConnectSub")}</p>
+            </div>
+            <a
+              href="/app/whatsapp"
+              className="shrink-0 rounded-lg bg-amber-900 px-3 py-2 text-[12px] font-bold text-white"
+            >
+              {th("waConnectCta")}
+            </a>
           </div>
-          <a
-            href="/app/whatsapp"
-            className="shrink-0 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-medium text-white hover:bg-emerald-700"
-          >
-            {th("waConnectCta")}
-          </a>
         </div>
       ) : null}
 
@@ -947,47 +933,18 @@ export function HubDashboard() {
             <span className="text-center text-[12px] font-semibold leading-tight text-zinc-700">Customers</span>
           </a>
           <a
-            href={showWhatsAppConnect ? "/app/inbox" : "/app/whatsapp"}
+            href="/app/whatsapp"
             className="flex min-h-[88px] flex-col items-center justify-center gap-2 rounded-2xl border border-zinc-100 bg-white p-3 shadow-sm transition hover:border-green-200 hover:bg-green-50 active:scale-95 tap-highlight-none"
           >
-            <MessageCircle className="h-6 w-6 text-green-600" />
-            <span className="text-center text-[12px] font-semibold leading-tight text-zinc-700">WhatsApp</span>
+            <MessageCircle className={`h-6 w-6 ${waConnected ? "text-emerald-600" : "text-red-500"}`} />
+            <span className="text-center text-[12px] font-semibold leading-tight text-zinc-700">
+              {waConnected ? th("waLinked") : th("waLinkPhone")}
+            </span>
           </a>
         </div>
       </section>
 
-      {/* 6. WhatsApp Status Card */}
-      {showWhatsAppConnect ? (
-        <section className="mt-6">
-          <div className="rounded-2xl border border-zinc-100 bg-white p-4 shadow-sm">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className={`grid h-10 w-10 place-items-center rounded-xl ${waConnected ? "bg-emerald-100" : "bg-zinc-100"}`}>
-                  <MessageCircle className={`h-5 w-5 ${waConnected ? "text-emerald-600" : "text-zinc-400"}`} />
-                </div>
-                <div>
-                  <div className="text-[14px] font-bold text-zinc-900">
-                    {waConnected ? "WhatsApp Connected" : wa?.status === "QR_REQUIRED" ? "Scan QR to Connect" : "WhatsApp Disconnected"}
-                  </div>
-                  <div className="text-[12px] text-zinc-500">
-                    {waConnected
-                      ? `${d.stats.needsReplyCount} messages need reply`
-                      : "Reconnect to send automatic reminders"}
-                  </div>
-                </div>
-              </div>
-              <a
-                href={waConnected ? "/app/inbox" : "/app/whatsapp"}
-                className={`shrink-0 rounded-xl px-3 py-2 text-[12px] font-bold text-white ${waConnected ? "bg-zinc-900" : "bg-emerald-600"}`}
-              >
-                {waConnected ? "Inbox" : "Reconnect"}
-              </a>
-            </div>
-          </div>
-        </section>
-      ) : null}
-
-      {/* 7. AI suggestion card */}
+      {/* 6. AI suggestion card */}
       {sug ? (
         <div className="mt-5 rounded-2xl border border-emerald-100 bg-emerald-50/80 p-4 shadow-sm">
           <div className="flex items-start justify-between gap-2">

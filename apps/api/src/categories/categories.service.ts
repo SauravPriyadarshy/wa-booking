@@ -53,7 +53,7 @@ const DEFAULT_TEMPLATES = [
 export class CategoriesService {
   constructor(private prisma: PrismaService) {}
 
-  listActive() {
+  private fetchActive() {
     return this.prisma.businessCategory.findMany({
       where: { isActive: true },
       orderBy: { name: 'asc' },
@@ -76,6 +76,20 @@ export class CategoriesService {
         },
       },
     });
+  }
+
+  async listActive() {
+    let rows = await this.fetchActive();
+    if (rows.some((r) => !r.subcategories?.length)) {
+      await this.seedSubcategories();
+      rows = await this.fetchActive();
+    }
+    return rows;
+  }
+
+  async syncAndList() {
+    await this.seedSubcategories();
+    return this.fetchActive();
   }
 
   async seedSubcategories() {

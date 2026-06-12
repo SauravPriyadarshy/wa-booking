@@ -17,9 +17,16 @@ Current state, priorities, and known gaps for **WhatsApp Business Assistant**.
 - [x] **Activation codes** — `FREE30`, `PLUS30`, `PLUS90`, `PRO30`, `PRO60`, `PRO90` + Super Admin UI
 - [x] **Demo tenants** — `tenantType=DEMO` isolated from LIVE businesses; public booking blocked on demos
 - [x] **Subcategory system** — Category → subcategory with "Other" + custom specialization
-- [x] **7-step onboarding** — info → category/subcategory → services → hours → staff → WhatsApp → done
+- [x] **7-step onboarding** — info → category/subcategory → services → hours → staff → done (WhatsApp connect from sidebar, not onboarding)
+- [x] **5-step onboarding (June 12)** — streamlined wizard with step hints; subcategory dropdown + auto-seed via `POST /categories/sync-subcategories`
+- [x] **Auth refresh (June 12)** — signup: WhatsApp OTP → set password; login: mobile + password; forgot password at `/forgot-password`
+- [x] **Settings icon cards (June 12)** — `/app/settings` with Lucide icons per section
+- [x] **Bookings UX refresh (June 12)** — compact cards, day stats pills, red **+ Show More** for slots/timeline/list
+- [x] **Help chat admin WhatsApp (June 12)** — Send to admin opens `wa.me/919122000751` with `Query From "Business (Mobile)"`
+- [x] **JWT boot fix (June 12)** — empty `JWT_SECRET` in `.env` falls back to `dev` (local dev no longer crashes)
 - [x] **Bilingual UI** — English + Hindi/Hinglish switcher (`EN` · `हिं`); Maithili content keys in Super Admin
-- [x] **OTP delivery** — WhatsApp only on signup UI; code never shown publicly (dev bypass `1234` server-side only)
+- [x] **OTP delivery** — WhatsApp on signup; dev shows code in UI + bypass `1234`; auto-resolves sender from connected session
+- [x] **WhatsApp connect simplified** — single QR flow at `/app/whatsapp`; sidebar status dot only
 - [x] **In-app help chat** — 💬 floating button with AI Q&A + send to admin (Support ticket)
 - [x] **Bookings UX** — compact calendar, centered forms, centered modal (no blur bottom sheet)
 - [x] **Logout** — red button below Settings (sidebar + Settings + More pages)

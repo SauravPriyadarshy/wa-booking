@@ -282,6 +282,37 @@ export function BusinessSuccessClient({ initialTypes }: Props) {
 }
 
 export function BusinessSuccessFallback() {
-  const tc = useTranslations("common");
-  return <div className="py-20 text-center text-zinc-400">{tc("loading")}</div>;
+  const t = useTranslations("businessSuccess");
+  const cards = [
+    { icon: "💈", w: "w-20" },
+    { icon: "🏥", w: "w-24" },
+    { icon: "📚", w: "w-16" },
+    { icon: "🔧", w: "w-20" },
+    { icon: "🧖", w: "w-18" },
+    { icon: "🏪", w: "w-22" },
+  ];
+  return (
+    <>
+      <section className="animate-pulse bg-gradient-to-b from-emerald-600 to-emerald-700 px-4 py-10">
+        <div className="mx-auto max-w-lg text-center">
+          <div className="mx-auto h-3 w-32 rounded bg-emerald-400/50" />
+          <div className="mx-auto mt-4 h-8 w-3/4 rounded-lg bg-emerald-400/40" />
+          <div className="mx-auto mt-3 h-4 w-full max-w-sm rounded bg-emerald-400/30" />
+        </div>
+      </section>
+      <section className="shell py-8">
+        <div className="mx-auto h-6 w-48 animate-pulse rounded-lg bg-zinc-200" />
+        <div className="mx-auto mt-2 h-4 w-64 animate-pulse rounded bg-zinc-100" />
+        <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-3">
+          {cards.map((c, i) => (
+            <div key={i} className="flex animate-pulse flex-col items-center gap-2 rounded-2xl border border-zinc-100 bg-white p-4">
+              <span className="text-3xl opacity-40">{c.icon}</span>
+              <div className={`h-4 ${c.w} rounded bg-zinc-200`} />
+            </div>
+          ))}
+        </div>
+        <p className="mt-6 text-center text-[13px] text-zinc-400">{t("pickType")}</p>
+      </section>
+    </>
+  );
 }

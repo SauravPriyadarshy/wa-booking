@@ -61,7 +61,9 @@ docker-compose.yml    # Local dev: Postgres + Redis
 |-----|---------|
 | [https://wa-booking-web.vercel.app](https://wa-booking-web.vercel.app) | Landing page (compact, mobile-first) |
 | [https://wa-booking-web.vercel.app/business-success](https://wa-booking-web.vercel.app/business-success) | Interactive industry demo (no signup) |
-| [https://wa-booking-web.vercel.app/signup](https://wa-booking-web.vercel.app/signup) | Mobile OTP signup (WhatsApp or Email) |
+| [https://wa-booking-web.vercel.app/signup](https://wa-booking-web.vercel.app/signup) | Mobile OTP signup → set password |
+| [https://wa-booking-web.vercel.app/login](https://wa-booking-web.vercel.app/login) | Mobile + password login |
+| [https://wa-booking-web.vercel.app/forgot-password](https://wa-booking-web.vercel.app/forgot-password) | Reset password via WhatsApp OTP |
 | [https://wa-booking-web.vercel.app/demo-salon](https://wa-booking-web.vercel.app/demo-salon) | Public booking page |
 | [https://wa-booking-web.vercel.app/darbhanga](https://wa-booking-web.vercel.app/darbhanga) | Darbhanga launch page |
 | [https://wa-booking-web.vercel.app/city/darbhanga](https://wa-booking-web.vercel.app/city/darbhanga) | City SEO — Darbhanga |
@@ -91,8 +93,10 @@ cp .env.example .env
 npx prisma migrate deploy
 npx prisma generate
 npm run db:seed
-npm run start:dev    # or: npm run build && node dist/main.js
+npm run start:dev    # API on :3000 — ensure JWT_SECRET is set or blank (falls back to dev)
 ```
+
+> **Tip:** If `nest start --watch` fails with missing `dist/main`, run `rm -f tsconfig.build.tsbuildinfo && npm run build` first.
 
 ### 2. BullMQ worker
 

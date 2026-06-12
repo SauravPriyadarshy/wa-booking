@@ -63,6 +63,12 @@ export class OtpVerifyDto {
   @IsString()
   @MinLength(4)
   code: string;
+
+  /** Set on signup or password reset after OTP is verified. */
+  @IsOptional()
+  @IsString()
+  @MinLength(6)
+  password?: string;
 }
 
 export class SetRoleDto {

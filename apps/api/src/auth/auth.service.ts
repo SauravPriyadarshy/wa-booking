@@ -105,11 +105,19 @@ export class AuthService {
     return this.otpDelivery.storeAndSend({ phone, channel, email });
   }
 
-  async verifyOtp(phone: string, code: string) {
+  async verifyOtp(phone: string, code: string, password?: string) {
     const ok = await this.otpDelivery.verifyStoredCode(phone, code);
     if (!ok) throw new UnauthorizedException('Invalid code');
     const user = await this.prisma.user.findUnique({ where: { phone } });
     if (!user) throw new UnauthorizedException('Invalid phone');
+
+    if (password?.trim()) {
+      const passwordHash = await bcrypt.hash(password.trim(), 10);
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { passwordHash, passwordUpdatedAt: new Date() },
+      });
+    }
 
     const token = await this.jwt.signAsync({
       userId: user.id,
@@ -119,9 +127,15 @@ export class AuthService {
 
     const refreshToken = await this.issueRefreshToken(user.id);
 
+    const updated = await this.prisma.user.findUnique({
+      where: { id: user.id },
+      select: { passwordHash: true },
+    });
+
     return {
       token,
       refreshToken,
+      hasPassword: Boolean(updated?.passwordHash),
       user: {
         id: user.id,
         role: user.role,

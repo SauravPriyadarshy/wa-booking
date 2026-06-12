@@ -29,9 +29,12 @@ Comprehensive overview of platform functionality, user flows, and design philoso
 - No account required.
 
 ### New Business Owner
-- **Signup:** Mobile OTP on `/signup` (WhatsApp or Email) → **7-step onboarding** → Hub.
+- **Signup:** Mobile OTP on `/signup` (WhatsApp) → set password → **5-step onboarding** → Hub.
+- **Login:** Mobile + password on `/login` (OTP not needed daily).
+- **Forgot password:** `/forgot-password` — WhatsApp OTP + new password.
 - **Fast path (Darbhanga):** `/signup?ref=darbhanga&pack=salon` — 2-step setup.
 - **Activation code:** Enter `PLUS90` during onboarding to unlock Plus features.
+- **Specializations:** Category dropdown auto-loads subcategories; reload syncs via API if empty.
 
 ### Business Admin
 - **Hub** is the command center — today's bookings, health score (Plus+), revenue leakage (Plus+).

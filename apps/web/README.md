@@ -33,8 +33,11 @@ Requires API running on `:3000` and seeded database.
 |-------|---------|
 | `/` | Compact landing page |
 | `/business-success` | Interactive industry simulator (public) |
-| `/signup` | Mobile OTP signup |
-| `/login` | Admin/staff password login |
+| `/signup` | Mobile OTP signup → set password |
+| `/login` | Mobile + password login |
+| `/forgot-password` | Reset password via WhatsApp OTP |
+| `/app/settings` | Icon cards for all settings sections |
+| `/app/bookings` | Compact day/list view with + Show More |
 | `/app` | Hub (Today Workspace) |
 | `/app/reactivation` | Customer reactivation (Plus+) |
 | `/app/students`, `/app/fees` | Coaching module (Plus+) |

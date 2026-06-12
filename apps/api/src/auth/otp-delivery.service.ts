@@ -1,5 +1,6 @@
 import { BadRequestException, Inject, Injectable, Logger } from '@nestjs/common';
 import type IORedis from 'ioredis';
+import { PrismaService } from '../prisma/prisma.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
 
 export type OtpChannel = 'whatsapp' | 'email';
@@ -7,10 +8,12 @@ export type OtpChannel = 'whatsapp' | 'email';
 @Injectable()
 export class OtpDeliveryService {
   private readonly logger = new Logger(OtpDeliveryService.name);
+  private resolvedBusinessId: string | null | undefined;
 
   constructor(
     @Inject('REDIS') private readonly redis: IORedis,
     private readonly whatsapp: WhatsAppService,
+    private readonly prisma: PrismaService,
   ) {}
 
   private otpKey(phone: string) {
@@ -23,6 +26,40 @@ export class OtpDeliveryService {
 
   private generateCode(): string {
     return String(Math.floor(1000 + Math.random() * 9000));
+  }
+
+  /** WhatsApp-web.js expects digits only, with country code (91XXXXXXXXXX). */
+  private normalizeWaRecipient(phone: string): string {
+    const digits = phone.replace(/\D/g, '');
+    if (digits.length === 10) return `91${digits}`;
+    if (digits.length === 12 && digits.startsWith('91')) return digits;
+    if (digits.startsWith('91') && digits.length >= 12) return digits.slice(0, 12);
+    return digits;
+  }
+
+  private async resolveOtpBusinessId(): Promise<string | null> {
+    if (this.resolvedBusinessId !== undefined) return this.resolvedBusinessId;
+
+    const fromEnv = process.env.OTP_WA_BUSINESS_ID?.trim();
+    if (fromEnv) {
+      this.resolvedBusinessId = fromEnv;
+      return fromEnv;
+    }
+
+    const connected = await this.prisma.whatsAppSession.findFirst({
+      where: { status: 'CONNECTED' },
+      orderBy: { lastConnectedAt: 'desc' },
+      select: { businessId: true },
+    });
+
+    if (connected) {
+      this.logger.log(`OTP sender auto-resolved to business ${connected.businessId}`);
+      this.resolvedBusinessId = connected.businessId;
+      return connected.businessId;
+    }
+
+    this.resolvedBusinessId = null;
+    return null;
   }
 
   async storeAndSend(args: {
@@ -56,7 +93,7 @@ export class OtpDeliveryService {
     if (!delivered) {
       const hint =
         args.channel === 'whatsapp'
-          ? 'WhatsApp OTP not sent — connect WA worker or set OTP_WA_BUSINESS_ID'
+          ? 'WhatsApp OTP not sent — connect WA worker session or set OTP_WA_BUSINESS_ID'
           : 'Email OTP not sent — set RESEND_API_KEY';
       this.logger.warn(`${hint}. Phone ${args.phone.slice(-4).padStart(args.phone.length, '*')}`);
 
@@ -69,8 +106,7 @@ export class OtpDeliveryService {
       }
     }
 
-    // Never expose OTP code in production API responses — delivery is via WhatsApp/Email only.
-    const showDevCode = process.env.NODE_ENV !== "production" && (!delivered || this.devBypassEnabled());
+    const showDevCode = process.env.NODE_ENV !== 'production' && (!delivered || this.devBypassEnabled());
 
     return {
       ok: true,
@@ -101,13 +137,21 @@ export class OtpDeliveryService {
   }
 
   private async sendViaWhatsApp(phone: string, message: string): Promise<boolean> {
-    const businessId = process.env.OTP_WA_BUSINESS_ID;
+    const businessId = await this.resolveOtpBusinessId();
     if (!businessId) {
-      this.logger.warn('OTP_WA_BUSINESS_ID not set — WhatsApp OTP skipped');
+      this.logger.warn('No OTP WhatsApp sender — set OTP_WA_BUSINESS_ID or connect a business session');
       return false;
     }
 
-    const to = phone.replace(/\D/g, '');
+    const live = await this.whatsapp.workerStatus(businessId);
+    if (live.status !== 'CONNECTED') {
+      this.logger.warn(
+        `OTP WhatsApp session ${businessId} is ${live.status ?? 'DISCONNECTED'} — scan QR at /app/whatsapp`,
+      );
+      return false;
+    }
+
+    const to = this.normalizeWaRecipient(phone);
     const result = await this.whatsapp.sendMessage(businessId, to, message);
     if (!result.ok) {
       this.logger.warn(`WhatsApp OTP send failed: ${result.error}`);

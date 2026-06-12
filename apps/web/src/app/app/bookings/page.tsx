@@ -30,6 +30,9 @@ type Booking = {
 };
 
 const BOOKING_STATUSES = new Set<Booking["status"]>(["PENDING", "CONFIRMED", "CANCELLED", "COMPLETED", "NO_SHOW"]);
+const SLOTS_PREVIEW_LIMIT = 8;
+const TIMELINE_LIMIT = 5;
+const LIST_LIMIT = 5;
 
 type DayAppointment = Booking;
 
@@ -178,6 +181,9 @@ export default function BookingsPage() {
   const [holidayName, setHolidayName] = useState("");
   const [cancelBookingsOnHoliday, setCancelBookingsOnHoliday] = useState(true);
   const [holidaySaving, setHolidaySaving] = useState(false);
+  const [showMoreSlots, setShowMoreSlots] = useState(false);
+  const [showMoreTimeline, setShowMoreTimeline] = useState(false);
+  const [showMoreList, setShowMoreList] = useState(false);
 
   const commitSelectedDate = useCallback((iso: string) => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return;
@@ -349,6 +355,48 @@ export default function BookingsPage() {
     return bookings.filter((b) => b.status === listStatusFilter);
   }, [bookings, listStatusFilter]);
 
+  const visibleListRows = showMoreList ? listRows : listRows.slice(0, LIST_LIMIT);
+  const hasMoreList = listRows.length > LIST_LIMIT;
+
+  const visibleSlots = showMoreSlots ? slotsPreview : slotsPreview.slice(0, SLOTS_PREVIEW_LIMIT);
+  const hasMoreSlots = slotsPreview.length > SLOTS_PREVIEW_LIMIT;
+
+  const bookingTimelineRows = useMemo(
+    () => timeline.filter((r): r is Extract<TimelineRow, { kind: "booking" }> => r.kind === "booking"),
+    [timeline],
+  );
+
+  const visibleTimeline = useMemo(() => {
+    if (showMoreTimeline) return timeline;
+    let bookingCount = 0;
+    return timeline.filter((row) => {
+      if (row.kind === "free") return bookingCount < TIMELINE_LIMIT;
+      bookingCount += 1;
+      return bookingCount <= TIMELINE_LIMIT;
+    });
+  }, [timeline, showMoreTimeline]);
+
+  const hasMoreTimeline = bookingTimelineRows.length > TIMELINE_LIMIT;
+
+  const dayStats = useMemo(() => {
+    if (!dayData?.appointments) return { total: 0, pending: 0, confirmed: 0 };
+    const appts = dayData.appointments;
+    return {
+      total: appts.length,
+      pending: appts.filter((a) => a.status === "PENDING").length,
+      confirmed: appts.filter((a) => a.status === "CONFIRMED").length,
+    };
+  }, [dayData]);
+
+  useEffect(() => {
+    setShowMoreSlots(false);
+    setShowMoreTimeline(false);
+  }, [selectedDate]);
+
+  useEffect(() => {
+    setShowMoreList(false);
+  }, [listStatusFilter]);
+
   useEffect(() => {
     if (!holidayDialogOpen) return;
     const onKey = (e: KeyboardEvent) => {
@@ -359,7 +407,7 @@ export default function BookingsPage() {
   }, [holidayDialogOpen]);
 
   return (
-    <div className="mx-auto max-w-lg space-y-4">
+    <div className="mx-auto max-w-lg space-y-3 pb-4">
       <div className="flex items-center justify-between gap-2">
         <Link href="/app" className="text-[13px] font-semibold text-emerald-700">
           ← Hub
@@ -373,9 +421,19 @@ export default function BookingsPage() {
         </button>
       </div>
 
-      <h1 className="mt-3 text-[20px] font-semibold tracking-tight text-zinc-900">Bookings</h1>
+      <div className="flex items-end justify-between gap-2">
+        <h1 className="text-[20px] font-semibold tracking-tight text-zinc-900">Bookings</h1>
+        {view === "day" && dayData && !loading ? (
+          <div className="flex gap-1.5 text-[10px] font-bold">
+            <span className="rounded-full bg-zinc-100 px-2 py-1 text-zinc-700">{dayStats.total} today</span>
+            {dayStats.pending > 0 ? (
+              <span className="rounded-full bg-amber-100 px-2 py-1 text-amber-800">{dayStats.pending} pending</span>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
 
-      <div className="mt-4 flex rounded-xl bg-zinc-100 p-1">
+      <div className="flex rounded-xl bg-zinc-100 p-1">
         <button
           type="button"
           onClick={() => setView("day")}
@@ -401,7 +459,7 @@ export default function BookingsPage() {
       ) : null}
 
       {view === "day" ? (
-        <div className="mt-5 flex flex-col items-center space-y-4">
+        <div className="space-y-3">
           <BookingCalendar
             selectedDate={selectedDate}
             onSelectDate={commitSelectedDate}
@@ -412,26 +470,34 @@ export default function BookingsPage() {
           />
 
           {!loading && dayData && !dayData.isHoliday && !dayData.hours.isClosed && firstServiceId ? (
-            <Card className="!p-4">
-              <div className="text-[13px] font-semibold text-zinc-900">Available start times</div>
-              <p className="mt-0.5 text-[11px] leading-snug text-zinc-500">
-                Preview for <span className="font-medium text-zinc-700">{services[0]?.name}</span>. Staff assignment
-                and confirmation happen in New booking.
-              </p>
-              <div className="mt-3 flex flex-wrap gap-1.5">
-                {slotsPreview.length === 0 ? (
-                  <span className="text-[12px] text-zinc-500">No open slots for this service today.</span>
+            <Card className="!p-3">
+              <div className="flex items-center justify-between gap-2">
+                <div className="text-[13px] font-semibold text-zinc-900">Open slots</div>
+                <span className="text-[10px] font-medium text-zinc-400">{services[0]?.name}</span>
+              </div>
+              <div className="mt-2 flex flex-wrap gap-1">
+                {visibleSlots.length === 0 ? (
+                  <span className="text-[12px] text-zinc-500">No open slots today.</span>
                 ) : (
-                  slotsPreview.map((s) => (
+                  visibleSlots.map((s) => (
                     <span
                       key={s.startAt}
-                      className="rounded-lg border border-emerald-100 bg-emerald-50 px-2.5 py-1.5 text-[12px] font-semibold tabular-nums text-emerald-900"
+                      className="rounded-md border border-emerald-100 bg-emerald-50 px-2 py-1 text-[11px] font-semibold tabular-nums text-emerald-900"
                     >
                       {formatSlotTime(s.startAt)}
                     </span>
                   ))
                 )}
               </div>
+              {hasMoreSlots ? (
+                <button
+                  type="button"
+                  onClick={() => setShowMoreSlots((v) => !v)}
+                  className="mt-2 text-[12px] font-bold text-red-600 hover:underline"
+                >
+                  {showMoreSlots ? "− Show less" : `+ Show More (${slotsPreview.length - SLOTS_PREVIEW_LIMIT})`}
+                </button>
+              ) : null}
             </Card>
           ) : null}
 
@@ -577,7 +643,7 @@ export default function BookingsPage() {
             <div className="text-[13px] text-zinc-500">No slots to show.</div>
           ) : (
             <div className="space-y-0 border-l-2 border-emerald-200 pl-3">
-              {timeline.map((row, idx) =>
+              {visibleTimeline.map((row, idx) =>
                 row.kind === "free" ? (
                   <div key={`f-${idx}-${row.startMin}`} className="relative flex min-h-[36px] items-center gap-3 py-1.5">
                     <span className="w-14 shrink-0 text-[12px] font-medium tabular-nums text-zinc-400">
@@ -660,11 +726,36 @@ export default function BookingsPage() {
                   </div>
                 ),
               )}
+              {hasMoreTimeline ? (
+                <button
+                  type="button"
+                  onClick={() => setShowMoreTimeline((v) => !v)}
+                  className="mt-2 w-full py-1 text-center text-[12px] font-bold text-red-600 hover:underline"
+                >
+                  {showMoreTimeline
+                    ? "− Show less"
+                    : `+ Show More (${bookingTimelineRows.length - TIMELINE_LIMIT} bookings)`}
+                </button>
+              ) : null}
             </div>
           )}
         </div>
       ) : (
-        <div className="mt-5 space-y-3">
+        <div className="space-y-3">
+          <div className="flex flex-wrap gap-1.5">
+            {(["ALL", "PENDING", "CONFIRMED", "COMPLETED", "CANCELLED"] as const).map((st) => (
+              <button
+                key={st}
+                type="button"
+                onClick={() => setListStatusFilter(st)}
+                className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                  listStatusFilter === st ? "bg-emerald-600 text-white" : "bg-zinc-100 text-zinc-600"
+                }`}
+              >
+                {st === "ALL" ? "All" : st.charAt(0) + st.slice(1).toLowerCase()}
+              </button>
+            ))}
+          </div>
           {loading ? (
             <>
               <BookingCardSkeleton />
@@ -696,8 +787,9 @@ export default function BookingsPage() {
               }
             />
           ) : (
-            listRows.map((b) => (
-              <Card key={b.id} className="!p-4">
+            <>
+              {visibleListRows.map((b) => (
+              <Card key={b.id} className="!p-3">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <div className="truncate text-[15px] font-semibold text-zinc-900">
@@ -753,16 +845,20 @@ export default function BookingsPage() {
                   ) : null}
                 </div>
               </Card>
-            ))
+              ))}
+              {hasMoreList ? (
+                <button
+                  type="button"
+                  onClick={() => setShowMoreList((v) => !v)}
+                  className="w-full py-1 text-center text-[12px] font-bold text-red-600 hover:underline"
+                >
+                  {showMoreList ? "− Show less" : `+ Show More (${listRows.length - LIST_LIMIT})`}
+                </button>
+              ) : null}
+            </>
           )}
         </div>
       )}
-
-      <div className="mt-6 hidden md:block">
-        <Button type="button" variant="primary" size="lg" className="w-full max-w-xs" onClick={() => setSheetOpen(true)}>
-          New booking
-        </Button>
-      </div>
 
       {holidayDialogOpen ? (
         <div

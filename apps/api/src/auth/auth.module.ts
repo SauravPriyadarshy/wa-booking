@@ -9,6 +9,7 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { OtpDeliveryService } from './otp-delivery.service';
 import { JwtStrategy } from './jwt.strategy';
+import { resolveJwtSecret } from '../common/jwt-secret';
 
 @Module({
   imports: [
@@ -20,7 +21,7 @@ import { JwtStrategy } from './jwt.strategy';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
-        secret: config.get<string>('JWT_SECRET', 'dev'),
+        secret: resolveJwtSecret(config),
         signOptions: { expiresIn: '7d' },
       }),
     }),

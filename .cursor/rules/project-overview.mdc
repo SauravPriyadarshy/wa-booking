@@ -35,7 +35,7 @@ Every database query that touches business data **must** filter by `businessId`.
 `SUPER_ADMIN` · `BUSINESS_ADMIN` · `STAFF` — defined in `UserRole` Prisma enum. UI gated via `/me/ui` endpoint.
 
 ## Auth flow
-JWT access token (short-lived) + refresh token stored in `RefreshToken` table with indexed `tokenPrefix` (first 8 chars) for O(1) lookup. Mobile signup uses OTP (dev stub: `1234`). Password login for admin/staff. Global rate limit: 60 req/min via `ThrottlerModule`.
+JWT access token (short-lived) + refresh token stored in `RefreshToken` table with indexed `tokenPrefix` (first 8 chars) for O(1) lookup. **Signup:** WhatsApp OTP → set password. **Login:** mobile + password. **Forgot password:** `/forgot-password` via OTP. Dev OTP bypass: `1234`; dev code shown in signup UI when WA not connected. Empty `JWT_SECRET` falls back to `dev` locally. Global rate limit: 60 req/min via `ThrottlerModule`; auth routes 10/min.
 
 ## Dynamic content (SiteContent)
 All user-facing text (landing page, SEO metadata, WhatsApp message templates, city pages, onboarding text) is stored in the `SiteContent` model. Keys use dotted namespaces: `landing.hero.title`, `seo.landing.description`, `wa.booking_confirm`. Editable by Super Admin at `/app/superadmin/content`. Redis cached for 5 minutes — invalidated on update.

@@ -97,7 +97,10 @@ export default function SuperAdminBusinessesPage() {
         </div>
 
         <div className="mt-4 flex items-center justify-between">
-          <h1 className="text-[18px] font-semibold text-zinc-900">All Businesses</h1>
+          <div>
+            <h1 className="text-[18px] font-semibold text-zinc-900">All Businesses</h1>
+            <p className="mt-1 text-[12px] text-zinc-500">Add a new shop — they get login, booking link & WhatsApp setup.</p>
+          </div>
           <button
             onClick={() => { setShowForm(!showForm); setResult(null); setError(null); }}
             className="h-9 rounded-xl bg-emerald-600 px-4 text-[13px] font-semibold text-white transition hover:bg-emerald-700"

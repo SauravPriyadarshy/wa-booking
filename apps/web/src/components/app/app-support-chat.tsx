@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { apiBase } from "@/lib/api-base";
 import { resolveLocale, type AppLocale } from "@/lib/locale";
@@ -11,31 +11,39 @@ type GuideEntry = {
   answerHi: string;
 };
 
+type MeContext = {
+  businessName: string;
+  mobile: string;
+  businessId: string | null;
+};
+
+const ADMIN_WA = (process.env.NEXT_PUBLIC_ADMIN_WHATSAPP ?? "919122000751").replace(/\D/g, "");
+
 const KNOWLEDGE: GuideEntry[] = [
   {
     keywords: ["booking", "book", "appointment", "slot"],
-    answerEn: "Open Bookings → tap New booking at the top. Pick customer, service, date, and time. Past slots and booked times are greyed out.",
-    answerHi: "Bookings kholein → upar New booking dabayein. Customer, service, date aur time chunein. Purane aur booked slots grey dikhenge.",
+    answerEn: "Open Bookings → tap + New booking. Pick customer, service, date, and time. Past slots and booked times are greyed out.",
+    answerHi: "Bookings kholein → + New booking dabayein. Customer, service, date aur time chunein.",
   },
   {
     keywords: ["whatsapp", "wa", "connect", "qr"],
-    answerEn: "Go to WhatsApp in the bottom nav → Get QR / connect → scan with WhatsApp → Linked devices. Reminders send automatically after connect.",
-    answerHi: "WhatsApp tab → Get QR / connect → WhatsApp se Linked devices scan karein. Connect ke baad reminders automatic jaate hain.",
+    answerEn: "Sidebar → WhatsApp → Show QR code → scan on your phone (Linked devices). Booking alerts go out automatically.",
+    answerHi: "Sidebar → WhatsApp → QR code → phone se scan karein. Alerts automatic jayenge.",
   },
   {
     keywords: ["plan", "plus", "pro", "upgrade", "limit"],
-    answerEn: "Free plan: 50 customers, 1 staff. Plus unlocks health score, reactivation, coaching. Enter an activation code during onboarding or ask admin.",
-    answerHi: "Free: 50 customers, 1 staff. Plus mein health score, reactivation, coaching. Onboarding par activation code daalein ya admin se puchhein.",
+    answerEn: "Free plan: 50 customers, 1 staff. Plus unlocks health score, reactivation, coaching. Enter an activation code during onboarding.",
+    answerHi: "Free: 50 customers, 1 staff. Plus mein zyada features. Onboarding par activation code daalein.",
   },
   {
     keywords: ["customer", "crm", "add"],
-    answerEn: "Customers tab → add from the list or quick-add name + phone when creating a booking.",
-    answerHi: "Customers tab → list se add karein ya booking banate waqt name + phone se quick add.",
+    answerEn: "Customers tab → add from the list or quick-add when creating a booking.",
+    answerHi: "Customers tab → list se add karein ya booking banate waqt add karein.",
   },
   {
     keywords: ["help", "how", "kaise", "setup"],
-    answerEn: "Finish onboarding (business name → category → services → hours → WhatsApp). Hub shows today's bookings and quick actions.",
-    answerHi: "Onboarding poora karein (naam → category → services → hours → WhatsApp). Hub par aaj ki bookings aur quick actions milte hain.",
+    answerEn: "Finish onboarding (name → category → services → hours). Link WhatsApp from the sidebar when ready.",
+    answerHi: "Onboarding poora karein. WhatsApp sidebar se link karein.",
   },
 ];
 
@@ -63,6 +71,14 @@ function matchAnswer(input: string, locale: AppLocale): string {
     : "Main bookings, WhatsApp, plan aur customers mein madad kar sakta hoon. Insaan chahiye? Neeche Send to admin dabayein.";
 }
 
+function formatMobileDisplay(phone: string | null | undefined): string {
+  if (!phone?.trim()) return "No mobile";
+  const digits = phone.replace(/\D/g, "");
+  if (digits.length === 10) return digits;
+  if (digits.length === 12 && digits.startsWith("91")) return digits.slice(2);
+  return phone.trim();
+}
+
 type Message = { role: "user" | "bot"; text: string };
 
 export function AppSupportChat() {
@@ -74,7 +90,33 @@ export function AppSupportChat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [sending, setSending] = useState(false);
   const [adminSent, setAdminSent] = useState(false);
+  const [meCtx, setMeCtx] = useState<MeContext | null>(null);
   const locale = useMemo(() => readLocale(), [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    fetch(`${apiBase()}/me`, { headers: { authorization: `Bearer ${token}` } })
+      .then((r) => r.json())
+      .then((d: {
+        ok?: boolean;
+        user?: { phone?: string | null; businessId?: string | null };
+        business?: { name?: string; phone?: string | null } | null;
+      }) => {
+        if (!d.ok) return;
+        const mobile =
+          formatMobileDisplay(d.user?.phone) !== "No mobile"
+            ? formatMobileDisplay(d.user?.phone)
+            : formatMobileDisplay(d.business?.phone);
+        setMeCtx({
+          businessName: d.business?.name?.trim() || "My Business",
+          mobile,
+          businessId: d.user?.businessId ?? null,
+        });
+      })
+      .catch(() => {});
+  }, [open]);
 
   function send(text: string) {
     const trimmed = text.trim();
@@ -84,30 +126,36 @@ export function AppSupportChat() {
   }
 
   async function sendToAdmin() {
-    const title = adminQuery.trim();
-    if (title.length < 5) return;
+    const query = adminQuery.trim();
+    if (query.length < 3) return;
     setSending(true);
-    try {
+
+    const businessName = meCtx?.businessName ?? "My Business";
+    const mobile = meCtx?.mobile ?? "No mobile";
+    const header = `Query From "${businessName} (${mobile})"`;
+    const waUrl = `https://wa.me/${ADMIN_WA}?text=${encodeURIComponent(`${header}\n\n${query}`)}`;
+    window.location.assign(waUrl);
+
+    if (meCtx?.businessId) {
       const token = localStorage.getItem("token");
-      if (!token) throw new Error("Login required");
-      const res = await fetch(`${apiBase()}/support/tickets`, {
-        method: "POST",
-        headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
-        body: JSON.stringify({ title, priority: "NORMAL", internalNotes: "Submitted from in-app help chat" }),
-      });
-      if (!res.ok) {
-        const d = (await res.json().catch(() => ({}))) as { message?: string };
-        throw new Error(d.message ?? "Failed");
+      if (token) {
+        void fetch(`${apiBase()}/support/tickets`, {
+          method: "POST",
+          headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
+          body: JSON.stringify({
+            title: header,
+            priority: "NORMAL",
+            internalNotes: query,
+          }),
+        }).catch(() => {});
       }
-      setAdminSent(true);
-      setMessages((m) => [...m, { role: "bot", text: t("adminSent") }]);
-      setShowAdmin(false);
-      setAdminQuery("");
-    } catch {
-      setMessages((m) => [...m, { role: "bot", text: t("adminFailed") }]);
-    } finally {
-      setSending(false);
     }
+
+    setAdminSent(true);
+    setMessages((m) => [...m, { role: "bot", text: t("adminSent") }]);
+    setShowAdmin(false);
+    setAdminQuery("");
+    setSending(false);
   }
 
   return (
@@ -183,7 +231,7 @@ export function AppSupportChat() {
                   </button>
                   <button
                     type="button"
-                    disabled={sending || adminQuery.trim().length < 5}
+                    disabled={sending || adminQuery.trim().length < 3}
                     onClick={() => void sendToAdmin()}
                     className="flex-1 rounded-xl bg-emerald-600 py-2 text-[13px] font-semibold text-white disabled:opacity-50"
                   >

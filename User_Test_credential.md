@@ -38,7 +38,8 @@ For step-by-step QA, use [`docs/USER_TEST.md`](./docs/USER_TEST.md).
 | | Production | Local |
 |-|------------|-------|
 | **Login** | [/login](https://wa-booking-web.vercel.app/login) | `http://127.0.0.1:3001/login` |
-| **Username** | `demo_admin` | same |
+| **Mobile** | Use account phone (e.g. demo admin phone) | same |
+| **Username** | `demo_admin` (legacy) | same |
 | **Password** | `password123` | same |
 
 **Test on Free plan:**
@@ -72,16 +73,20 @@ No login. Select service → pick slot → enter name/phone → confirm.
 
 ---
 
-## 4. New Account (OTP — dev stub)
+## 4. New Account (OTP signup)
 
 | | Production | Local |
 |-|------------|-------|
 | **Signup** | [/signup](https://wa-booking-web.vercel.app/signup) | `http://127.0.0.1:3001/signup` |
-| **OTP code** | Sent to WhatsApp only — not shown in UI | Dev bypass `1234` works server-side (not documented publicly) |
+| **Forgot password** | [/forgot-password](https://wa-booking-web.vercel.app/forgot-password) | `http://127.0.0.1:3001/forgot-password` |
+| **OTP** | WhatsApp when session connected | Dev code shown in UI; or use `1234` |
+| **After OTP** | Set password (6+ chars) | same |
 
 **Onboarding paths:**
-- Standard: `/app/onboarding` — 7 steps
+- Standard: `/app/onboarding` — 5 steps (category + specialization dropdown)
 - Darbhanga fast: `/signup?ref=darbhanga&pack=salon` — 2 steps
+
+**Help chat:** 💬 button → **Send to admin** opens WhatsApp to admin with business name + mobile.
 
 ---
 

@@ -1,6 +1,6 @@
 # Production Readiness Checklist
 
-**Last Updated:** 10 June 2026  
+**Last Updated:** 12 June 2026  
 **Product:** WhatsApp Business Assistant (BookNow)  
 **Status:** ✅ LIVE — https://wa-booking-web.vercel.app
 
@@ -29,8 +29,12 @@
 | Helmet HTTP headers | ✅ | HSTS + standard headers |
 | Rate limiting (ThrottlerModule) | ✅ | 60/min global; 10/min on `/auth/login` + OTP |
 | Next.js security headers | ✅ | CSP, HSTS, X-Frame-Options via `next.config.ts` |
-| OTP delivery (WhatsApp) | ✅ | Code sent via WA; never shown in UI; dev bypass server-side only |
-| In-app help chat | ✅ | AI Q&A + admin ticket from 💬 button |
+| OTP delivery (WhatsApp) | ✅ | Code via WA when session connected; dev code in UI + `1234` bypass |
+| Subcategory auto-seed | ✅ | `GET /categories` + `POST /categories/sync-subcategories` |
+| In-app help chat | ✅ | AI Q&A + admin WhatsApp from 💬 button |
+| Auth: mobile + password login | ✅ | OTP only on signup / forgot password |
+| Settings icon cards | ✅ | `/app/settings` |
+| Bookings compact + Show More | ✅ | `/app/bookings` |
 | Logout visible | ✅ | Red logout below Settings |
 | Input validation | ✅ | whitelist + forbidNonWhitelisted |
 | Production CORS lockdown | ✅ | Requires `CORS_ORIGINS` in prod |
@@ -73,6 +77,10 @@
 
 | Endpoint | Auth | Purpose |
 |----------|------|---------|
+| `GET /categories` | Public | Categories + subcategories (auto-seeds if missing) |
+| `POST /categories/sync-subcategories` | Public | Force-seed specializations (onboarding) |
+| `POST /auth/otp/request` | Public | WhatsApp OTP (10/min) |
+| `POST /auth/otp/verify` | Public | Verify OTP + optional password on signup |
 | `GET /public/business-success/types` | Public | Business type cards for simulator |
 | `GET /public/business-success/simulator/:type` | Public | Interactive demo data |
 | `GET /plans/me` | Business user | Plan, limits, usage |
@@ -129,11 +137,13 @@
 ```
 DATABASE_URL, JWT_SECRET, REDIS_URL, WA_WORKER_URL, WA_WORKER_SECRET
 CORS_ORIGINS, SUPERADMIN_USERNAME, SUPERADMIN_PASSWORD
+OTP_WA_BUSINESS_ID, RESEND_API_KEY
 ```
 
 ### Vercel (Web)
 ```
 NEXT_PUBLIC_API_URL=https://wa-booking-api.vercel.app
+NEXT_PUBLIC_ADMIN_WHATSAPP=919122000751
 ```
 
 ### Render (workers)

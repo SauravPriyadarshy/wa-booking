@@ -59,7 +59,7 @@ export class AuthController {
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Post('otp/verify')
   async verifyOtp(@Res({ passthrough: true }) res: Response, @Body() dto: OtpVerifyDto) {
-    const data = await this.auth.verifyOtp(dto.phone, dto.code);
+    const data = await this.auth.verifyOtp(dto.phone, dto.code, dto.password);
     res.cookie('refresh_token', data.refreshToken, {
       httpOnly: true,
       sameSite: 'lax',
