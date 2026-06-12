@@ -89,6 +89,17 @@ export default function MorePage() {
           <Card href="/app/superadmin" title={t("superAdmin")} subtitle={t("superAdminSub")} />
         ) : null}
       </div>
+
+      <button
+        type="button"
+        onClick={() => {
+          localStorage.removeItem("token");
+          window.location.href = "/login";
+        }}
+        className="mt-2 w-full rounded-2xl border border-red-200 bg-red-50 py-3 text-[15px] font-semibold text-red-600"
+      >
+        Log out
+      </button>
     </div>
   );
 }

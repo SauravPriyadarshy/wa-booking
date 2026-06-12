@@ -77,8 +77,7 @@ No login. Select service → pick slot → enter name/phone → confirm.
 | | Production | Local |
 |-|------------|-------|
 | **Signup** | [/signup](https://wa-booking-web.vercel.app/signup) | `http://127.0.0.1:3001/signup` |
-| **Delivery** | WhatsApp or Email (user picks on signup) | same |
-| **OTP code** | `1234` (always works until SMS gateway wired) | same |
+| **OTP code** | Sent to WhatsApp only — not shown in UI | Dev bypass `1234` works server-side (not documented publicly) |
 
 **Onboarding paths:**
 - Standard: `/app/onboarding` — 7 steps

@@ -200,7 +200,8 @@ export function NewBookingSheet({ open, onClose, defaultDate, defaultCustomerId,
 
   return (
     <BottomSheet open={open} onClose={onClose} title="New booking">
-      <div className="flex gap-3 border-b border-zinc-100 pb-3 text-[11px] font-semibold">
+      <div className="mx-auto w-full max-w-sm">
+      <div className="flex justify-center gap-3 border-b border-zinc-100 pb-3 text-[11px] font-semibold">
         <span className={step >= 1 ? "text-emerald-600" : "text-zinc-400"}>① Who</span>
         <span className="text-zinc-300">→</span>
         <span className={step >= 2 ? "text-emerald-600" : "text-zinc-400"}>② What &amp; when</span>
@@ -421,6 +422,7 @@ export function NewBookingSheet({ open, onClose, defaultDate, defaultCustomerId,
           </div>
         </div>
       )}
+      </div>
     </BottomSheet>
   );
 }

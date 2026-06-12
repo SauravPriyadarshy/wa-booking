@@ -11,7 +11,6 @@ interface BottomSheetProps {
 
 export function BottomSheet({ open, onClose, title, children }: BottomSheetProps) {
   const backdropRef = useRef<HTMLDivElement>(null);
-  const sheetRef = useRef<HTMLDivElement>(null);
   const dragStartY = useRef<number | null>(null);
 
   function handleBackdrop(e: React.MouseEvent) {
@@ -62,14 +61,16 @@ export function BottomSheet({ open, onClose, title, children }: BottomSheetProps
     <div
       ref={backdropRef}
       onClick={handleBackdrop}
-      className="fixed inset-0 z-50 flex items-end bg-black/40 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4"
+      role="dialog"
+      aria-modal="true"
     >
       <div
-        ref={sheetRef}
-        className="bottom-sheet mx-auto max-h-[90vh] w-full max-w-md overflow-y-auto rounded-t-3xl bg-white shadow-2xl"
+        className="flex max-h-[min(640px,90vh)] w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
       >
         <div
-          className="sticky top-0 z-10 flex cursor-grab justify-center bg-white pb-1 pt-3 active:cursor-grabbing touch-pan-y"
+          className="flex cursor-grab justify-center bg-white pb-1 pt-3 active:cursor-grabbing touch-pan-y md:hidden"
           onTouchStart={onTouchStart}
           onTouchMove={onTouchMove}
           onTouchEnd={onTouchEnd}
@@ -89,7 +90,7 @@ export function BottomSheet({ open, onClose, title, children }: BottomSheetProps
             </button>
           </div>
         ) : null}
-        <div className="px-5 py-4 pb-safe">{children}</div>
+        <div className="overflow-y-auto px-5 py-4 pb-safe">{children}</div>
       </div>
     </div>
   );

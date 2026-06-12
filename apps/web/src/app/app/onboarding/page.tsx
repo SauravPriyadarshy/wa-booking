@@ -264,26 +264,41 @@ function OnboardingForm() {
     }
   }
 
-  async function refreshWaStatus() {
-    try {
-      const s = (await apiFetch("/whatsapp/status")) as { status?: string; qrDataUrl?: string };
-      setWaStatus(s.status ?? "DISCONNECTED");
-      setWaQr(s.qrDataUrl ?? null);
-    } catch {
-      setWaStatus("DISCONNECTED");
-    }
-  }
-
   async function connectWhatsApp() {
     setSaving(true);
     setError(null);
     try {
-      await apiFetch("/whatsapp/connect", { method: "POST" });
-      await refreshWaStatus();
+      const s = (await apiFetch("/whatsapp/connect", { method: "POST" })) as {
+        status?: string;
+        qrDataUrl?: string;
+        message?: string;
+      };
+      setWaStatus(s.status ?? "DISCONNECTED");
+      setWaQr(s.qrDataUrl ?? null);
+      if (s.status === "CONNECTED") setStep(7);
     } catch (e) {
-      setError(e instanceof Error ? e.message : t("setupFailed"));
+      const msg = e instanceof Error ? e.message : t("setupFailed");
+      if (msg.toLowerCase().includes("waking up") || msg.toLowerCase().includes("try again")) {
+        setError(t("waWakingUp"));
+      } else {
+        setError(msg);
+      }
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function refreshWaStatus() {
+    try {
+      const s = (await apiFetch("/whatsapp/status")) as {
+        status?: string;
+        qrDataUrl?: string;
+      };
+      setWaStatus(s.status ?? "DISCONNECTED");
+      setWaQr(s.qrDataUrl ?? null);
+      if (s.status === "CONNECTED") setStep(7);
+    } catch {
+      setWaStatus("DISCONNECTED");
     }
   }
 
@@ -634,10 +649,15 @@ function OnboardingForm() {
                   <p className="mb-2 text-[13px] text-zinc-500">{t("waWaiting")}</p>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={waQr} alt="WhatsApp QR" className="mx-auto max-w-[220px] rounded-xl border border-zinc-200" />
+                  <p className="mt-2 text-[11px] text-zinc-500">{t("waScanHint")}</p>
                 </div>
-              ) : null}
+              ) : (
+                <div className="rounded-xl border border-zinc-100 bg-zinc-50 px-4 py-3 text-center text-[13px] text-zinc-600">
+                  {t("waTapConnect")}
+                </div>
+              )}
               <Button type="button" variant="primary" size="lg" className="w-full" loading={saving} onClick={() => void connectWhatsApp()}>
-                {t("waConnectBtn")}
+                {waQr ? t("waRefreshQr") : t("waConnectBtn")}
               </Button>
               <Button type="button" variant="ghost" size="lg" className="w-full" onClick={() => setStep(7)}>
                 {t("waSkip")}

@@ -2,14 +2,14 @@
 
 import { Card } from "@/components/ui";
 
-const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
+const WEEKDAYS = ["S", "M", "T", "W", "T", "F", "S"] as const;
 
 function daysInMonth(y: number, m: number) {
   return new Date(y, m, 0).getDate();
 }
 
 function monthLabel(y: number, m: number) {
-  return new Date(y, m - 1, 1).toLocaleDateString("en-IN", { month: "long", year: "numeric" });
+  return new Date(y, m - 1, 1).toLocaleDateString("en-IN", { month: "short", year: "numeric" });
 }
 
 function padCell(y: number, m: number, d: number) {
@@ -53,40 +53,37 @@ export function BookingCalendar({
   const label = monthLabel(y, m);
 
   return (
-    <Card noPad className="overflow-hidden">
-      <div className="flex items-center justify-between gap-2 border-b border-zinc-100 px-3 py-2.5 md:px-4">
+    <Card noPad className="mx-auto max-w-[280px] overflow-hidden">
+      <div className="flex items-center justify-between gap-1 border-b border-zinc-100 px-2 py-2">
         <button
           type="button"
           aria-label="Previous month"
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-zinc-200 bg-white text-lg text-zinc-700 shadow-sm tap-highlight-none"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-zinc-200 text-base text-zinc-700 tap-highlight-none"
           onClick={() => onVisibleStartChange(addMonths(y, m, -1))}
         >
           ‹
         </button>
-        <div className="min-w-0 text-center">
-          <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-400">Schedule</div>
-          <div className="truncate text-[13px] font-semibold text-zinc-900">{label}</div>
-        </div>
+        <div className="min-w-0 text-center text-[12px] font-semibold text-zinc-900">{label}</div>
         <button
           type="button"
           aria-label="Next month"
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-zinc-200 bg-white text-lg text-zinc-700 shadow-sm tap-highlight-none"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-zinc-200 text-base text-zinc-700 tap-highlight-none"
           onClick={() => onVisibleStartChange(addMonths(y, m, 1))}
         >
           ›
         </button>
       </div>
 
-      <div className="p-3 md:p-4">
+      <div className="p-2">
         <div className="grid grid-cols-7 gap-0.5 text-center">
-          {WEEKDAYS.map((w) => (
-            <div key={w} className="py-1 text-[10px] font-semibold uppercase tracking-wide text-zinc-400">
+          {WEEKDAYS.map((w, i) => (
+            <div key={`${w}-${i}`} className="py-0.5 text-[9px] font-semibold uppercase text-zinc-400">
               {w}
             </div>
           ))}
           {cells.map((cell, i) => {
             if (cell === null) {
-              return <div key={`e-${y}-${m}-${i}`} className="aspect-square min-h-[36px] md:min-h-[40px]" />;
+              return <div key={`e-${y}-${m}-${i}`} className="aspect-square min-h-[28px]" />;
             }
             const iso = padCell(y, m, cell);
             const isSel = iso === selectedDate;
@@ -100,20 +97,20 @@ export function BookingCalendar({
                 disabled={isPast}
                 onClick={() => onSelectDate(iso)}
                 className={[
-                  "relative flex aspect-square min-h-[36px] items-center justify-center rounded-lg text-[13px] font-semibold transition tap-highlight-none md:min-h-[40px]",
+                  "relative flex aspect-square min-h-[28px] items-center justify-center rounded-md text-[11px] font-semibold transition tap-highlight-none",
                   isPast
                     ? "cursor-not-allowed text-zinc-300"
                     : isSel
-                      ? "bg-emerald-600 text-white shadow-md ring-2 ring-emerald-200"
-                      : "text-zinc-800 hover:bg-zinc-50",
-                  !isPast && !isSel && isToday ? "ring-1 ring-emerald-300" : "",
+                      ? "bg-emerald-600 text-white shadow-sm"
+                      : "text-zinc-800 hover:bg-emerald-50",
+                  !isPast && !isSel && isToday ? "ring-1 ring-emerald-400" : "",
                 ].join(" ")}
               >
                 {cell}
                 {isHol && !isPast ? (
                   <span
                     className={[
-                      "absolute bottom-1 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full",
+                      "absolute bottom-0.5 left-1/2 h-0.5 w-0.5 -translate-x-1/2 rounded-full",
                       isSel ? "bg-white/90" : "bg-amber-500",
                     ].join(" ")}
                   />

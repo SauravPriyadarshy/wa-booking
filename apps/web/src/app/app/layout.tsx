@@ -8,6 +8,7 @@ import { useTranslations } from "next-intl";
 import { apiBase } from "@/lib/api-base";
 import { ToastProvider } from "@/components/ui";
 import { LangSwitcher } from "@/components/lang-switcher";
+import { AppSupportChat } from "@/components/app/app-support-chat";
 import {
   Home,
   CalendarDays,
@@ -42,6 +43,11 @@ type UiConfig =
       slug: string | null;
       quickActions: { key: string; label: string }[];
     };
+
+function logout() {
+  localStorage.removeItem("token");
+  window.location.href = "/login";
+}
 
 function linkActive(pathname: string, href: string) {
   const p = pathname.replace(/\/$/, "") || "/";
@@ -157,6 +163,14 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                 </a>
               );
             })}
+            <button
+              type="button"
+              onClick={logout}
+              className="mt-2 flex min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-[14px] font-semibold text-red-600 transition-colors hover:bg-red-50 tap-highlight-none"
+            >
+              <span className="text-red-400">⎋</span>
+              Log out
+            </button>
           </nav>
         </aside>
 
@@ -177,13 +191,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
               {children}
             </main>
 
-            <a
-              href="/app/bookings?new=1"
-              className="fixed bottom-20 right-5 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-600 text-2xl font-light text-white shadow-lg shadow-emerald-200/60 tap-highlight-none transition-transform hover:bg-emerald-700 active:scale-95 md:bottom-8 md:right-8"
-              aria-label="New booking"
-            >
-              +
-            </a>
+            <AppSupportChat />
 
             <nav className="fixed bottom-0 left-0 right-0 z-30 border-t border-zinc-100 bg-white/95 pb-safe backdrop-blur-md md:hidden">
               <div

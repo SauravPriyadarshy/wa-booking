@@ -25,7 +25,6 @@ function SignupForm() {
   const [email, setEmail] = useState("");
   const [channel, setChannel] = useState<OtpChannel>("whatsapp");
   const [code, setCode] = useState("");
-  const [devHint, setDevHint] = useState<string | null>(null);
   const [sentVia, setSentVia] = useState<OtpChannel | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -64,8 +63,7 @@ function SignupForm() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           phone,
-          channel,
-          ...(channel === "email" ? { email: email.trim() } : {}),
+          channel: "whatsapp",
         }),
       });
       const data = (await res.json()) as {
@@ -79,7 +77,6 @@ function SignupForm() {
         throw new Error(msg ?? t("otpSendFailed"));
       }
       setSentVia(data.channel ?? channel);
-      setDevHint(typeof data.devCode === "string" ? data.devCode : null);
       setStep("code");
     } catch (e) {
       setError(e instanceof Error ? e.message : t("otpSendFailed"));
@@ -157,45 +154,10 @@ function SignupForm() {
 
             <div className="grid gap-1.5">
               <span className="text-[13px] font-medium text-zinc-800">{t("otpDelivery")}</span>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setChannel("whatsapp")}
-                  className={`h-11 rounded-xl border text-[13px] font-semibold transition ${
-                    channel === "whatsapp"
-                      ? "border-emerald-500 bg-emerald-50 text-emerald-800"
-                      : "border-zinc-200 bg-white text-zinc-600"
-                  }`}
-                >
-                  {t("otpViaWhatsApp")}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setChannel("email")}
-                  className={`h-11 rounded-xl border text-[13px] font-semibold transition ${
-                    channel === "email"
-                      ? "border-emerald-500 bg-emerald-50 text-emerald-800"
-                      : "border-zinc-200 bg-white text-zinc-600"
-                  }`}
-                >
-                  {t("otpViaEmail")}
-                </button>
-              </div>
+              <p className="rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2 text-[13px] font-medium text-emerald-800">
+                {t("otpViaWhatsApp")}
+              </p>
             </div>
-
-            {channel === "email" ? (
-              <label className="grid gap-1.5">
-                <span className="text-[13px] font-medium text-zinc-800">{t("email")}</span>
-                <input
-                  className="h-12 rounded-2xl border border-zinc-200 bg-white px-4 text-[16px] outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
-                  type="email"
-                  autoComplete="email"
-                  placeholder={t("emailPlaceholder")}
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
-              </label>
-            ) : null}
 
             {error ? (
               <div className="rounded-2xl border border-red-200 bg-red-50 px-3 py-2 text-[13px] text-red-800">{error}</div>
@@ -212,13 +174,7 @@ function SignupForm() {
         ) : (
           <div className="mt-6 grid gap-3">
             <p className="text-[13px] text-zinc-600">
-              {sentVia === "email" ? t("otpSentEmail", { email }) : t("otpSentPhone", { phone })}
-              {devHint ? (
-                <span className="mt-1 block rounded-lg bg-emerald-50 px-2 py-1.5 text-[12px] font-medium text-emerald-900">
-                  {t("devOtpHint", { code: devHint })}
-                </span>
-              ) : null}
-              <span className="mt-2 block text-[12px] text-zinc-500">{t("otpFallback1234")}</span>
+              {t("otpSentWhatsApp", { phone })}
             </p>
             <label className="grid gap-1.5">
               <span className="text-[13px] font-medium text-zinc-800">{t("otpPlaceholder")}</span>
@@ -250,7 +206,6 @@ function SignupForm() {
                 setStep("phone");
                 setCode("");
                 setError(null);
-                setDevHint(null);
               }}
             >
               {t("changeNumber")}

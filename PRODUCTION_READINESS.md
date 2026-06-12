@@ -29,7 +29,9 @@
 | Helmet HTTP headers | ✅ | HSTS + standard headers |
 | Rate limiting (ThrottlerModule) | ✅ | 60/min global; 10/min on `/auth/login` + OTP |
 | Next.js security headers | ✅ | CSP, HSTS, X-Frame-Options via `next.config.ts` |
-| OTP delivery (WhatsApp / Email) | ✅ | User picks channel on signup; needs `RESEND_API_KEY` / WA worker |
+| OTP delivery (WhatsApp) | ✅ | Code sent via WA; never shown in UI; dev bypass server-side only |
+| In-app help chat | ✅ | AI Q&A + admin ticket from 💬 button |
+| Logout visible | ✅ | Red logout below Settings |
 | Input validation | ✅ | whitelist + forbidNonWhitelisted |
 | Production CORS lockdown | ✅ | Requires `CORS_ORIGINS` in prod |
 | Multi-tenant data isolation | ✅ | All queries scoped by `businessId` |

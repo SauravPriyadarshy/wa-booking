@@ -5,6 +5,11 @@ import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { apiBase } from "@/lib/api-base";
 
+function logout() {
+  localStorage.removeItem("token");
+  window.location.href = "/login";
+}
+
 export default function SettingsPage() {
   const t = useTranslations("settings");
   const [categoryKey, setCategoryKey] = useState<string | null>(null);
@@ -33,7 +38,7 @@ export default function SettingsPage() {
   ] as const;
 
   return (
-    <div className="space-y-4">
+    <div className="mx-auto max-w-lg space-y-4">
       <a href="/app" className="text-[13px] font-semibold text-emerald-700">
         ← Hub
       </a>
@@ -50,6 +55,14 @@ export default function SettingsPage() {
           </a>
         ))}
       </div>
+
+      <button
+        type="button"
+        onClick={logout}
+        className="mt-4 w-full rounded-2xl border border-red-200 bg-red-50 py-3 text-[15px] font-semibold text-red-600 transition hover:bg-red-100"
+      >
+        Log out
+      </button>
     </div>
   );
 }

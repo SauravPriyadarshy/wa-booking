@@ -14,7 +14,8 @@ Use this document for **manual QA** of the WhatsApp Business Assistant. Complete
 |------|--------|----------|
 | 1.0 | Open `/`, tap **Start free**. | Lands on `/signup`. |
 | 1.0b | Open `/business-success`, pick Coaching. | Simulator loads (API or fallback); no crash on `.map`. |
-| 1.1 | On `/signup`, pick WhatsApp or Email → **Get verification code**. | Step 2; demo code `1234` when SMS gateway not wired. |
+| 1.1 | On `/signup`, enter mobile → **Get verification code**. | Step 2; message says code sent to WhatsApp (code not shown in UI). |
+| 1.1b | Enter OTP (use `1234` in dev/staging only). | Token stored; redirect `/app` or onboarding. |
 | 1.2 | Enter code → **Continue**. | Token stored; redirect `/app` or onboarding. |
 | 1.3 | *(Alternate)* `/login` as **business admin** (`demo_admin` / `password123`). | Redirect to `/app` (Hub). |
 | 1.4 | Hub shows greeting with a **name** (not generic “there” if profile has a name). | Personalized greeting. |

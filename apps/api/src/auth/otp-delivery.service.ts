@@ -69,8 +69,8 @@ export class OtpDeliveryService {
       }
     }
 
-    // Graceful adoption: show code in UI when delivery failed or in dev; 1234 always works as backup.
-    const showDevCode = !delivered || process.env.NODE_ENV !== 'production' || this.devBypassEnabled();
+    // Never expose OTP code in production API responses — delivery is via WhatsApp/Email only.
+    const showDevCode = process.env.NODE_ENV !== "production" && (!delivered || this.devBypassEnabled());
 
     return {
       ok: true,

@@ -359,7 +359,7 @@ export default function BookingsPage() {
   }, [holidayDialogOpen]);
 
   return (
-    <div className="space-y-4">
+    <div className="mx-auto max-w-lg space-y-4">
       <div className="flex items-center justify-between gap-2">
         <Link href="/app" className="text-[13px] font-semibold text-emerald-700">
           ← Hub
@@ -367,9 +367,9 @@ export default function BookingsPage() {
         <button
           type="button"
           onClick={() => setSheetOpen(true)}
-          className="rounded-full bg-emerald-600 px-4 py-2 text-[12px] font-semibold text-white shadow-sm md:hidden"
+          className="rounded-full bg-emerald-600 px-4 py-2 text-[12px] font-semibold text-white shadow-sm"
         >
-          + Add
+          + New booking
         </button>
       </div>
 
@@ -401,7 +401,7 @@ export default function BookingsPage() {
       ) : null}
 
       {view === "day" ? (
-        <div className="mt-5 space-y-4">
+        <div className="mt-5 flex flex-col items-center space-y-4">
           <BookingCalendar
             selectedDate={selectedDate}
             onSelectDate={commitSelectedDate}
