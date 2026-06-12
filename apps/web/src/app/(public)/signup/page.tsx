@@ -214,10 +214,11 @@ function SignupForm() {
             <p className="text-[13px] text-zinc-600">
               {sentVia === "email" ? t("otpSentEmail", { email }) : t("otpSentPhone", { phone })}
               {devHint ? (
-                <span className="mt-1 block rounded-lg bg-amber-50 px-2 py-1.5 text-[12px] font-medium text-amber-900">
+                <span className="mt-1 block rounded-lg bg-emerald-50 px-2 py-1.5 text-[12px] font-medium text-emerald-900">
                   {t("devOtpHint", { code: devHint })}
                 </span>
               ) : null}
+              <span className="mt-2 block text-[12px] text-zinc-500">{t("otpFallback1234")}</span>
             </p>
             <label className="grid gap-1.5">
               <span className="text-[13px] font-medium text-zinc-800">{t("otpPlaceholder")}</span>

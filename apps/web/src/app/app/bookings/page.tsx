@@ -253,8 +253,11 @@ export default function BookingsPage() {
       try {
         const rows = (await api(
           `/appointments/slots?serviceId=${encodeURIComponent(firstServiceId)}&date=${encodeURIComponent(selectedDate)}`,
-        )) as { startAt: string }[];
-        if (!cancelled) setSlotsPreview(Array.isArray(rows) ? rows.slice(0, 32) : []);
+        )) as { startAt: string; available?: boolean }[];
+        if (!cancelled) {
+          const available = Array.isArray(rows) ? rows.filter((r) => r.available !== false) : [];
+          setSlotsPreview(available.slice(0, 32));
+        }
       } catch {
         if (!cancelled) setSlotsPreview([]);
       }

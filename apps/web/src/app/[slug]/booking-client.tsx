@@ -5,10 +5,11 @@ import { useTranslations } from "next-intl";
 import { apiBase } from "@/lib/api-base";
 import { siteUrl } from "@/lib/site-url";
 import { Button, FormField, FieldInput } from "@/components/ui";
+import { PublicBookingCalendar } from "@/components/booking/public-booking-calendar";
 
 type Service = { id: string; name: string; durationMin: number; priceCents: number | null };
 type Business = { id: string; name: string; slug: string; services: Service[] };
-type Slot = { startAt: string; endAt: string };
+type Slot = { startAt: string; endAt: string; available: boolean; reason?: "past" | "booked" };
 
 function addDaysISO(base: string, days: number) {
   const [y, m, d] = base.split("-").map(Number);
@@ -16,9 +17,8 @@ function addDaysISO(base: string, days: number) {
   return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
 }
 
-function formatDayChip(iso: string) {
-  const [y, m, d] = iso.split("-").map(Number);
-  return new Date(y, m - 1, d).toLocaleDateString("en-IN", { weekday: "short", day: "numeric" });
+function todayISO() {
+  return new Date().toISOString().slice(0, 10);
 }
 
 export default function BookingClient({ params: paramsPromise }: { params: Promise<{ slug: string }> }) {
@@ -26,7 +26,8 @@ export default function BookingClient({ params: paramsPromise }: { params: Promi
   const { slug } = use(paramsPromise);
   const [business, setBusiness] = useState<Business | null>(null);
   const [service, setService] = useState<Service | null>(null);
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const today = todayISO();
+  const [date, setDate] = useState(today);
   const [slots, setSlots] = useState<Slot[]>([]);
   const [slot, setSlot] = useState<Slot | null>(null);
   const [name, setName] = useState("");
@@ -34,13 +35,12 @@ export default function BookingClient({ params: paramsPromise }: { params: Promi
   const [bookingStatus, setBookingStatus] = useState<string>("CONFIRMED");
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [loadingSlots, setLoadingSlots] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  const weekDates = useMemo(() => {
-    const t = new Date().toISOString().slice(0, 10);
-    return Array.from({ length: 7 }, (_, i) => addDaysISO(t, i));
-  }, []);
+  const maxDate = useMemo(() => addDaysISO(today, 60), [today]);
+  const availableSlots = useMemo(() => slots.filter((s) => s.available), [slots]);
 
   useEffect(() => {
     (async () => {
@@ -60,22 +60,25 @@ export default function BookingClient({ params: paramsPromise }: { params: Promi
   useEffect(() => {
     if (step === 2 && service) {
       (async () => {
+        setLoadingSlots(true);
+        setSlot(null);
         try {
-          setSlots([]);
           const res = await fetch(
             `${apiBase()}/public/business/${slug}/slots?serviceId=${service.id}&date=${encodeURIComponent(date)}`,
           );
           const data = await res.json();
-          setSlots(Array.isArray(data) ? data : []);
+          setSlots(Array.isArray(data) ? (data as Slot[]) : []);
         } catch {
           setSlots([]);
+        } finally {
+          setLoadingSlots(false);
         }
       })();
     }
   }, [step, service, date, slug]);
 
   async function book() {
-    if (!service || !slot || !name || !phone) return;
+    if (!service || !slot || !slot.available || !name || !phone) return;
     setBusy(true);
     setErr(null);
     try {
@@ -150,6 +153,8 @@ export default function BookingClient({ params: paramsPromise }: { params: Promi
                     type="button"
                     onClick={() => {
                       setService(s);
+                      setDate(today);
+                      setSlot(null);
                       setStep(2);
                     }}
                     className="flex min-h-[52px] items-center justify-between rounded-xl border border-zinc-100 bg-zinc-50 px-4 py-3 text-left transition hover:border-emerald-200 hover:bg-emerald-50/40 active:scale-[0.99]"
@@ -170,45 +175,99 @@ export default function BookingClient({ params: paramsPromise }: { params: Promi
           )}
 
           {step === 2 && service && (
-            <section>
-              <div className="flex items-center justify-between">
-                <h2 className="text-[17px] font-semibold text-zinc-900">{t("step2Title")}</h2>
-                <button type="button" onClick={() => setStep(1)} className="text-[12px] font-semibold text-emerald-700">
+            <section className="space-y-4">
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <h2 className="text-[17px] font-semibold text-zinc-900">{t("step2Title")}</h2>
+                  <p className="mt-0.5 text-[13px] text-zinc-500">{service.name}</p>
+                </div>
+                <button type="button" onClick={() => setStep(1)} className="shrink-0 text-[12px] font-semibold text-emerald-700">
                   {t("changeService")}
                 </button>
               </div>
-              <div className="mt-3 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                {weekDates.map((iso) => (
-                  <button
-                    key={iso}
+
+              <PublicBookingCalendar
+                selectedDate={date}
+                onSelectDate={(iso) => {
+                  setDate(iso);
+                  setSlot(null);
+                }}
+                todayISO={today}
+                minDate={today}
+                maxDate={maxDate}
+              />
+
+              <div>
+                <div className="mb-2 flex items-center justify-between">
+                  <h3 className="text-[14px] font-semibold text-zinc-900">{t("selectSlot")}</h3>
+                  <div className="flex gap-2 text-[10px] font-medium text-zinc-500">
+                    <span className="flex items-center gap-1">
+                      <span className="h-2 w-2 rounded-full bg-emerald-500" /> {t("slotAvailable")}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span className="h-2 w-2 rounded-full bg-zinc-300" /> {t("slotUnavailable")}
+                    </span>
+                  </div>
+                </div>
+
+                {loadingSlots ? (
+                  <div className="grid grid-cols-4 gap-2">
+                    {Array.from({ length: 8 }).map((_, i) => (
+                      <div key={i} className="h-10 animate-pulse rounded-xl bg-zinc-100" />
+                    ))}
+                  </div>
+                ) : slots.length === 0 ? (
+                  <p className="py-6 text-center text-[13px] text-zinc-500">{t("noSlots")}</p>
+                ) : (
+                  <div className="grid grid-cols-4 gap-2 sm:grid-cols-5">
+                    {slots.map((s) => {
+                      const label = new Date(s.startAt).toLocaleTimeString("en-IN", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        hour12: true,
+                      });
+                      const isSel = slot?.startAt === s.startAt;
+                      if (!s.available) {
+                        return (
+                          <div
+                            key={s.startAt}
+                            title={s.reason === "booked" ? t("slotBooked") : t("slotPast")}
+                            className="flex min-h-10 cursor-not-allowed items-center justify-center rounded-xl border border-zinc-100 bg-zinc-50 px-1 text-center text-[11px] font-semibold text-zinc-300 line-through decoration-zinc-300"
+                          >
+                            {label}
+                          </div>
+                        );
+                      }
+                      return (
+                        <button
+                          key={s.startAt}
+                          type="button"
+                          onClick={() => setSlot(s)}
+                          className={`min-h-10 rounded-xl border px-1 text-center text-[12px] font-semibold transition ${
+                            isSel
+                              ? "border-emerald-600 bg-emerald-600 text-white shadow-sm"
+                              : "border-emerald-100 bg-emerald-50 text-emerald-900 hover:border-emerald-300"
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {slot ? (
+                  <Button
                     type="button"
-                    onClick={() => setDate(iso)}
-                    className={`flex min-w-[4.5rem] flex-col items-center rounded-xl border px-2 py-2 text-[12px] font-semibold transition ${
-                      date === iso
-                        ? "border-emerald-500 bg-emerald-50 text-emerald-900"
-                        : "border-zinc-200 bg-white text-zinc-700"
-                    }`}
+                    variant="primary"
+                    size="lg"
+                    className="mt-4 w-full"
+                    onClick={() => setStep(3)}
                   >
-                    <span>{formatDayChip(iso)}</span>
-                  </button>
-                ))}
-              </div>
-              <div className="mt-4 grid grid-cols-3 gap-2">
-                {slots.map((s) => (
-                  <button
-                    key={s.startAt}
-                    type="button"
-                    onClick={() => {
-                      setSlot(s);
-                      setStep(3);
-                    }}
-                    className="min-h-11 rounded-xl border border-zinc-100 bg-zinc-50 py-2 text-center text-[13px] font-semibold text-zinc-900 transition hover:border-emerald-300 hover:bg-emerald-50/50"
-                  >
-                    {new Date(s.startAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true })}
-                  </button>
-                ))}
-                {!slots.length ? (
-                  <p className="col-span-3 py-8 text-center text-[13px] text-zinc-500">{t("noSlots")}</p>
+                    {t("continueWithTime")}
+                  </Button>
+                ) : availableSlots.length > 0 ? (
+                  <p className="mt-3 text-center text-[12px] text-zinc-500">{t("selectSlot")}</p>
                 ) : null}
               </div>
             </section>

@@ -2,7 +2,7 @@ import { BadRequestException, ConflictException, Inject, Injectable } from '@nes
 import { PrismaService } from '../prisma/prisma.service';
 import { AppointmentStatus } from '@prisma/client';
 import type IORedis from 'ioredis';
-import { generateSlots } from './slot-engine';
+import { generateSlotOptions } from './slot-engine';
 import { HOLIDAY_APPOINTMENT_CANCEL_REASON } from '../common/holiday-cancel';
 import { AutomationService } from '../automation/automation.service';
 import { PlansService } from '../plans/plans.service';
@@ -126,6 +126,7 @@ export class AppointmentsService {
 
     const startAt = new Date(dto.startAt);
     if (Number.isNaN(startAt.getTime())) throw new BadRequestException('Invalid startAt');
+    if (startAt.getTime() <= Date.now()) throw new BadRequestException('Cannot book a time in the past');
     const dur = service.durationMin + (service.bufferBeforeMin ?? 0) + (service.bufferAfterMin ?? 0);
     const endAt = new Date(startAt.getTime() + dur * 60_000);
 
@@ -326,9 +327,10 @@ export class AppointmentsService {
     const service = await this.prisma.service.findUnique({ where: { id: serviceId } });
     if (!service || service.businessId !== businessId) throw new BadRequestException('Service not found');
 
-    const date = new Date(dateISO);
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateISO);
+    if (!m) throw new BadRequestException('Invalid date');
+    const date = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
     if (Number.isNaN(date.getTime())) throw new BadRequestException('Invalid date');
-    date.setHours(0, 0, 0, 0);
 
     const holiday = await this.prisma.holiday.findUnique({
       where: { businessId_dateISO: { businessId, dateISO } },
@@ -336,8 +338,10 @@ export class AppointmentsService {
     });
     if (holiday) return [];
 
-    const dayStart = new Date(date); dayStart.setHours(0, 0, 0, 0);
-    const dayEnd = new Date(date); dayEnd.setHours(23, 59, 59, 999);
+    const dayStart = new Date(date);
+    dayStart.setHours(0, 0, 0, 0);
+    const dayEnd = new Date(date);
+    dayEnd.setHours(23, 59, 59, 999);
 
     const existing = await this.prisma.appointment.findMany({
       where: {
@@ -350,7 +354,7 @@ export class AppointmentsService {
       select: { startAt: true, endAt: true },
     });
 
-    const weekday = new Date(date).getDay();
+    const weekday = date.getDay();
     const hours = await this.prisma.businessHours.findUnique({
       where: { businessId_weekday: { businessId, weekday } },
       select: { isClosed: true, startMin: true, endMin: true },
@@ -361,7 +365,14 @@ export class AppointmentsService {
     const workStartHour = Math.floor((hours?.startMin ?? 540) / 60);
     const workEndHour = Math.floor((hours?.endMin ?? 1080) / 60);
 
-    return generateSlots({ date, service, existing, workStartHour, workEndHour, stepMin: 15 })
-      .map((s) => ({ ...s, staffId: staffId ?? null }));
+    return generateSlotOptions({
+      date,
+      service,
+      existing,
+      workStartHour,
+      workEndHour,
+      stepMin: 15,
+      now: new Date(),
+    }).map((s) => ({ ...s, staffId: staffId ?? null }));
   }
 }

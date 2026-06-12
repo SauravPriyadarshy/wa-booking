@@ -343,6 +343,7 @@ async function seedDemoBusiness() {
   }
 
   console.log(`Demo business "${businessName}" seeded successfully.`);
+  console.log(`OTP_WA_BUSINESS_ID=${business.id}  # set on Vercel for WhatsApp OTP delivery`);
   console.log(`Admin login: ${adminUsername} / ${adminPassword}`);
 }
 

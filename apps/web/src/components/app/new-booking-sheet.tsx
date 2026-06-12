@@ -13,7 +13,7 @@ type Service = {
   isActive: boolean;
 };
 type Staff = { id: string; user: { name: string | null }; title: string | null; isAvailable: boolean };
-type Slot = { startAt: string; endAt: string; staffId: string | null };
+type Slot = { startAt: string; endAt: string; staffId: string | null; available?: boolean; reason?: "past" | "booked" };
 
 async function api(path: string, init?: RequestInit) {
   const token = localStorage.getItem("token");
@@ -314,6 +314,7 @@ export function NewBookingSheet({ open, onClose, defaultDate, defaultCustomerId,
             <label className="mb-1.5 block text-[12px] font-semibold text-zinc-700">Date</label>
             <input
               type="date"
+              min={new Date().toISOString().slice(0, 10)}
               className="h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 text-[14px] outline-none focus-emerald"
               value={date}
               onChange={(e) => {
@@ -327,21 +328,34 @@ export function NewBookingSheet({ open, onClose, defaultDate, defaultCustomerId,
             {slots.length === 0 ? (
               <p className="text-[12px] text-zinc-500">Pick a service and date to see free slots.</p>
             ) : (
-              <div className="flex max-h-40 flex-wrap gap-2 overflow-y-auto">
-                {slots.slice(0, 36).map((s) => (
-                  <button
-                    key={s.startAt}
-                    type="button"
-                    onClick={() => setSlotStartAt(s.startAt)}
-                    className={`min-h-9 rounded-full px-3 py-1.5 text-[12px] font-semibold transition tap-highlight-none ${
-                      slotStartAt === s.startAt
-                        ? "bg-emerald-600 text-white"
-                        : "bg-zinc-100 text-zinc-800 hover:bg-zinc-200"
-                    }`}
-                  >
-                    {formatSlot(s.startAt)}
-                  </button>
-                ))}
+              <div className="flex max-h-48 flex-wrap gap-2 overflow-y-auto">
+                {slots.map((s) => {
+                  const available = s.available !== false;
+                  if (!available) {
+                    return (
+                      <span
+                        key={s.startAt}
+                        className="min-h-9 cursor-not-allowed rounded-full border border-zinc-100 bg-zinc-50 px-3 py-1.5 text-[12px] font-semibold text-zinc-300 line-through"
+                      >
+                        {formatSlot(s.startAt)}
+                      </span>
+                    );
+                  }
+                  return (
+                    <button
+                      key={s.startAt}
+                      type="button"
+                      onClick={() => setSlotStartAt(s.startAt)}
+                      className={`min-h-9 rounded-full px-3 py-1.5 text-[12px] font-semibold transition tap-highlight-none ${
+                        slotStartAt === s.startAt
+                          ? "bg-emerald-600 text-white"
+                          : "bg-zinc-100 text-zinc-800 hover:bg-zinc-200"
+                      }`}
+                    >
+                      {formatSlot(s.startAt)}
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>
