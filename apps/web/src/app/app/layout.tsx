@@ -79,7 +79,7 @@ const NAV_ITEMS: Array<{
   },
   { href: "/app/bookings", label: "Bookings", module: "bookings", Icon: CalendarDays, tab: true, side: true },
   { href: "/app/customers", label: "Customers", module: "customers", Icon: Users, tab: true, side: true },
-  { href: "/app/students", label: "Students", module: "students", Icon: Users, tab: false, side: true, categories: ["coaching"] },
+  { href: "/app/students", label: "Students", module: "students", Icon: Users, tab: true, side: true, categories: ["coaching"] },
   { href: "/app/coaching/fees", label: "Fees", module: "fees", Icon: CalendarDays, tab: false, side: true, categories: ["coaching"] },
   { href: "/app/coaching/reports", label: "Reports", module: "reports", Icon: BarChart2, tab: false, side: true, categories: ["coaching"] },
   { href: "/app/settings", label: "Settings", module: "settings", Icon: Settings, tab: false, side: true },
@@ -162,9 +162,6 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const navFilter = (item: (typeof NAV_ITEMS)[number]) => {
     if (!modules.has(item.module)) return false;
     if (item.categories && categoryKey && !item.categories.includes(categoryKey)) return false;
-    if (focusedMode && item.module === "more" && (categoryKey === "clinic" || categoryKey === "coaching")) {
-      return false;
-    }
     if (categoryKey === "coaching" && item.href === "/app/customers" && item.tab) return false;
     return true;
   };

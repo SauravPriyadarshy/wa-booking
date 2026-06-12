@@ -15,6 +15,7 @@ import {
 import { BookingLinkPanel } from "@/components/app/booking-link-panel";
 import { DarbhangaLaunchStrip } from "@/components/app/darbhanga-launch-strip";
 import { ManualWhatsAppButton } from "@/components/app/manual-whatsapp-button";
+import { VerticalDemoStrip } from "@/components/app/vertical-demo-strip";
 import { UpgradeBanner, PlanUsageBar } from "@/components/app/upgrade-banner";
 import { useWhatsAppLink } from "@/hooks/use-whatsapp-link";
 import { packByKey } from "@/lib/darbhanga-pack";
@@ -32,6 +33,8 @@ type UiConfig =
       ok: true;
       modules: string[];
       slug: string | null;
+      categoryKey?: string | null;
+      focusedMode?: boolean;
       quickActions: { key: string; label: string }[];
     };
 
@@ -358,6 +361,7 @@ export function HubDashboard() {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [packLabel, setPackLabel] = useState("WhatsApp Pack");
   const [plan, setPlan] = useState<PlanInfo | null>(null);
+  const [focusedMode, setFocusedMode] = useState(false);
   const { showManualFallback, openBookingConfirm } = useWhatsAppLink();
 
   useEffect(() => {
@@ -427,7 +431,9 @@ export function HubDashboard() {
           setMeUser({ name: me.user.name, username: me.user.username, role: me.user.role });
         }
         setBusinessLabel(me?.business?.name?.trim() || "");
-        setUi(cfg as UiConfig);
+        const uiCfg = cfg as UiConfig;
+        setUi(uiCfg);
+        setFocusedMode(uiCfg.ok ? Boolean(uiCfg.focusedMode) : false);
         setWa((s as WaStatus) ?? null);
         setDashboard(dash as DashboardPayload);
         setQuick((qr as QuickReply[]) ?? []);
@@ -532,6 +538,8 @@ export function HubDashboard() {
       leakage.inactiveCustomers > 0 ||
       leakage.unansweredLeads > 0);
 
+  const isFocusedVertical = focusedMode && (categoryKey === "clinic" || categoryKey === "coaching" || categoryKey === "salon");
+
   return (
     <div className="pb-8 pt-4">
       {/* 1. Header */}
@@ -545,7 +553,24 @@ export function HubDashboard() {
         <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-[12px] text-amber-900">{err}</div>
       ) : null}
 
-      {!waConnected ? (
+      {isFocusedVertical ? (
+        <VerticalDemoStrip categoryKey={categoryKey} bookingSlug={ui?.ok ? ui.slug : null} />
+      ) : null}
+
+      {isFocusedVertical && ui?.ok && ui.slug && bookingUrl ? (
+        <div className="mt-4">
+          <BookingLinkPanel
+            bookingUrl={bookingUrl}
+            businessName={businessLabel}
+            slug={ui.slug}
+            canRegenerateSlug={meUser?.role === "BUSINESS_ADMIN" || meUser?.role === "SUPER_ADMIN"}
+            api={api}
+            onUiRefresh={refreshUiConfig}
+          />
+        </div>
+      ) : null}
+
+      {!isFocusedVertical && !waConnected ? (
         <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4">
           <div className="flex items-start gap-3">
             <span className="text-2xl shrink-0">💬</span>
@@ -588,8 +613,37 @@ export function HubDashboard() {
         </div>
       ) : null}
 
+      {isFocusedVertical ? (
+        <section className="mt-5">
+          <h2 className="text-[13px] font-semibold uppercase tracking-wide text-zinc-400">Today at a glance</h2>
+          <div className="mt-3 grid grid-cols-2 gap-2 md:grid-cols-3">
+            {categoryKey === "clinic" && clinic ? (
+              <>
+                <WorkspaceCard label="In queue" count={clinic.waitingCount} sub="waiting" href="/app/queue" accent="text-blue-600" urgent={clinic.waitingCount > 0} />
+                <WorkspaceCard label="Patients" count={clinic.patientsToday} sub="today" href="/app/queue" accent="text-emerald-600" />
+                <WorkspaceCard label="Bookings" count={d.stats.bookingsToday} sub="scheduled" href="/app/bookings" accent="text-zinc-700" />
+              </>
+            ) : null}
+            {categoryKey === "coaching" && coaching ? (
+              <>
+                <WorkspaceCard label="Students" count={coaching.totalStudents} sub="active" href="/app/students" accent="text-blue-600" />
+                <WorkspaceCard label="Fees due" count={coaching.feesDue} sub={formatInrFromCents(coaching.feesDueCents)} href="/app/coaching/fees" accent="text-red-600" urgent={coaching.feesDue > 0} />
+                <WorkspaceCard label="Matrix" count="→" sub="batches" href="/app/coaching/matrix" accent="text-purple-600" />
+              </>
+            ) : null}
+            {categoryKey === "salon" ? (
+              <>
+                <WorkspaceCard label="Bookings" count={d.stats.bookingsToday} sub="today" href="/app/bookings" accent="text-emerald-600" />
+                <WorkspaceCard label="Pending" count={d.stats.pendingConfirmations} sub="confirm" href="/app/bookings?view=list&status=PENDING" accent="text-amber-600" urgent={d.stats.pendingConfirmations > 0} />
+                <WorkspaceCard label="Customers" count="→" sub="CRM" href="/app/customers" accent="text-blue-600" />
+              </>
+            ) : null}
+          </div>
+        </section>
+      ) : null}
+
       {/* 2. Today Workspace — simplified in launch mode */}
-      {launchMode && !showAdvanced ? (
+      {!isFocusedVertical && launchMode && !showAdvanced ? (
         <section className="mt-5">
           <div className="grid grid-cols-3 gap-2">
             <WorkspaceCard
@@ -697,7 +751,7 @@ export function HubDashboard() {
       )}
 
       {/* Clinic KPIs — only for clinic category (hidden in simple launch mode) */}
-      {(!launchMode || showAdvanced) && categoryKey === "clinic" && clinic ? (
+      {!isFocusedVertical && (!launchMode || showAdvanced) && categoryKey === "clinic" && clinic ? (
         <section className="mt-5">
           <h2 className="text-[13px] font-semibold uppercase tracking-wide text-zinc-400">Clinic Today</h2>
           <div className="mt-3 grid grid-cols-2 gap-2 md:grid-cols-3 lg:grid-cols-4">
@@ -710,7 +764,7 @@ export function HubDashboard() {
       ) : null}
 
       {/* Coaching KPIs — only for coaching category (hidden in simple launch mode) */}
-      {(!launchMode || showAdvanced) && categoryKey === "coaching" && coaching ? (
+      {!isFocusedVertical && (!launchMode || showAdvanced) && categoryKey === "coaching" && coaching ? (
         <section className="mt-5">
           <h2 className="text-[13px] font-semibold uppercase tracking-wide text-zinc-400">Coaching Today</h2>
           <div className="mt-3 grid grid-cols-2 gap-2 md:grid-cols-3 lg:grid-cols-4">
@@ -723,7 +777,7 @@ export function HubDashboard() {
       ) : null}
 
       {/* Leads & tickets strip */}
-      {inboxItems.length > 0 ? (
+      {!isFocusedVertical && inboxItems.length > 0 ? (
         <section className="mt-5">
           <div className="flex items-center justify-between">
             <h2 className="text-[13px] font-semibold uppercase tracking-wide text-zinc-400">Leads & Tickets</h2>

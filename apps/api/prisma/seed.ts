@@ -1,5 +1,16 @@
 import "dotenv/config";
-import { PrismaClient, UserRole } from "@prisma/client";
+import {
+  PrismaClient,
+  UserRole,
+  SubscriptionPlan,
+  BookingType,
+  QueueStatus,
+  ClinicPaymentStatus,
+  AppointmentStatus,
+  CoachingStreamKey,
+  EnrollmentStatus,
+  StudentStatus,
+} from "@prisma/client";
 import * as bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
@@ -344,7 +355,418 @@ async function seedDemoBusiness() {
 
   console.log(`Demo business "${businessName}" seeded successfully.`);
   console.log(`OTP_WA_BUSINESS_ID=${business.id}  # set on Vercel for WhatsApp OTP delivery`);
-  console.log(`Admin login: ${adminUsername} / ${adminPassword}`);
+  console.log(`Admin login: phone 9876543210 / ${adminPassword} (or username ${adminUsername})`);
+}
+
+async function ensureBusinessHours(businessId: string) {
+  for (let weekday = 0; weekday <= 6; weekday++) {
+    const isClosed = weekday === 0;
+    await prisma.businessHours.upsert({
+      where: { businessId_weekday: { businessId, weekday } },
+      create: {
+        businessId,
+        weekday,
+        isClosed,
+        startMin: 540,
+        endMin: 1080,
+      },
+      update: { isClosed, startMin: 540, endMin: 1080 },
+    });
+  }
+}
+
+async function ensureDemoUser(args: {
+  username: string;
+  phone?: string;
+  password: string;
+  businessId: string;
+  name: string;
+  role?: UserRole;
+}) {
+  const passwordHash = await bcrypt.hash(args.password, 10);
+  return prisma.user.upsert({
+    where: { username: args.username },
+    create: {
+      username: args.username,
+      phone: args.phone,
+      passwordHash,
+      passwordUpdatedAt: new Date(),
+      role: args.role ?? UserRole.BUSINESS_ADMIN,
+      businessId: args.businessId,
+      isActive: true,
+      name: args.name,
+    },
+    update: {
+      phone: args.phone,
+      passwordHash,
+      passwordUpdatedAt: new Date(),
+      businessId: args.businessId,
+      name: args.name,
+      isActive: true,
+    },
+  });
+}
+
+async function ensureStaffDoctor(
+  businessId: string,
+  username: string,
+  name: string,
+  title: string,
+  specialization: string,
+  feeCents: number,
+) {
+  const user = await ensureDemoUser({
+    username,
+    password: "staff-only",
+    businessId,
+    name,
+    role: UserRole.STAFF,
+  });
+  return prisma.staffProfile.upsert({
+    where: { userId: user.id },
+    create: {
+      userId: user.id,
+      businessId,
+      title,
+      specialization,
+      consultationFeeCents: feeCents,
+      consultationDurationMin: 15,
+      isAvailable: true,
+    },
+    update: {
+      title,
+      specialization,
+      consultationFeeCents: feeCents,
+      consultationDurationMin: 15,
+      isAvailable: true,
+    },
+  });
+}
+
+/** Live demo tenants for sales demos — bookable public pages + full vertical data. */
+async function seedLiveDemoAccounts() {
+  const password = "password123";
+  const proExpiry = new Date();
+  proExpiry.setFullYear(proExpiry.getFullYear() + 1);
+  const month = new Date().toISOString().slice(0, 7);
+  const todayISO = new Date().toISOString().slice(0, 10);
+  const dayStart = new Date();
+  dayStart.setHours(0, 0, 0, 0);
+
+  // ── Upgrade salon demo (demo_admin) ─────────────────────────────────────
+  const salonCat = await prisma.businessCategory.findUnique({ where: { key: "salon" } });
+  if (salonCat) {
+    const salon = await prisma.business.upsert({
+      where: { slug: "demo-salon" },
+      create: {
+        slug: "demo-salon",
+        name: "Demo Salon & Spa",
+        categoryId: salonCat.id,
+        isActive: true,
+        timezone: "Asia/Kolkata",
+        plan: SubscriptionPlan.PRO,
+        planExpiresAt: proExpiry,
+      },
+      update: {
+        plan: SubscriptionPlan.PRO,
+        planExpiresAt: proExpiry,
+        isActive: true,
+      },
+    });
+    await ensureBusinessHours(salon.id);
+    await ensureDemoUser({
+      username: "demo_admin",
+      phone: "+919876543210",
+      password,
+      businessId: salon.id,
+      name: "Demo Admin",
+    });
+  }
+
+  // ── Clinic demo ───────────────────────────────────────────────────────────
+  const clinicCat = await prisma.businessCategory.findUnique({ where: { key: "clinic" } });
+  if (clinicCat) {
+    const clinic = await prisma.business.upsert({
+      where: { slug: "demo-clinic" },
+      create: {
+        slug: "demo-clinic",
+        name: "Singh Family Clinic",
+        categoryId: clinicCat.id,
+        isActive: true,
+        timezone: "Asia/Kolkata",
+        plan: SubscriptionPlan.PRO,
+        planExpiresAt: proExpiry,
+        phone: "+919876543211",
+      },
+      update: {
+        name: "Singh Family Clinic",
+        plan: SubscriptionPlan.PRO,
+        planExpiresAt: proExpiry,
+        isActive: true,
+      },
+    });
+    await ensureBusinessHours(clinic.id);
+
+    await ensureDemoUser({
+      username: "demo_clinic",
+      phone: "+919876543211",
+      password,
+      businessId: clinic.id,
+      name: "Clinic Reception",
+    });
+
+    const drMishra = await ensureStaffDoctor(
+      clinic.id,
+      "dr_mishra",
+      "Dr. R.K. Mishra",
+      "Dr.",
+      "General Physician",
+      50000,
+    );
+    await ensureStaffDoctor(
+      clinic.id,
+      "dr_singh",
+      "Dr. Priya Singh",
+      "Dr.",
+      "Pediatrician",
+      40000,
+    );
+
+    let consultSvc = await prisma.service.findFirst({
+      where: { businessId: clinic.id, name: "Consultation" },
+    });
+    if (!consultSvc) {
+      consultSvc = await prisma.service.create({
+        data: {
+          businessId: clinic.id,
+          name: "Consultation",
+          durationMin: 15,
+          priceCents: 50000,
+          isActive: true,
+        },
+      });
+    }
+
+    const patients = [
+      { name: "Amit Kumar", phone: "919811110001" },
+      { name: "Sunita Devi", phone: "919811110002" },
+      { name: "Rahul Sharma", phone: "919811110003" },
+      { name: "Pooja Yadav", phone: "919811110004" },
+    ];
+
+    const queueSpec = [
+      { idx: 0, status: QueueStatus.COMPLETED, payment: ClinicPaymentStatus.PAID_CASH },
+      { idx: 1, status: QueueStatus.IN_CONSULTATION, payment: ClinicPaymentStatus.PENDING },
+      { idx: 2, status: QueueStatus.WAITING, payment: ClinicPaymentStatus.PENDING },
+      { idx: 3, status: QueueStatus.WAITING, payment: ClinicPaymentStatus.PENDING },
+    ] as const;
+
+    for (let i = 0; i < patients.length; i++) {
+      const p = patients[i];
+      const spec = queueSpec[i];
+      let customer = await prisma.customer.findFirst({
+        where: { businessId: clinic.id, phone: p.phone },
+      });
+      if (!customer) {
+        customer = await prisma.customer.create({
+          data: { businessId: clinic.id, name: p.name, phone: p.phone },
+        });
+      }
+      const tokenNumber = i + 1;
+      const startAt = new Date(dayStart.getTime() + (9 * 60 + i * 20) * 60_000);
+      const endAt = new Date(startAt.getTime() + 15 * 60_000);
+      const existingAppt = await prisma.appointment.findFirst({
+        where: {
+          businessId: clinic.id,
+          customerId: customer.id,
+          startAt: { gte: dayStart },
+          tokenNumber,
+        },
+      });
+      if (!existingAppt) {
+        await prisma.appointment.create({
+          data: {
+            businessId: clinic.id,
+            customerId: customer.id,
+            serviceId: consultSvc.id,
+            staffId: drMishra.id,
+            status:
+              spec.status === QueueStatus.COMPLETED
+                ? AppointmentStatus.COMPLETED
+                : AppointmentStatus.CONFIRMED,
+            startAt,
+            endAt,
+            tokenNumber,
+            bookingType: i === 0 ? BookingType.WALK_IN : BookingType.WALK_IN,
+            queueStatus: spec.status,
+            paymentStatus: spec.payment,
+            source: "APP",
+          },
+        });
+      }
+    }
+
+    console.log("Clinic demo: phone 9876543211 / password123 → /demo-clinic");
+  }
+
+  // ── Coaching demo ─────────────────────────────────────────────────────────
+  const coachingCat = await prisma.businessCategory.findUnique({ where: { key: "coaching" } });
+  if (coachingCat) {
+    const coaching = await prisma.business.upsert({
+      where: { slug: "demo-coaching" },
+      create: {
+        slug: "demo-coaching",
+        name: "Darbhanga Career Academy",
+        categoryId: coachingCat.id,
+        isActive: true,
+        timezone: "Asia/Kolkata",
+        plan: SubscriptionPlan.PRO,
+        planExpiresAt: proExpiry,
+        phone: "+919876543212",
+      },
+      update: {
+        plan: SubscriptionPlan.PRO,
+        planExpiresAt: proExpiry,
+        isActive: true,
+      },
+    });
+    await ensureBusinessHours(coaching.id);
+
+    const admin = await ensureDemoUser({
+      username: "demo_coaching",
+      phone: "+919876543212",
+      password,
+      businessId: coaching.id,
+      name: "Academy Admin",
+    });
+
+    await prisma.staffProfile.upsert({
+      where: { userId: admin.id },
+      create: { userId: admin.id, businessId: coaching.id, title: "Director", isAvailable: true },
+      update: { isAvailable: true },
+    });
+
+    const stream = await prisma.stream.upsert({
+      where: { businessId_key: { businessId: coaching.id, key: CoachingStreamKey.JEE } },
+      create: {
+        businessId: coaching.id,
+        key: CoachingStreamKey.JEE,
+        name: "IIT-JEE",
+        sortOrder: 0,
+        isActive: true,
+      },
+      update: { isActive: true },
+    });
+
+    let course = await prisma.course.findFirst({
+      where: { businessId: coaching.id, streamId: stream.id, name: "Class 12 Integrated" },
+    });
+    if (!course) {
+      course = await prisma.course.create({
+        data: {
+          businessId: coaching.id,
+          streamId: stream.id,
+          name: "Class 12 Integrated",
+          isActive: true,
+        },
+      });
+    }
+
+    let batch = await prisma.batch.findFirst({
+      where: { businessId: coaching.id, courseId: course.id, name: "Morning Batch A" },
+    });
+    if (!batch) {
+      batch = await prisma.batch.create({
+        data: {
+          businessId: coaching.id,
+          courseId: course.id,
+          name: "Morning Batch A",
+          roomNumber: "101",
+          feesAmountCents: 250000,
+          startTime: "08:00",
+          endTime: "10:00",
+          daysOfWeek: ["MON", "TUE", "WED", "THU", "FRI", "SAT"],
+          isActive: true,
+        },
+      });
+    }
+
+    const roster = [
+      { name: "Aditya Kumar", parentPhone: "919822220001", paid: true },
+      { name: "Neha Singh", parentPhone: "919822220002", paid: false },
+      { name: "Rohan Das", parentPhone: "919822220003", paid: false },
+      { name: "Kavya Mishra", parentPhone: "919822220004", paid: true },
+      { name: "Vikash Jha", parentPhone: "919822220005", paid: false },
+    ];
+
+    for (const s of roster) {
+      let student = await prisma.student.findFirst({
+        where: { businessId: coaching.id, name: s.name },
+      });
+      if (!student) {
+        student = await prisma.student.create({
+          data: {
+            businessId: coaching.id,
+            name: s.name,
+            parentPhone: s.parentPhone,
+            parentName: "Parent",
+            classGrade: "12",
+            batchId: batch.id,
+            batch: batch.name,
+            course: course.name,
+            status: StudentStatus.ACTIVE,
+            isActive: true,
+          },
+        });
+      } else {
+        await prisma.student.update({
+          where: { id: student.id },
+          data: { batchId: batch.id, parentPhone: s.parentPhone },
+        });
+      }
+
+      await prisma.batchEnrollment.upsert({
+        where: { studentId_batchId: { studentId: student.id, batchId: batch.id } },
+        create: {
+          studentId: student.id,
+          batchId: batch.id,
+          status: EnrollmentStatus.ACTIVE,
+        },
+        update: { status: EnrollmentStatus.ACTIVE },
+      });
+
+      const dueDate = new Date();
+      dueDate.setDate(10);
+      const feeExisting = await prisma.feeRecord.findFirst({
+        where: { studentId: student.id, month, batchId: batch.id },
+      });
+      if (!feeExisting) {
+        await prisma.feeRecord.create({
+          data: {
+            businessId: coaching.id,
+            studentId: student.id,
+            batchId: batch.id,
+            amountCents: batch.feesAmountCents ?? 250000,
+            paidAmountCents: s.paid ? batch.feesAmountCents ?? 250000 : 0,
+            isFullyPaid: s.paid,
+            month,
+            dueDate,
+            courseName: course.name,
+          },
+        });
+      }
+
+      await prisma.studentAttendance.upsert({
+        where: { studentId_dateISO: { studentId: student.id, dateISO: todayISO } },
+        create: { studentId: student.id, dateISO: todayISO, present: s.paid },
+        update: { present: s.paid },
+      });
+    }
+
+    console.log("Coaching demo: phone 9876543212 / password123 → /demo-coaching");
+  }
+
+  console.log("Live demo accounts seeded (clinic, coaching, salon).");
 }
 
 // Default SiteContent values — all user-facing text editable by Super Admin
@@ -1123,6 +1545,7 @@ async function main() {
   await seedDemoTenants();
   await seedSuperAdmin();
   await seedDemoBusiness();
+  await seedLiveDemoAccounts();
   await seedSiteContent();
 }
 
