@@ -640,6 +640,16 @@ enum EnrollmentStatus {
   SUSPENDED
 }
 
+enum StudentStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum FeePaymentMode {
+  CASH
+  UPI
+}
+
 model Stream {
   id         String            @id @default(cuid())
   businessId String
@@ -682,6 +692,8 @@ model Batch {
   course     Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
   name       String
   roomNumber String?
+  feesAmountCents Int?
+  startDate  DateTime?
   startTime  String // HH:mm e.g. "08:00"
   endTime    String // HH:mm e.g. "10:00"
   daysOfWeek String[] // MON, TUE, WED, ...
@@ -689,6 +701,9 @@ model Batch {
 
   enrollments      BatchEnrollment[]
   staffAssignments BatchStaff[]
+  rosterStudents   Student[]       @relation("StudentBatch")
+  feeRecords       FeeRecord[]
+  tests            CoachingTest[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -736,21 +751,28 @@ model Student {
   name       String
   parentName String?
   phone      String?
+  parentPhone String?
   classGrade String?
   batch      String?
   course     String?
+  batchId    String?
+  batchLink  Batch?   @relation("StudentBatch", fields: [batchId], references: [id])
+  status     StudentStatus @default(ACTIVE)
   isActive   Boolean  @default(true)
 
   admissionAt DateTime @default(now())
   attendance  StudentAttendance[]
   feeRecords  FeeRecord[]
   enrollments BatchEnrollment[]
+  testResults TestResult[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([businessId, isActive])
   @@index([businessId, batch])
+  @@index([businessId, batchId])
+  @@index([batchId])
 }
 
 model StudentAttendance {
@@ -773,9 +795,13 @@ model FeeRecord {
   student    Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
   businessId String
   business   Business @relation(fields: [businessId], references: [id])
+  batchId    String?
+  batch      Batch?   @relation(fields: [batchId], references: [id])
 
   amountCents      Int
-  paidAmountCents  Int       @default(0)
+  paidAmountCents  Int            @default(0)
+  isFullyPaid      Boolean        @default(false)
+  paymentMode      FeePaymentMode?
   dueDate          DateTime
   paidAt           DateTime?
   month            String // "2026-06"
@@ -793,6 +819,40 @@ model FeeRecord {
   @@index([studentId, paidAt])
   @@index([businessId, paidAt])
   @@index([installmentGroupId])
+  @@index([batchId, month])
+}
+
+model CoachingTest {
+  id       String   @id @default(cuid())
+  batchId  String
+  batch    Batch    @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  subject  String
+  testDate DateTime
+  maxMarks Int
+
+  results TestResult[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([batchId, testDate])
+}
+
+model TestResult {
+  id            String       @id @default(cuid())
+  testId        String
+  test          CoachingTest @relation(fields: [testId], references: [id], onDelete: Cascade)
+  studentId     String
+  student       Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  marksObtained Int
+  remarks       String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([testId, studentId])
+  @@index([studentId])
+  @@index([testId])
 }
 
 model ActivationCode {

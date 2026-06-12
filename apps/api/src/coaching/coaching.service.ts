@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { CoachingStreamKey, EnrollmentStatus, Prisma } from '@prisma/client';
+import { CoachingStreamKey, EnrollmentStatus, FeePaymentMode, Prisma, StudentStatus } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { PlansService } from '../plans/plans.service';
@@ -10,6 +10,10 @@ import type {
   CreateEnrollmentDto,
   CreateFeeRecordDto,
   CreateStudentDto,
+  DirectAddStudentDto,
+  CreateCoachingTestDto,
+  ScoreBatchTestDto,
+  UpdateFeeLedgerDto,
   MarkAttendanceDto,
   RecordFeePaymentDto,
   UpdateEnrollmentDto,
@@ -259,6 +263,8 @@ export class CoachingService {
         courseId: dto.courseId,
         name: dto.name.trim(),
         roomNumber: dto.roomNumber?.trim() || null,
+        feesAmountCents: dto.feesAmountCents ?? null,
+        startDate: dto.startDate ? new Date(dto.startDate) : null,
         startTime: dto.startTime,
         endTime: dto.endTime,
         daysOfWeek: normalizeDays(dto.daysOfWeek),
@@ -311,6 +317,9 @@ export class CoachingService {
       data: {
         batch: batch.name,
         course: batch.course.name,
+        batchId: dto.batchId,
+        status: StudentStatus.ACTIVE,
+        isActive: true,
       },
     });
 
@@ -512,10 +521,21 @@ export class CoachingService {
     });
   }
 
-  async bulkAttendance(businessId: string, dateISO: string, records: Array<{ studentId: string; present: boolean }>) {
+  async bulkAttendance(
+    businessId: string,
+    dateISO: string,
+    records: Array<{ studentId: string; present: boolean }>,
+    batchId?: string,
+  ) {
     await this.plans.assertFeature(businessId, 'attendance');
+    const where: Prisma.StudentWhereInput = {
+      businessId,
+      id: { in: records.map((r) => r.studentId) },
+    };
+    if (batchId) where.batchId = batchId;
+
     const students = await this.prisma.student.findMany({
-      where: { businessId, id: { in: records.map((r) => r.studentId) } },
+      where,
       select: { id: true },
     });
     const validIds = new Set(students.map((s) => s.id));
@@ -612,20 +632,27 @@ export class CoachingService {
         data: {
           paidAmountCents: fee.amountCents,
           paidAt: new Date(),
+          isFullyPaid: true,
+          paymentMode: dto.method === 'UPI' ? FeePaymentMode.UPI : FeePaymentMode.CASH,
           notes: mergedNotes || undefined,
         },
-        select: { id: true, paidAmountCents: true, paidAt: true, amountCents: true },
+        select: { id: true, paidAmountCents: true, paidAt: true, amountCents: true, isFullyPaid: true },
       });
     }
 
     return this.prisma.feeRecord.update({
       where: { id: feeId },
-      data: { paidAmountCents: newPaid, notes: mergedNotes || undefined },
-      select: { id: true, paidAmountCents: true, paidAt: true, amountCents: true },
+      data: {
+        paidAmountCents: newPaid,
+        isFullyPaid: false,
+        paymentMode: dto.method === 'UPI' ? FeePaymentMode.UPI : FeePaymentMode.CASH,
+        notes: mergedNotes || undefined,
+      },
+      select: { id: true, paidAmountCents: true, paidAt: true, amountCents: true, isFullyPaid: true },
     });
   }
 
-  async markFeePaid(businessId: string, feeId: string) {
+  async markFeePaid(businessId: string, feeId: string, paymentMode?: FeePaymentMode) {
     await this.plans.assertFeature(businessId, 'fee_tracking');
     const fee = await this.prisma.feeRecord.findUnique({
       where: { id: feeId },
@@ -634,8 +661,45 @@ export class CoachingService {
     if (!fee || fee.businessId !== businessId) throw new BadRequestException('Fee record not found');
     return this.prisma.feeRecord.update({
       where: { id: feeId },
-      data: { paidAt: new Date(), paidAmountCents: fee.amountCents },
-      select: { id: true, month: true, paidAt: true },
+      data: {
+        paidAt: new Date(),
+        paidAmountCents: fee.amountCents,
+        isFullyPaid: true,
+        paymentMode: paymentMode ?? FeePaymentMode.CASH,
+      },
+      select: { id: true, month: true, paidAt: true, isFullyPaid: true },
+    });
+  }
+
+  async updateFeeLedger(businessId: string, feeId: string, dto: UpdateFeeLedgerDto) {
+    await this.plans.assertFeature(businessId, 'fee_tracking');
+    const fee = await this.prisma.feeRecord.findUnique({
+      where: { id: feeId },
+      select: { businessId: true, amountCents: true, paidAmountCents: true },
+    });
+    if (!fee || fee.businessId !== businessId) throw new BadRequestException('Fee record not found');
+
+    const paid = dto.amountPaid ?? fee.paidAmountCents;
+    const fullyPaid = dto.isFullyPaid ?? paid >= fee.amountCents;
+
+    return this.prisma.feeRecord.update({
+      where: { id: feeId },
+      data: {
+        paidAmountCents: fullyPaid ? fee.amountCents : paid,
+        isFullyPaid: fullyPaid,
+        paidAt: fullyPaid ? new Date() : null,
+        paymentMode: dto.paymentMode ?? undefined,
+        month: dto.month ?? undefined,
+      },
+      select: {
+        id: true,
+        month: true,
+        amountCents: true,
+        paidAmountCents: true,
+        isFullyPaid: true,
+        paymentMode: true,
+        paidAt: true,
+      },
     });
   }
 
@@ -710,8 +774,393 @@ export class CoachingService {
             },
           },
         },
-        _count: { select: { enrollments: { where: { status: EnrollmentStatus.ACTIVE } } } },
+        _count: { select: { enrollments: { where: { status: EnrollmentStatus.ACTIVE } }, rosterStudents: { where: { status: StudentStatus.ACTIVE } } } },
       },
     });
+  }
+
+  private currentMonth(): string {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  }
+
+  async directAddStudent(businessId: string, dto: DirectAddStudentDto) {
+    await this.requireCoaching(businessId);
+    const batch = await this.prisma.batch.findUnique({
+      where: { id: dto.batchId },
+      select: { businessId: true, name: true, feesAmountCents: true, course: { select: { name: true } } },
+    });
+    if (!batch || batch.businessId !== businessId) throw new BadRequestException('Batch not found');
+
+    const parentPhone = dto.parentPhone ?? dto.phone ?? null;
+    const student = await this.prisma.student.create({
+      data: {
+        businessId,
+        name: dto.name.trim(),
+        parentName: dto.parentName?.trim() || null,
+        phone: dto.phone?.trim() || parentPhone,
+        parentPhone,
+        classGrade: dto.classGrade?.trim() || null,
+        batchId: dto.batchId,
+        batch: batch.name,
+        course: batch.course.name,
+        status: StudentStatus.ACTIVE,
+        isActive: true,
+      },
+      select: { id: true, name: true, parentPhone: true, batchId: true },
+    });
+
+    await this.prisma.batchEnrollment.upsert({
+      where: { studentId_batchId: { studentId: student.id, batchId: dto.batchId } },
+      create: { studentId: student.id, batchId: dto.batchId, status: EnrollmentStatus.ACTIVE },
+      update: { status: EnrollmentStatus.ACTIVE },
+    });
+
+    const month = this.currentMonth();
+    if (batch.feesAmountCents && batch.feesAmountCents > 0) {
+      const existing = await this.prisma.feeRecord.findFirst({
+        where: { studentId: student.id, batchId: dto.batchId, month },
+      });
+      if (!existing) {
+        const [y, m] = month.split('-').map(Number);
+        const dueDate = new Date(y, m, 0);
+        await this.prisma.feeRecord.create({
+          data: {
+            studentId: student.id,
+            businessId,
+            batchId: dto.batchId,
+            amountCents: batch.feesAmountCents,
+            paidAmountCents: 0,
+            isFullyPaid: false,
+            month,
+            dueDate,
+            courseName: batch.course.name,
+          },
+        });
+      }
+    }
+
+    return student;
+  }
+
+  async getBatchOps(businessId: string, batchId: string) {
+    await this.requireCoaching(businessId);
+    const batch = await this.prisma.batch.findUnique({
+      where: { id: batchId },
+      select: {
+        id: true,
+        businessId: true,
+        name: true,
+        feesAmountCents: true,
+        startDate: true,
+        startTime: true,
+        endTime: true,
+        daysOfWeek: true,
+        course: { select: { name: true, stream: { select: { name: true } } } },
+      },
+    });
+    if (!batch || batch.businessId !== businessId) throw new BadRequestException('Batch not found');
+
+    const month = this.currentMonth();
+    const dateISO = new Date().toISOString().split('T')[0];
+
+    const students = await this.prisma.student.findMany({
+      where: { businessId, batchId, status: StudentStatus.ACTIVE },
+      orderBy: { name: 'asc' },
+      select: {
+        id: true,
+        name: true,
+        parentName: true,
+        parentPhone: true,
+        phone: true,
+        classGrade: true,
+        admissionAt: true,
+        attendance: { where: { dateISO }, select: { present: true } },
+        feeRecords: { where: { month, batchId }, select: { id: true, amountCents: true, paidAmountCents: true, isFullyPaid: true, paymentMode: true } },
+        testResults: {
+          orderBy: { test: { testDate: 'desc' } },
+          take: 5,
+          select: { marksObtained: true, test: { select: { subject: true, maxMarks: true, testDate: true } } },
+        },
+      },
+    });
+
+    const tests = await this.prisma.coachingTest.findMany({
+      where: { batchId },
+      orderBy: { testDate: 'desc' },
+      take: 12,
+      select: {
+        id: true,
+        subject: true,
+        testDate: true,
+        maxMarks: true,
+        _count: { select: { results: true } },
+      },
+    });
+
+    return {
+      batch,
+      month,
+      dateISO,
+      roster: students.map((s) => ({
+        id: s.id,
+        name: s.name,
+        parentName: s.parentName,
+        parentPhone: s.parentPhone ?? s.phone,
+        classGrade: s.classGrade,
+        admissionDate: s.admissionAt,
+        presentToday: s.attendance[0]?.present ?? null,
+        fee: s.feeRecords[0] ?? null,
+        recentTests: s.testResults,
+      })),
+      tests,
+    };
+  }
+
+  async createTest(businessId: string, dto: CreateCoachingTestDto) {
+    await this.requireCoaching(businessId);
+    const batch = await this.prisma.batch.findUnique({ where: { id: dto.batchId }, select: { businessId: true } });
+    if (!batch || batch.businessId !== businessId) throw new BadRequestException('Batch not found');
+    return this.prisma.coachingTest.create({
+      data: {
+        batchId: dto.batchId,
+        subject: dto.subject.trim(),
+        testDate: new Date(dto.testDate),
+        maxMarks: dto.maxMarks,
+      },
+      select: { id: true, subject: true, testDate: true, maxMarks: true },
+    });
+  }
+
+  async scoreBatchTest(businessId: string, dto: ScoreBatchTestDto) {
+    await this.requireCoaching(businessId);
+    const test = await this.prisma.coachingTest.findUnique({
+      where: { id: dto.testId },
+      select: { batch: { select: { businessId: true } }, maxMarks: true },
+    });
+    if (!test || test.batch.businessId !== businessId) throw new BadRequestException('Test not found');
+
+    const studentIds = dto.scores.map((s) => s.studentId);
+    const valid = await this.prisma.student.count({
+      where: { businessId, id: { in: studentIds } },
+    });
+    if (valid !== studentIds.length) throw new BadRequestException('Invalid student in batch scores');
+
+    await Promise.all(
+      dto.scores.map((row) =>
+        this.prisma.testResult.upsert({
+          where: { testId_studentId: { testId: dto.testId, studentId: row.studentId } },
+          create: {
+            testId: dto.testId,
+            studentId: row.studentId,
+            marksObtained: Math.min(row.marksObtained, test.maxMarks),
+            remarks: row.remarks?.trim() || null,
+          },
+          update: {
+            marksObtained: Math.min(row.marksObtained, test.maxMarks),
+            remarks: row.remarks?.trim() || null,
+          },
+        }),
+      ),
+    );
+    return { scored: dto.scores.length };
+  }
+
+  async getBatchReport(businessId: string, batchId: string) {
+    await this.requireCoaching(businessId);
+    const batch = await this.prisma.batch.findUnique({
+      where: { id: batchId },
+      select: { id: true, businessId: true, name: true, feesAmountCents: true, course: { select: { name: true } } },
+    });
+    if (!batch || batch.businessId !== businessId) throw new BadRequestException('Batch not found');
+
+    const month = this.currentMonth();
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+    const roster = await this.prisma.student.findMany({
+      where: { businessId, batchId, status: StudentStatus.ACTIVE },
+      select: { id: true },
+    });
+    const studentIds = roster.map((s) => s.id);
+    const rosterCount = studentIds.length;
+
+    const [attendanceRows, feeRows, testRows] = await Promise.all([
+      this.prisma.studentAttendance.findMany({
+        where: { studentId: { in: studentIds }, dateISO: { gte: thirtyDaysAgo } },
+        select: { present: true },
+      }),
+      this.prisma.feeRecord.findMany({
+        where: { batchId, month },
+        select: { amountCents: true, paidAmountCents: true, isFullyPaid: true },
+      }),
+      this.prisma.testResult.findMany({
+        where: { studentId: { in: studentIds } },
+        select: { marksObtained: true, test: { select: { maxMarks: true, subject: true, testDate: true } } },
+      }),
+    ]);
+
+    const attTotal = attendanceRows.length;
+    const attPresent = attendanceRows.filter((a) => a.present).length;
+    const attendanceRate = attTotal > 0 ? Math.round((attPresent / attTotal) * 100) : null;
+
+    const totalDue = feeRows.reduce((s, f) => s + f.amountCents, 0);
+    const totalPaid = feeRows.reduce((s, f) => s + f.paidAmountCents, 0);
+    const feeCollectionPct = totalDue > 0 ? Math.round((totalPaid / totalDue) * 100) : null;
+
+    const testTrends = testRows.reduce<
+      Record<string, { subject: string; date: string; avgPct: number; count: number }>
+    >((acc, row) => {
+      const key = row.test.testDate.toISOString().slice(0, 10);
+      const pct = row.test.maxMarks > 0 ? (row.marksObtained / row.test.maxMarks) * 100 : 0;
+      const cur = acc[key] ?? { subject: row.test.subject, date: key, avgPct: 0, count: 0 };
+      cur.avgPct = (cur.avgPct * cur.count + pct) / (cur.count + 1);
+      cur.count += 1;
+      acc[key] = cur;
+      return acc;
+    }, {});
+
+    const testTrendList = Object.values(testTrends)
+      .map((t) => ({ ...t, avgPct: Math.round(t.avgPct) }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    const overallTestAvg =
+      testRows.length > 0
+        ? Math.round(
+            testRows.reduce((s, r) => s + (r.test.maxMarks > 0 ? (r.marksObtained / r.test.maxMarks) * 100 : 0), 0) /
+              testRows.length,
+          )
+        : null;
+
+    return {
+      batch: { id: batch.id, name: batch.name, courseName: batch.course.name, rosterCount },
+      month,
+      attendanceRate,
+      feeCollectionPct,
+      totalDue,
+      totalPaid,
+      pendingAmount: totalDue - totalPaid,
+      overallTestAvg,
+      testTrends: testTrendList,
+    };
+  }
+
+  async getReportsOverview(businessId: string) {
+    await this.requireCoaching(businessId);
+    const batches = await this.prisma.batch.findMany({
+      where: { businessId, isActive: true },
+      select: { id: true, name: true, course: { select: { name: true } } },
+    });
+
+    const reports = await Promise.all(batches.map((b) => this.getBatchReport(businessId, b.id)));
+    const month = this.currentMonth();
+
+    const totalDue = reports.reduce((s, r) => s + r.totalDue, 0);
+    const totalPaid = reports.reduce((s, r) => s + r.totalPaid, 0);
+    const attendanceRates = reports.map((r) => r.attendanceRate).filter((v): v is number => v !== null);
+    const avgAttendance =
+      attendanceRates.length > 0
+        ? Math.round(attendanceRates.reduce((a, b) => a + b, 0) / attendanceRates.length)
+        : null;
+
+    return {
+      month,
+      batchCount: batches.length,
+      totalDue,
+      totalPaid,
+      pendingAmount: totalDue - totalPaid,
+      feeCollectionPct: totalDue > 0 ? Math.round((totalPaid / totalDue) * 100) : null,
+      avgAttendance,
+      batches: reports,
+    };
+  }
+
+  async getStudentReport(businessId: string, studentId: string) {
+    await this.requireCoaching(businessId);
+    const student = await this.prisma.student.findUnique({
+      where: { id: studentId },
+      select: {
+        id: true,
+        businessId: true,
+        name: true,
+        parentName: true,
+        parentPhone: true,
+        phone: true,
+        classGrade: true,
+        admissionAt: true,
+        batchLink: { select: { id: true, name: true, course: { select: { name: true } } } },
+        attendance: { orderBy: { dateISO: 'desc' }, take: 90, select: { dateISO: true, present: true } },
+        feeRecords: { orderBy: { month: 'desc' }, take: 12, select: { month: true, amountCents: true, paidAmountCents: true, isFullyPaid: true, paymentMode: true } },
+        testResults: {
+          orderBy: { test: { testDate: 'desc' } },
+          take: 20,
+          select: {
+            marksObtained: true,
+            remarks: true,
+            test: { select: { subject: true, maxMarks: true, testDate: true, batchId: true } },
+          },
+        },
+      },
+    });
+    if (!student || student.businessId !== businessId) throw new BadRequestException('Student not found');
+
+    const batchId = student.batchLink?.id;
+    let classAvgPct: number | null = null;
+    if (batchId) {
+      const batchReport = await this.getBatchReport(businessId, batchId);
+      classAvgPct = batchReport.overallTestAvg;
+    }
+
+    const attPresent = student.attendance.filter((a) => a.present).length;
+    const attendancePct =
+      student.attendance.length > 0 ? Math.round((attPresent / student.attendance.length) * 100) : null;
+
+    const studentTestAvg =
+      student.testResults.length > 0
+        ? Math.round(
+            student.testResults.reduce(
+              (s, r) => s + (r.test.maxMarks > 0 ? (r.marksObtained / r.test.maxMarks) * 100 : 0),
+              0,
+            ) / student.testResults.length,
+          )
+        : null;
+
+    const { businessId: _b, ...rest } = student;
+    return {
+      ...rest,
+      parentPhone: rest.parentPhone ?? rest.phone,
+      attendancePct,
+      attendanceStreak: attPresent,
+      studentTestAvg,
+      classAvgPct,
+      feeHistory: rest.feeRecords,
+      testHistory: rest.testResults,
+    };
+  }
+
+  async getBatchBroadcastRoster(businessId: string, batchId: string) {
+    await this.requireCoaching(businessId);
+    const batch = await this.prisma.batch.findUnique({
+      where: { id: batchId },
+      select: { businessId: true, name: true },
+    });
+    if (!batch || batch.businessId !== businessId) throw new BadRequestException('Batch not found');
+
+    const students = await this.prisma.student.findMany({
+      where: { businessId, batchId, status: StudentStatus.ACTIVE },
+      orderBy: { name: 'asc' },
+      select: { id: true, name: true, parentPhone: true, phone: true, parentName: true },
+    });
+
+    return {
+      batchName: batch.name,
+      parents: students
+        .filter((s) => s.parentPhone ?? s.phone)
+        .map((s) => ({
+          studentId: s.id,
+          studentName: s.name,
+          parentPhone: s.parentPhone ?? s.phone!,
+          parentName: s.parentName,
+        })),
+    };
   }
 }

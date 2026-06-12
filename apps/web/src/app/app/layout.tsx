@@ -99,6 +99,7 @@ const NAV_ITEMS: Array<{
   },
   { href: "/app/students", labelKey: "customers", module: "customers", Icon: Users, tab: false, side: true, coachingOnly: true },
   { href: "/app/coaching/fees", labelKey: "bookings", module: "customers", Icon: CalendarDays, tab: false, side: true, coachingOnly: true },
+  { href: "/app/coaching/reports", labelKey: "insights", module: "customers", Icon: BarChart2, tab: false, side: true, coachingOnly: true },
   { href: "/app/support", labelKey: "support", module: "support", Icon: LifeBuoy, tab: false, side: true },
   { href: "/app/analytics", labelKey: "insights", module: "analytics", Icon: BarChart2, tab: false, side: true },
   { href: "/app/settings", labelKey: "settings", module: "more", Icon: Settings, tab: false, side: true },
@@ -164,6 +165,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     if (t.labelKey === "matrix") label = "Academic Matrix";
     if (t.href === "/app/students") label = "Students";
     if (t.href === "/app/coaching/fees") label = "Fees";
+    if (t.href === "/app/coaching/reports") label = "Reports";
     return { ...t, label };
   });
 

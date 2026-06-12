@@ -11,7 +11,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { CoachingStreamKey, EnrollmentStatus } from '@prisma/client';
+import { CoachingStreamKey, EnrollmentStatus, FeePaymentMode, StudentStatus } from '@prisma/client';
 
 export class CreateStudentDto {
   @IsString() name: string;
@@ -67,6 +67,8 @@ export class CreateBatchDto {
   @IsString() courseId: string;
   @IsString() name: string;
   @IsOptional() @IsString() roomNumber?: string;
+  @IsOptional() @IsInt() @Min(0) feesAmountCents?: number;
+  @IsOptional() @IsDateString() startDate?: string;
   @IsString() startTime: string;
   @IsString() endTime: string;
   @IsArray() @ArrayMinSize(1) @IsString({ each: true }) daysOfWeek: string[];
@@ -97,6 +99,7 @@ export class UpdateStaffSpecializationsDto {
 
 export class BulkAttendanceBodyDto {
   @IsString() dateISO: string;
+  @IsOptional() @IsString() batchId?: string;
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => BulkAttendanceRecordDto)
@@ -110,4 +113,45 @@ export class BulkAttendanceRecordDto {
 
 export class EnsureStreamsDto {
   @IsOptional() @IsArray() @IsEnum(CoachingStreamKey, { each: true }) keys?: CoachingStreamKey[];
+}
+
+export class DirectAddStudentDto {
+  @IsString() batchId: string;
+  @IsString() name: string;
+  @IsOptional() @IsString() phone?: string;
+  @IsOptional() @IsString() parentPhone?: string;
+  @IsOptional() @IsString() parentName?: string;
+  @IsOptional() @IsString() classGrade?: string;
+}
+
+export class CreateCoachingTestDto {
+  @IsString() batchId: string;
+  @IsString() subject: string;
+  @IsDateString() testDate: string;
+  @IsInt() @Min(1) maxMarks: number;
+}
+
+export class ScoreBatchTestDto {
+  @IsString() testId: string;
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => TestScoreRowDto)
+  scores: TestScoreRowDto[];
+}
+
+export class TestScoreRowDto {
+  @IsString() studentId: string;
+  @IsInt() @Min(0) marksObtained: number;
+  @IsOptional() @IsString() remarks?: string;
+}
+
+export class UpdateFeeLedgerDto {
+  @IsOptional() @IsBoolean() isFullyPaid?: boolean;
+  @IsOptional() @IsInt() @Min(0) amountPaid?: number;
+  @IsOptional() @IsEnum(FeePaymentMode) paymentMode?: FeePaymentMode;
+  @IsOptional() @IsString() month?: string;
+}
+
+export class BatchBroadcastDto {
+  @IsString() message: string;
 }

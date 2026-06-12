@@ -8,14 +8,18 @@ import {
   BulkAttendanceBodyDto,
   CheckBatchConflictDto,
   CreateBatchDto,
+  CreateCoachingTestDto,
   CreateCourseDto,
   CreateEnrollmentDto,
   CreateFeeRecordDto,
   CreateStudentDto,
+  DirectAddStudentDto,
   EnsureStreamsDto,
   MarkAttendanceDto,
   RecordFeePaymentDto,
+  ScoreBatchTestDto,
   UpdateEnrollmentDto,
+  UpdateFeeLedgerDto,
   UpdateStaffSpecializationsDto,
   UpdateStudentDto,
 } from './coaching.dto';
@@ -43,6 +47,16 @@ export class CoachingController {
   @Get('batches')
   listBatches(@AuthUserDecorator() user: AuthUser) {
     return this.coaching.listBatches(user.businessId!);
+  }
+
+  @Get('batches/:id/ops')
+  getBatchOps(@AuthUserDecorator() user: AuthUser, @Param('id') id: string) {
+    return this.coaching.getBatchOps(user.businessId!, id);
+  }
+
+  @Get('batches/:id/broadcast-roster')
+  getBatchBroadcastRoster(@AuthUserDecorator() user: AuthUser, @Param('id') id: string) {
+    return this.coaching.getBatchBroadcastRoster(user.businessId!, id);
   }
 
   @Post('batches/check-conflict')
@@ -93,9 +107,19 @@ export class CoachingController {
     return this.coaching.createStudent(user.businessId!, dto);
   }
 
+  @Post('students/direct-add')
+  directAddStudent(@AuthUserDecorator() user: AuthUser, @Body() dto: DirectAddStudentDto) {
+    return this.coaching.directAddStudent(user.businessId!, dto);
+  }
+
   @Get('students/:id')
   getStudent(@AuthUserDecorator() user: AuthUser, @Param('id') id: string) {
     return this.coaching.getStudent(user.businessId!, id);
+  }
+
+  @Get('students/:id/report')
+  getStudentReport(@AuthUserDecorator() user: AuthUser, @Param('id') id: string) {
+    return this.coaching.getStudentReport(user.businessId!, id);
   }
 
   @Patch('students/:id')
@@ -110,7 +134,27 @@ export class CoachingController {
 
   @Post('attendance/bulk')
   bulkAttendance(@AuthUserDecorator() user: AuthUser, @Body() body: BulkAttendanceBodyDto) {
-    return this.coaching.bulkAttendance(user.businessId!, body.dateISO, body.records);
+    return this.coaching.bulkAttendance(user.businessId!, body.dateISO, body.records, body.batchId);
+  }
+
+  @Post('tests')
+  createTest(@AuthUserDecorator() user: AuthUser, @Body() dto: CreateCoachingTestDto) {
+    return this.coaching.createTest(user.businessId!, dto);
+  }
+
+  @Post('tests/score-batch')
+  scoreBatchTest(@AuthUserDecorator() user: AuthUser, @Body() dto: ScoreBatchTestDto) {
+    return this.coaching.scoreBatchTest(user.businessId!, dto);
+  }
+
+  @Get('reports/overview')
+  getReportsOverview(@AuthUserDecorator() user: AuthUser) {
+    return this.coaching.getReportsOverview(user.businessId!);
+  }
+
+  @Get('reports/batch/:id')
+  getBatchReport(@AuthUserDecorator() user: AuthUser, @Param('id') id: string) {
+    return this.coaching.getBatchReport(user.businessId!, id);
   }
 
   @Get('fees/dashboard')
@@ -121,6 +165,15 @@ export class CoachingController {
   @Post('fees')
   createFeeRecord(@AuthUserDecorator() user: AuthUser, @Body() dto: CreateFeeRecordDto) {
     return this.coaching.createFeeRecord(user.businessId!, dto);
+  }
+
+  @Patch('fees/:id/ledger')
+  updateFeeLedger(
+    @AuthUserDecorator() user: AuthUser,
+    @Param('id') id: string,
+    @Body() dto: UpdateFeeLedgerDto,
+  ) {
+    return this.coaching.updateFeeLedger(user.businessId!, id, dto);
   }
 
   @Post('fees/:id/payment')

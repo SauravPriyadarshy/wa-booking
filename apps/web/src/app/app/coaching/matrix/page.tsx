@@ -207,7 +207,12 @@ export default function CoachingMatrixPage() {
                           >
                             <div className="flex flex-wrap items-center justify-between gap-2">
                               <div>
-                                <div className="text-[14px] font-semibold text-zinc-900">{batch.name}</div>
+                            <Link
+                              href={`/app/coaching/batches/${batch.id}`}
+                              className="text-[14px] font-semibold text-zinc-900 hover:text-emerald-700"
+                            >
+                              {batch.name}
+                            </Link>
                                 <div className="text-[11px] text-zinc-500">
                                   {batch.startTime}–{batch.endTime} · {batch.daysOfWeek.join(", ")}
                                   {batch.roomNumber ? ` · Room ${batch.roomNumber}` : ""}

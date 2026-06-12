@@ -22,7 +22,11 @@ export function buildFeeReminderText(month: string): string {
 }
 
 export function buildAbsenceNotificationText(studentName: string, batchName: string): string {
-  return `Aadarneeya Abhibhavak, aapka bacha ${studentName} aaj ${batchName} ki kaksha se ABSENT hai. - BookNow Coaching System`;
+  return `Priya Abhibhavak, aapka bacha ${studentName} aaj class se anupasthit (ABSENT) hai. - BookNow Coaching System`;
+}
+
+export function buildFeesPendingText(studentName: string): string {
+  return `Namaskar, ${studentName} ki is mahine ki fees pending hai. Kripya ise cash ya UPI ke madhyam se jald jama karein.`;
 }
 
 export function buildInstallmentReminderText(
