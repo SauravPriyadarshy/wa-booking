@@ -16,7 +16,6 @@ import { BookingLinkPanel } from "@/components/app/booking-link-panel";
 import { DarbhangaLaunchStrip } from "@/components/app/darbhanga-launch-strip";
 import { ManualWhatsAppButton } from "@/components/app/manual-whatsapp-button";
 import { VerticalDemoStrip } from "@/components/app/vertical-demo-strip";
-import { UpgradeBanner, PlanUsageBar } from "@/components/app/upgrade-banner";
 import { useWhatsAppLink } from "@/hooks/use-whatsapp-link";
 import { packByKey } from "@/lib/darbhanga-pack";
 import {
@@ -841,31 +840,12 @@ export function HubDashboard() {
       </div>
       ) : null}
 
-      {plan?.effectivePlan === "FREE" && plan.limits.maxCustomers != null ? (
-        <div className="mt-4 grid gap-2 sm:grid-cols-3">
-          <PlanUsageBar label="Customers" used={plan.usage.customers} max={plan.limits.maxCustomers} />
-          <PlanUsageBar label="Staff" used={plan.usage.staff} max={plan.limits.maxStaff} />
-          <PlanUsageBar label="Bookings/mo" used={plan.usage.bookingsThisMonth} max={plan.limits.maxBookingsPerMonth} />
-        </div>
-      ) : null}
-
       {/* 3. Health Score widget */}
       {health && showHealthInLaunch ? (
         <div className="mt-5">
           <HealthScoreWidget {...health} />
         </div>
-      ) : !health && plan?.effectivePlan === "FREE" && !launchMode ? (
-        <div className="mt-5">
-          <UpgradeBanner
-            title="व्यवसाय स्थिति रिपोर्ट — Plus plan par"
-            message="Business Health Score, revenue leakage, aur customer reactivation Plus plan par unlock hote hain."
-            cta="Plus plan dekhein →"
-            href="/business-success"
-          />
-        </div>
       ) : null}
-
-      {/* 4. Revenue Leakage widget — only when money at risk */}
       {leakage && (!launchMode || hasLeakage) ? (
         <div className="mt-4">
           <RevenueLeakageWidget data={leakage} />

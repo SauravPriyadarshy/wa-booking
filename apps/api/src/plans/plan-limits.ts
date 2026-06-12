@@ -35,12 +35,6 @@ export type PlanSnapshot = {
   features: PlanFeature[];
 };
 
-const FREE_LIMITS: PlanLimits = {
-  maxStaff: 1,
-  maxCustomers: 50,
-  maxBookingsPerMonth: 50,
-};
-
 const UNLIMITED: PlanLimits = {
   maxStaff: null,
   maxCustomers: null,
@@ -74,11 +68,11 @@ const PRO_FEATURES: PlanFeature[] = [
 export function featuresForPlan(plan: SubscriptionPlan): PlanFeature[] {
   if (plan === SubscriptionPlan.PRO) return PRO_FEATURES;
   if (plan === SubscriptionPlan.PLUS) return PLUS_FEATURES;
-  return [];
+  // Launch mode: Free includes full product until paid tiers are enforced again.
+  return PRO_FEATURES;
 }
 
 export function limitsForPlan(plan: SubscriptionPlan): PlanLimits {
-  if (plan === SubscriptionPlan.FREE) return FREE_LIMITS;
   return UNLIMITED;
 }
 

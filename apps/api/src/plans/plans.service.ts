@@ -27,7 +27,7 @@ export class PlansService {
         planExpiresAt: null,
         expired: false,
         limits: limitsForPlan(SubscriptionPlan.FREE),
-        features: [],
+        features: featuresForPlan(SubscriptionPlan.FREE),
       };
     }
 

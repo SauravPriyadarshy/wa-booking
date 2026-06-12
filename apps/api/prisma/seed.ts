@@ -446,8 +446,6 @@ async function ensureStaffDoctor(
 /** Live demo tenants for sales demos — bookable public pages + full vertical data. */
 async function seedLiveDemoAccounts() {
   const password = "password123";
-  const proExpiry = new Date();
-  proExpiry.setFullYear(proExpiry.getFullYear() + 1);
   const month = new Date().toISOString().slice(0, 7);
   const todayISO = new Date().toISOString().slice(0, 10);
   const dayStart = new Date();
@@ -464,12 +462,12 @@ async function seedLiveDemoAccounts() {
         categoryId: salonCat.id,
         isActive: true,
         timezone: "Asia/Kolkata",
-        plan: SubscriptionPlan.PRO,
-        planExpiresAt: proExpiry,
+        plan: SubscriptionPlan.FREE,
+        planExpiresAt: null,
       },
       update: {
-        plan: SubscriptionPlan.PRO,
-        planExpiresAt: proExpiry,
+        plan: SubscriptionPlan.FREE,
+        planExpiresAt: null,
         isActive: true,
       },
     });
@@ -494,14 +492,14 @@ async function seedLiveDemoAccounts() {
         categoryId: clinicCat.id,
         isActive: true,
         timezone: "Asia/Kolkata",
-        plan: SubscriptionPlan.PRO,
-        planExpiresAt: proExpiry,
+        plan: SubscriptionPlan.FREE,
+        planExpiresAt: null,
         phone: "+919876543211",
       },
       update: {
         name: "Singh Family Clinic",
-        plan: SubscriptionPlan.PRO,
-        planExpiresAt: proExpiry,
+        plan: SubscriptionPlan.FREE,
+        planExpiresAt: null,
         isActive: true,
       },
     });
@@ -620,13 +618,13 @@ async function seedLiveDemoAccounts() {
         categoryId: coachingCat.id,
         isActive: true,
         timezone: "Asia/Kolkata",
-        plan: SubscriptionPlan.PRO,
-        planExpiresAt: proExpiry,
+        plan: SubscriptionPlan.FREE,
+        planExpiresAt: null,
         phone: "+919876543212",
       },
       update: {
-        plan: SubscriptionPlan.PRO,
-        planExpiresAt: proExpiry,
+        plan: SubscriptionPlan.FREE,
+        planExpiresAt: null,
         isActive: true,
       },
     });
@@ -766,7 +764,11 @@ async function seedLiveDemoAccounts() {
     console.log("Coaching demo: phone 9876543212 / password123 → /demo-coaching");
   }
 
-  console.log("Live demo accounts seeded (clinic, coaching, salon).");
+  await prisma.business.updateMany({
+    data: { plan: SubscriptionPlan.FREE, planExpiresAt: null },
+  });
+
+  console.log("Live demo accounts seeded (clinic, coaching, salon). All tenants set to active Free.");
 }
 
 // Default SiteContent values — all user-facing text editable by Super Admin
