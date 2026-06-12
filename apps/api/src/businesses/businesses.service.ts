@@ -188,20 +188,47 @@ export class BusinessesService {
   }
 
   async getBySlug(slug: string) {
-    return this.prisma.business.findUnique({
+    const row = await this.prisma.business.findUnique({
       where: { slug, isActive: true },
       select: {
         id: true,
         name: true,
         slug: true,
         timezone: true,
+        category: { select: { key: true } },
         services: {
           where: { isActive: true },
           select: { id: true, name: true, durationMin: true, priceCents: true },
           orderBy: { name: 'asc' },
         },
+        staff: {
+          where: { isAvailable: true },
+          select: {
+            id: true,
+            title: true,
+            specialization: true,
+            consultationFeeCents: true,
+            consultationDurationMin: true,
+            user: { select: { name: true } },
+          },
+          orderBy: { createdAt: 'asc' },
+        },
       },
     });
+    if (!row) return null;
+    const { category, staff, ...rest } = row;
+    return {
+      ...rest,
+      categoryKey: category?.key ?? null,
+      staff: staff.map((s) => ({
+        id: s.id,
+        name: s.user.name ?? 'Doctor',
+        title: s.title,
+        specialization: s.specialization,
+        consultationFeeCents: s.consultationFeeCents,
+        consultationDurationMin: s.consultationDurationMin,
+      })),
+    };
   }
 
   /** New slug only when an admin explicitly requests it; old public URL stops working. */

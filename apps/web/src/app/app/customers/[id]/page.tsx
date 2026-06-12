@@ -1,8 +1,9 @@
 "use client";
 
 import { use, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { apiBase } from "@/lib/api-base";
-import { Card, CustomerCardSkeleton, EmptyState } from "@/components/ui";
+import { Button, Card, CustomerCardSkeleton, EmptyState, FieldInput, FormField } from "@/components/ui";
 
 type Customer = {
   id: string;
@@ -51,6 +52,7 @@ function daysSince(dateStr: string) {
 
 export default function CustomerDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const router = useRouter();
   const token = useMemo(() => (typeof window === "undefined" ? null : localStorage.getItem("token")), []);
   const [tab, setTab] = useState<Tab>("timeline");
   const [c, setC] = useState<Customer | null>(null);
@@ -58,6 +60,10 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [savingTag, setSavingTag] = useState<string | null>(null);
+  const [categoryKey, setCategoryKey] = useState<string | null>(null);
+  const [convertOpen, setConvertOpen] = useState(false);
+  const [converting, setConverting] = useState(false);
+  const [studentForm, setStudentForm] = useState({ batch: "", classGrade: "", course: "" });
 
   async function apiCall(path: string, init?: RequestInit) {
     if (!token) throw new Error("Please login");
@@ -76,12 +82,15 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
       try {
         setErr(null);
         setLoading(true);
-        const [cust, timeline] = await Promise.all([
+        const [cust, timeline, me] = await Promise.all([
           apiCall(`/customers/${encodeURIComponent(id)}`),
           apiCall(`/customers/${encodeURIComponent(id)}/timeline`),
+          apiCall("/me").catch(() => null),
         ]);
         setC(cust as Customer);
         setTl(timeline as Timeline);
+        const meData = me as { ok?: boolean; business?: { categoryKey?: string | null } | null } | null;
+        if (meData?.ok) setCategoryKey(meData.business?.categoryKey ?? null);
       } catch (e) {
         setErr(e instanceof Error ? e.message : "Failed");
       } finally {
@@ -107,6 +116,33 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
       setErr(e instanceof Error ? e.message : "Failed to update tag");
     } finally {
       setSavingTag(null);
+    }
+  }
+
+  async function convertToStudent() {
+    if (!c?.name?.trim()) return;
+    setConverting(true);
+    setErr(null);
+    try {
+      const created = (await apiCall("/coaching/students", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          name: c.name.trim(),
+          phone: c.phone ?? undefined,
+          parentName: c.name.trim(),
+          batch: studentForm.batch.trim() || undefined,
+          classGrade: studentForm.classGrade.trim() || undefined,
+          course: studentForm.course.trim() || undefined,
+        }),
+      })) as { id?: string };
+      setConvertOpen(false);
+      if (created.id) router.push(`/app/students/${created.id}`);
+      else router.push("/app/students");
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Could not create student");
+    } finally {
+      setConverting(false);
     }
   }
 
@@ -164,6 +200,18 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
           📅 Book
         </a>
       </div>
+
+      {categoryKey === "coaching" ? (
+        <div className="mt-3 rounded-2xl border border-blue-100 bg-blue-50/80 p-4">
+          <p className="text-[13px] font-semibold text-blue-900">Convert to Regular Student</p>
+          <p className="mt-0.5 text-[12px] text-blue-800">
+            Trial bookings stay as customers until you add them to a batch for fees and attendance.
+          </p>
+          <Button type="button" variant="primary" size="sm" className="mt-3" onClick={() => setConvertOpen(true)}>
+            Convert to Regular Student
+          </Button>
+        </div>
+      ) : null}
 
       {/* Tags */}
       <div className="mt-4 rounded-2xl border border-zinc-100 bg-white p-4 shadow-sm">
@@ -302,6 +350,61 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
           )}
         </>
       )}
+
+      {convertOpen ? (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) setConvertOpen(false);
+          }}
+        >
+          <Card className="relative z-10 w-full max-w-md !p-5 shadow-lg">
+            <h2 className="text-[16px] font-semibold text-zinc-900">Convert to Regular Student</h2>
+            <p className="mt-1 text-[13px] text-zinc-600">
+              {c?.name} · {c?.phone ?? "No phone"}
+            </p>
+            <div className="mt-4 grid gap-3">
+              <FormField label="Batch" required>
+                <FieldInput
+                  placeholder="e.g. NEET 2026"
+                  value={studentForm.batch}
+                  onChange={(e) => setStudentForm((f) => ({ ...f, batch: e.target.value }))}
+                />
+              </FormField>
+              <FormField label="Class / Grade">
+                <FieldInput
+                  placeholder="e.g. Class 12"
+                  value={studentForm.classGrade}
+                  onChange={(e) => setStudentForm((f) => ({ ...f, classGrade: e.target.value }))}
+                />
+              </FormField>
+              <FormField label="Course (optional)">
+                <FieldInput
+                  placeholder="e.g. NEET"
+                  value={studentForm.course}
+                  onChange={(e) => setStudentForm((f) => ({ ...f, course: e.target.value }))}
+                />
+              </FormField>
+            </div>
+            <div className="mt-5 flex gap-2">
+              <Button type="button" variant="secondary" size="md" className="flex-1" onClick={() => setConvertOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                variant="primary"
+                size="md"
+                className="flex-1"
+                loading={converting}
+                disabled={!studentForm.batch.trim()}
+                onClick={() => void convertToStudent()}
+              >
+                Save student
+              </Button>
+            </div>
+          </Card>
+        </div>
+      ) : null}
     </div>
   );
 }

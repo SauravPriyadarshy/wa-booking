@@ -5,7 +5,9 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { apiBase } from "@/lib/api-base";
 import { BookingCalendar } from "@/components/app/booking-calendar";
+import { ManualWhatsAppButton } from "@/components/app/manual-whatsapp-button";
 import { NewBookingSheet } from "@/components/app/new-booking-sheet";
+import { useWhatsAppLink } from "@/hooks/use-whatsapp-link";
 import {
   BookingCardSkeleton,
   Button,
@@ -184,6 +186,7 @@ export default function BookingsPage() {
   const [showMoreSlots, setShowMoreSlots] = useState(false);
   const [showMoreTimeline, setShowMoreTimeline] = useState(false);
   const [showMoreList, setShowMoreList] = useState(false);
+  const { showManualFallback, openBookingConfirm } = useWhatsAppLink();
 
   const commitSelectedDate = useCallback((iso: string) => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return;
@@ -698,6 +701,16 @@ export default function BookingsPage() {
                               Complete
                             </Button>
                           ) : null}
+                          {showManualFallback &&
+                          row.booking.customer.phone &&
+                          (row.booking.status === "PENDING" || row.booking.status === "CONFIRMED") ? (
+                            <ManualWhatsAppButton
+                              label="WhatsApp"
+                              onClick={() =>
+                                openBookingConfirm(row.booking.customer.phone!, row.booking.service.name)
+                              }
+                            />
+                          ) : null}
                           {row.booking.status !== "CANCELLED" && row.booking.status !== "COMPLETED" ? (
                             <Button
                               type="button"
@@ -832,6 +845,14 @@ export default function BookingsPage() {
                     >
                       Complete
                     </Button>
+                  ) : null}
+                  {showManualFallback &&
+                  b.customer.phone &&
+                  (b.status === "PENDING" || b.status === "CONFIRMED") ? (
+                    <ManualWhatsAppButton
+                      label="WhatsApp"
+                      onClick={() => openBookingConfirm(b.customer.phone!, b.service.name)}
+                    />
                   ) : null}
                   {b.status !== "CANCELLED" && b.status !== "COMPLETED" ? (
                     <Button type="button" variant="ghost" size="sm" loading={busyId === b.id} onClick={() => void setStatus(b.id, "NO_SHOW")}>

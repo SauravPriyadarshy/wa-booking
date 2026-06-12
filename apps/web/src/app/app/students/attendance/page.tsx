@@ -19,7 +19,10 @@ export default function AttendancePage() {
     if (!token) return;
     fetch(`${apiBase()}/coaching/students`, { headers: { authorization: `Bearer ${token}` } })
       .then((r) => r.json())
-      .then((d: { items?: Student[] }) => setStudents(d.items ?? []))
+      .then((d: Student[] | { items?: Student[] }) => {
+        const rows = Array.isArray(d) ? d : (d.items ?? []);
+        setStudents(rows.map((s) => ({ id: s.id, name: s.name, batch: s.batch })));
+      })
       .catch(() => setStudents([]))
       .finally(() => setLoading(false));
   }, []);
@@ -30,20 +33,20 @@ export default function AttendancePage() {
     setSaving(true);
     setMsg(null);
     try {
-      const entries = students.map((s) => ({
+      const records = students.map((s) => ({
         studentId: s.id,
-        dateISO,
         present: present[s.id] ?? false,
       }));
       const res = await fetch(`${apiBase()}/coaching/attendance/bulk`, {
         method: "POST",
         headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
-        body: JSON.stringify({ entries }),
+        body: JSON.stringify({ dateISO, records }),
       });
-      if (!res.ok) throw new Error("Save failed");
-      setMsg("Saved ✓");
-    } catch {
-      setMsg("Could not save — try again");
+      const data = (await res.json()) as { message?: string; marked?: number };
+      if (!res.ok) throw new Error(data.message ?? "Save failed");
+      setMsg(`Saved ✓ (${data.marked ?? records.length} students)`);
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : "Could not save — try again");
     } finally {
       setSaving(false);
     }

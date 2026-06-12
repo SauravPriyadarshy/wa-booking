@@ -19,6 +19,7 @@ import {
   BarChart2,
   LifeBuoy,
   Settings,
+  ClipboardList,
   type LucideIcon,
 } from "lucide-react";
 
@@ -62,6 +63,7 @@ type NavLabels = {
   bookings: string;
   customers: string;
   more: string;
+  queue: string;
   whatsapp: string;
   support: string;
   insights: string;
@@ -75,12 +77,14 @@ const NAV_ITEMS: Array<{
   Icon: LucideIcon;
   tab: boolean;
   side: boolean;
+  clinicOnly?: boolean;
 }> = [
   { href: "/app", labelKey: "today", module: "hub", Icon: Home, tab: true, side: true },
   { href: "/app/bookings", labelKey: "bookings", module: "bookings", Icon: CalendarDays, tab: true, side: true },
   { href: "/app/customers", labelKey: "customers", module: "customers", Icon: Users, tab: true, side: true },
   { href: "/app/whatsapp", labelKey: "whatsapp", module: "whatsapp-connect", Icon: MessageCircle, tab: false, side: false },
   { href: "/app/more", labelKey: "more", module: null, Icon: MoreHorizontal, tab: true, side: false },
+  { href: "/app/queue", labelKey: "queue", module: "bookings", Icon: ClipboardList, tab: true, side: true, clinicOnly: true },
   { href: "/app/support", labelKey: "support", module: "support", Icon: LifeBuoy, tab: false, side: true },
   { href: "/app/analytics", labelKey: "insights", module: "analytics", Icon: BarChart2, tab: false, side: true },
   { href: "/app/settings", labelKey: "settings", module: "more", Icon: Settings, tab: false, side: true },
@@ -120,12 +124,19 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const modules = ui?.ok ? new Set(ui.modules) : new Set<string>();
   const show = (key: string | null) => !key || modules.size === 0 || modules.has(key);
   const isSuperAdmin = me?.ok && me.user.role === "SUPER_ADMIN";
+  const isClinic = me?.ok && me.business?.categoryKey === "clinic";
 
-  const visibleTabs = NAV_ITEMS.filter((t) => t.tab && show(t.module)).map((t) => ({
+  const navFilter = (t: (typeof NAV_ITEMS)[number]) => {
+    if (t.clinicOnly && !isClinic) return false;
+    if (!t.clinicOnly && t.href === "/app/more" && isClinic) return false;
+    return show(t.module);
+  };
+
+  const visibleTabs = NAV_ITEMS.filter((t) => t.tab && navFilter(t)).map((t) => ({
     ...t,
     label: tn(t.labelKey === "today" ? "today" : t.labelKey),
   }));
-  const visibleSidebar = NAV_ITEMS.filter((t) => t.side && show(t.module)).map((t) => ({
+  const visibleSidebar = NAV_ITEMS.filter((t) => (t.side || (t.clinicOnly && isClinic)) && navFilter(t)).map((t) => ({
     ...t,
     label: tn(t.labelKey === "today" ? "hub" : t.labelKey),
   }));

@@ -8,7 +8,22 @@ import { Button, FormField, FieldInput } from "@/components/ui";
 import { PublicBookingCalendar } from "@/components/booking/public-booking-calendar";
 
 type Service = { id: string; name: string; durationMin: number; priceCents: number | null };
-type Business = { id: string; name: string; slug: string; services: Service[] };
+type StaffDoctor = {
+  id: string;
+  name: string;
+  title: string | null;
+  specialization: string | null;
+  consultationFeeCents: number | null;
+  consultationDurationMin: number;
+};
+type Business = {
+  id: string;
+  name: string;
+  slug: string;
+  categoryKey?: string | null;
+  services: Service[];
+  staff?: StaffDoctor[];
+};
 type Slot = { startAt: string; endAt: string; available: boolean; reason?: "past" | "booked" };
 
 function addDaysISO(base: string, days: number) {
@@ -26,6 +41,7 @@ export default function BookingClient({ params: paramsPromise }: { params: Promi
   const { slug } = use(paramsPromise);
   const [business, setBusiness] = useState<Business | null>(null);
   const [service, setService] = useState<Service | null>(null);
+  const [staffId, setStaffId] = useState<string | null>(null);
   const today = todayISO();
   const [date, setDate] = useState(today);
   const [slots, setSlots] = useState<Slot[]>([]);
@@ -57,14 +73,19 @@ export default function BookingClient({ params: paramsPromise }: { params: Promi
     })();
   }, [slug]);
 
+  const isClinic = business?.categoryKey === "clinic";
+  const doctors = useMemo(() => business?.staff ?? [], [business?.staff]);
+  const showDoctorStep = isClinic && doctors.length > 0;
+
   useEffect(() => {
     if (step === 2 && service) {
       (async () => {
         setLoadingSlots(true);
         setSlot(null);
         try {
+          const staffQuery = staffId ? `&staffId=${encodeURIComponent(staffId)}` : "";
           const res = await fetch(
-            `${apiBase()}/public/business/${slug}/slots?serviceId=${service.id}&date=${encodeURIComponent(date)}`,
+            `${apiBase()}/public/business/${slug}/slots?serviceId=${service.id}&date=${encodeURIComponent(date)}${staffQuery}`,
           );
           const data = await res.json();
           setSlots(Array.isArray(data) ? (data as Slot[]) : []);
@@ -75,7 +96,7 @@ export default function BookingClient({ params: paramsPromise }: { params: Promi
         }
       })();
     }
-  }, [step, service, date, slug]);
+  }, [step, service, date, slug, staffId]);
 
   async function book() {
     if (!service || !slot || !slot.available || !name || !phone) return;
@@ -85,7 +106,13 @@ export default function BookingClient({ params: paramsPromise }: { params: Promi
       const res = await fetch(`${apiBase()}/public/business/${slug}/book`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ serviceId: service.id, startAt: slot.startAt, name, phone: phone.startsWith("+") ? phone : `+91${phone}` }),
+        body: JSON.stringify({
+          serviceId: service.id,
+          startAt: slot.startAt,
+          name,
+          phone: phone.startsWith("+") ? phone : `+91${phone}`,
+          ...(staffId ? { staffId } : {}),
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error((data as { message?: string })?.message ?? "Booking failed");
@@ -155,6 +182,7 @@ export default function BookingClient({ params: paramsPromise }: { params: Promi
                       setService(s);
                       setDate(today);
                       setSlot(null);
+                      setStaffId(null);
                       setStep(2);
                     }}
                     className="flex min-h-[52px] items-center justify-between rounded-xl border border-zinc-100 bg-zinc-50 px-4 py-3 text-left transition hover:border-emerald-200 hover:bg-emerald-50/40 active:scale-[0.99]"
@@ -185,6 +213,46 @@ export default function BookingClient({ params: paramsPromise }: { params: Promi
                   {t("changeService")}
                 </button>
               </div>
+
+              {showDoctorStep ? (
+                <div>
+                  <h3 className="text-[14px] font-semibold text-zinc-900">{t("selectDoctor")}</h3>
+                  <p className="mt-0.5 text-[12px] text-zinc-500">{t("selectDoctorHint")}</p>
+                  <div className="mt-2 grid gap-2">
+                    {doctors.map((doc) => {
+                      const selected = staffId === doc.id;
+                      const label = [doc.title, doc.name].filter(Boolean).join(" ");
+                      return (
+                        <button
+                          key={doc.id}
+                          type="button"
+                          onClick={() => {
+                            setStaffId(doc.id);
+                            setSlot(null);
+                          }}
+                          className={`flex min-h-[56px] items-center justify-between rounded-xl border px-4 py-3 text-left transition ${
+                            selected
+                              ? "border-emerald-500 bg-emerald-50 ring-2 ring-emerald-200"
+                              : "border-zinc-100 bg-zinc-50 hover:border-emerald-200"
+                          }`}
+                        >
+                          <div className="min-w-0">
+                            <div className="text-[14px] font-semibold text-zinc-900">{label}</div>
+                            {doc.specialization ? (
+                              <div className="text-[12px] text-zinc-600">{doc.specialization}</div>
+                            ) : null}
+                          </div>
+                          {doc.consultationFeeCents != null ? (
+                            <div className="shrink-0 text-[13px] font-semibold text-emerald-700">
+                              ₹{Math.round(doc.consultationFeeCents / 100)}
+                            </div>
+                          ) : null}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null}
 
               <PublicBookingCalendar
                 selectedDate={date}
@@ -262,6 +330,7 @@ export default function BookingClient({ params: paramsPromise }: { params: Promi
                     variant="primary"
                     size="lg"
                     className="mt-4 w-full"
+                    disabled={showDoctorStep && !staffId}
                     onClick={() => setStep(3)}
                   >
                     {t("continueWithTime")}
@@ -293,6 +362,15 @@ export default function BookingClient({ params: paramsPromise }: { params: Promi
                     minute: "2-digit",
                   })}
                 </p>
+                {staffId && doctors.length > 0 ? (
+                  <p className="mt-1 text-[12px] text-zinc-500">
+                    {(() => {
+                      const doc = doctors.find((d) => d.id === staffId);
+                      if (!doc) return null;
+                      return [doc.title, doc.name].filter(Boolean).join(" ");
+                    })()}
+                  </p>
+                ) : null}
               </div>
               <div className="mt-5 grid gap-4">
                 <FormField label={t("nameLabel")} required>
