@@ -1,6 +1,8 @@
 import type { MetadataRoute } from "next";
 
-const BASE = process.env.NEXT_PUBLIC_WEB_URL ?? "https://booknow.app";
+import { siteUrl } from "@/lib/site-url";
+
+const BASE = siteUrl();
 
 export default function robots(): MetadataRoute.Robots {
   return {

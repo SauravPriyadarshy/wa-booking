@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { getSiteContentGroup } from "@/lib/site-content";
 import BookingClient from "./booking-client";
 
+import { siteUrl } from "@/lib/site-url";
+
 const apiBase = () => process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
 
 async function fetchBusiness(slug: string) {
@@ -41,6 +43,14 @@ export async function generateMetadata({
       description,
       url: `/${slug}`,
       type: "website",
+      images: [
+        {
+          url: `${siteUrl()}/og-booking.png`,
+          width: 1200,
+          height: 630,
+          alt: `Book ${businessName} on BookNow`,
+        },
+      ],
     },
   };
 }
@@ -53,7 +63,7 @@ export default async function PublicBookingPage({
   const { slug } = await params;
   const business = await fetchBusiness(slug);
 
-  const webUrl = process.env.NEXT_PUBLIC_WEB_URL ?? "https://booknow.app";
+  const webUrl = siteUrl();
 
   return (
     <>

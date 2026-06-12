@@ -3,6 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../prisma/prisma.service';
 import { UserRole } from '../common/auth/user-role.enum';
+import { OtpDeliveryService, type OtpChannel } from './otp-delivery.service';
 import crypto from 'node:crypto';
 
 @Injectable()
@@ -10,6 +11,7 @@ export class AuthService {
   constructor(
     private prisma: PrismaService,
     private jwt: JwtService,
+    private otpDelivery: OtpDeliveryService,
   ) {}
 
   async bootstrapSuperAdmin(args: {
@@ -94,18 +96,18 @@ export class AuthService {
     };
   }
 
-  // Dev-only OTP stub. In production, integrate SMS provider.
-  async requestOtp(phone: string) {
+  async requestOtp(phone: string, channel: OtpChannel = 'whatsapp', email?: string) {
     await this.prisma.user.upsert({
       where: { phone },
-      create: { phone, role: UserRole.BUSINESS_ADMIN },
-      update: {},
+      create: { phone, role: UserRole.BUSINESS_ADMIN, ...(email ? { email } : {}) },
+      update: email ? { email } : {},
     });
-    return { ok: true, devCode: '1234' };
+    return this.otpDelivery.storeAndSend({ phone, channel, email });
   }
 
   async verifyOtp(phone: string, code: string) {
-    if (code !== '1234') throw new UnauthorizedException('Invalid code');
+    const ok = await this.otpDelivery.verifyStoredCode(phone, code);
+    if (!ok) throw new UnauthorizedException('Invalid code');
     const user = await this.prisma.user.findUnique({ where: { phone } });
     if (!user) throw new UnauthorizedException('Invalid phone');
 

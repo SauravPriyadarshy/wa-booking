@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { PlansService } from '../plans/plans.service';
 
 const CUSTOMER_SELECT = {
   id: true,
@@ -14,7 +15,10 @@ const CUSTOMER_SELECT = {
 
 @Injectable()
 export class CustomersService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private plans: PlansService,
+  ) {}
 
   async list(businessId: string) {
     const customers = await this.prisma.customer.findMany({
@@ -77,7 +81,8 @@ export class CustomersService {
     });
   }
 
-  create(businessId: string, data: any) {
+  async create(businessId: string, data: any) {
+    await this.plans.assertCanAddCustomer(businessId);
     return this.prisma.customer.create({
       data: {
         businessId,
@@ -246,6 +251,7 @@ export class CustomersService {
       }
       return existing;
     }
+    await this.plans.assertCanAddCustomer(businessId);
     return this.prisma.customer.create({ data: { businessId, phone, name } });
   }
 }

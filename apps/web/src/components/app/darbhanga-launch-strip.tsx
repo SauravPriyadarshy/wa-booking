@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Link2, MessageCircle, CalendarDays, ChevronDown } from "lucide-react";
 import { apiBase } from "@/lib/api-base";
+import { resolveLocale } from "@/lib/locale";
 
 type Props = {
   packLabel: string;
@@ -13,6 +15,12 @@ type Props = {
   contactPhone?: string;
 };
 
+function readLocaleCookie() {
+  if (typeof document === "undefined") return "en" as const;
+  const m = document.cookie.match(/(?:^|;\s*)locale=([^;]+)/);
+  return resolveLocale(m?.[1]);
+}
+
 export function DarbhangaLaunchStrip({
   packLabel,
   waConnected,
@@ -21,6 +29,7 @@ export function DarbhangaLaunchStrip({
   onDismiss,
   contactPhone: contactPhoneProp,
 }: Props) {
+  const t = useTranslations("darbhangaLaunch");
   const [contactPhone, setContactPhone] = useState(contactPhoneProp ?? "7500002221");
 
   useEffect(() => {
@@ -28,7 +37,8 @@ export function DarbhangaLaunchStrip({
       setContactPhone(contactPhoneProp);
       return;
     }
-    fetch(`${apiBase()}/site-content/bundle?locale=en`)
+    const locale = readLocaleCookie();
+    fetch(`${apiBase()}/site-content/bundle?locale=${locale}`)
       .then((r) => r.json())
       .then((d: { platform?: Record<string, string> }) => {
         const phone = d.platform?.["platform.contact_phone"];
@@ -41,9 +51,9 @@ export function DarbhangaLaunchStrip({
     <section className="animate-slide-up rounded-2xl border-2 border-emerald-200 bg-gradient-to-br from-emerald-50 to-white p-4 shadow-sm">
       <div className="flex items-start justify-between gap-2">
         <div>
-          <div className="text-[11px] font-bold uppercase tracking-widest text-emerald-700">Darbhanga Pack</div>
-          <h2 className="mt-0.5 text-[17px] font-black text-zinc-900">{packLabel} — ab yeh karo</h2>
-          <p className="mt-1 text-[12px] text-zinc-600">Teen step। Bas itna। Baaki features neeche &ldquo;और&rdquo; mein hai।</p>
+          <div className="text-[11px] font-bold uppercase tracking-widest text-emerald-700">{t("badge")}</div>
+          <h2 className="mt-0.5 text-[17px] font-black text-zinc-900">{t("title", { pack: packLabel })}</h2>
+          <p className="mt-1 text-[12px] text-zinc-600">{t("subtitle")}</p>
         </div>
         {onDismiss ? (
           <button
@@ -51,7 +61,7 @@ export function DarbhangaLaunchStrip({
             onClick={onDismiss}
             className="shrink-0 rounded-lg px-2 py-1 text-[11px] font-semibold text-zinc-400 hover:bg-zinc-100"
           >
-            Hide
+            {t("hide")}
           </button>
         ) : null}
       </div>
@@ -65,8 +75,8 @@ export function DarbhangaLaunchStrip({
         >
           <Link2 className="h-6 w-6 shrink-0" />
           <div>
-            <div className="text-[14px] font-bold">1. Link share karo</div>
-            <div className="text-[11px] text-emerald-100">WhatsApp group / customer ko bhejo</div>
+            <div className="text-[14px] font-bold">{t("step1Title")}</div>
+            <div className="text-[11px] text-emerald-100">{t("step1Sub")}</div>
           </div>
         </button>
 
@@ -81,9 +91,9 @@ export function DarbhangaLaunchStrip({
           <MessageCircle className={`h-6 w-6 shrink-0 ${waConnected ? "text-emerald-600" : "text-amber-600"}`} />
           <div>
             <div className="text-[14px] font-bold">
-              2. WhatsApp {waConnected ? "connected ✓" : "jodo — QR scan"}
+              {waConnected ? t("step2Connected") : t("step2Connect")}
             </div>
-            <div className="text-[11px] text-zinc-500">Reminder automatic jayega</div>
+            <div className="text-[11px] text-zinc-500">{t("step2Sub")}</div>
           </div>
         </a>
 
@@ -93,8 +103,8 @@ export function DarbhangaLaunchStrip({
         >
           <CalendarDays className="h-6 w-6 shrink-0 text-blue-600" />
           <div>
-            <div className="text-[14px] font-bold">3. Aaj ki booking dekho</div>
-            <div className="text-[11px] text-zinc-500">Yahan se confirm karo</div>
+            <div className="text-[14px] font-bold">{t("step3Title")}</div>
+            <div className="text-[11px] text-zinc-500">{t("step3Sub")}</div>
           </div>
         </a>
       </div>
@@ -102,13 +112,10 @@ export function DarbhangaLaunchStrip({
       <details className="mt-3 group">
         <summary className="flex cursor-pointer list-none items-center justify-center gap-1 py-2 text-[12px] font-semibold text-zinc-500 marker:content-none">
           <ChevronDown className="h-4 w-4 transition group-open:rotate-180" />
-          Samajh nahi aaya? Demo WhatsApp pe
+          {t("helpSummary")}
         </summary>
         <p className="pb-2 text-center text-[11px] text-zinc-400">
-          Help chahiye?{" "}
-          <a href={`tel:+91${contactPhone}`} className="font-semibold text-emerald-700">
-            Call {contactPhone}
-          </a>
+          {t("helpCall", { phone: contactPhone })}
         </p>
       </details>
     </section>

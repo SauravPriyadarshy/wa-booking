@@ -4,6 +4,7 @@ import { NextIntlClientProvider } from "next-intl";
 import { getMessages, getLocale } from "next-intl/server";
 import { RuntimeShellInit } from "@/components/runtime-shell-init";
 import { loadPwaConfig } from "@/lib/platform-content";
+import type { AppLocale } from "@/lib/locale";
 import "./globals.css";
 
 const fontSans = Plus_Jakarta_Sans({
@@ -16,7 +17,8 @@ const fontSans = Plus_Jakarta_Sans({
 const WEB_URL = process.env.NEXT_PUBLIC_WEB_URL ?? "https://wa-booking-web.vercel.app";
 
 export async function generateViewport(): Promise<Viewport> {
-  const pwa = await loadPwaConfig();
+  const locale = (await getLocale()) as AppLocale;
+  const pwa = await loadPwaConfig(locale);
   return {
     width: "device-width",
     initialScale: 1,
@@ -29,7 +31,8 @@ export async function generateViewport(): Promise<Viewport> {
 }
 
 export async function generateMetadata(): Promise<Metadata> {
-  const pwa = await loadPwaConfig();
+  const locale = (await getLocale()) as AppLocale;
+  const pwa = await loadPwaConfig(locale);
   return {
     title: {
       default: "WhatsApp Booking System for Indian Businesses | BookNow",

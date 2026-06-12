@@ -1,36 +1,68 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# WhatsApp Business Assistant — Web App
 
-## Getting Started
+Next.js 16 App Router frontend for the WhatsApp Business Assistant platform.
 
-First, run the development server:
+**Production:** [wa-booking-web.vercel.app](https://wa-booking-web.vercel.app)  
+**Monorepo root:** [`../../README.md`](../../README.md)
+
+---
+
+## Stack
+
+- Next.js 16 (App Router) · React 19 · Tailwind 4
+- `next-intl` — EN · HI bilingual UI
+- Zod + react-hook-form · recharts (analytics)
+
+---
+
+## Local Dev
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cd apps/web
+cp .env.example .env.local   # NEXT_PUBLIC_API_URL=http://localhost:3000
+npm run dev                  # http://127.0.0.1:3001
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Requires API running on `:3000` and seeded database.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Key Routes
 
-## Learn More
+| Route | Purpose |
+|-------|---------|
+| `/` | Compact landing page |
+| `/business-success` | Interactive industry simulator (public) |
+| `/signup` | Mobile OTP signup |
+| `/login` | Admin/staff password login |
+| `/app` | Hub (Today Workspace) |
+| `/app/reactivation` | Customer reactivation (Plus+) |
+| `/app/students`, `/app/fees` | Coaching module (Plus+) |
+| `/app/queue` | Clinic queue (Plus+) |
+| `/app/superadmin/plans` | Activation codes (Super Admin) |
+| `/city/[city]` | City SEO pages |
+| `/[slug]` | Public booking page |
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## i18n
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Messages: `messages/en.json`, `messages/hi.json`  
+Locale resolution: `src/i18n/request.ts` (cookie-based; `mai` cookie maps to `hi`)  
+Switcher: `src/components/lang-switcher.tsx` (EN · हिं)
 
-## Deploy on Vercel
+---
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Deploy
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npx vercel --prod
+```
+
+Env: `NEXT_PUBLIC_API_URL=https://wa-booking-api.vercel.app`
+
+---
+
+## Agent Notes
+
+See [`AGENTS.md`](./AGENTS.md) for Next.js 16 breaking changes. Project conventions in [`.cursor/rules/project-overview.mdc`](../../.cursor/rules/project-overview.mdc).

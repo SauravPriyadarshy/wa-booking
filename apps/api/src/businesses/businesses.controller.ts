@@ -28,5 +28,11 @@ export class BusinessesController {
   regenerateBookingSlug(@AuthUserDecorator() user: AuthUser) {
     return this.businesses.regenerateBookingSlug(user.userId);
   }
+
+  @Post('me/redeem-code')
+  @UseGuards(JwtUserGuard, RequireBusinessGuard)
+  redeemCode(@AuthUserDecorator() user: AuthUser, @Body() body: { code: string }) {
+    return this.businesses.redeemCodeForUser(user.userId, body.code);
+  }
 }
 

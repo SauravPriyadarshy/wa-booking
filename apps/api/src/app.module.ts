@@ -31,6 +31,7 @@ import { QueuesModule } from './queues/queues.module';
 import { SiteContentModule } from './site-content/site-content.module';
 import { CoachingModule } from './coaching/coaching.module';
 import { AutomationModule } from './automation/automation.module';
+import { PlansModule } from './plans/plans.module';
 
 @Module({
   imports: [
@@ -65,6 +66,7 @@ import { AutomationModule } from './automation/automation.module';
     PublicModule,
     CoachingModule,
     AutomationModule,
+    PlansModule,
   ],
   controllers: [AppController],
   providers: [

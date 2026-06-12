@@ -10,19 +10,25 @@
 
 ---
 
-## What already exists (foundation)
+## What already exists (foundation — June 2026)
 
 | Area | Repo reality (baseline) |
 |------|-------------------------|
-| Design tokens | `apps/web/src/app/globals.css` — Plus Jakarta Sans, emerald/zinc palette, radii, shadows |
+| Design tokens | `apps/web/src/app/globals.css` — Plus Jakarta Sans, emerald/zinc palette |
 | Mobile shell | App routes, bottom nav, FAB, sheets |
-| Hub | Stats, schedule, WhatsApp strip, industry module pills, booking link + QR, leads/tickets inbox |
-| WhatsApp | Connect flow, inbox, quick replies, worker path |
-| Bookings / CRM | Day/list, customers, timeline direction |
-| Support | Lightweight tickets, assign staff |
-| Retention (scaffold) | `apps/web/src/lib/retention-triggers.ts`, `apps/api/src/messaging/retention-templates.ts` — templates/reference, jobs to wire |
-| Onboarding | Multi-step business setup |
+| Hub | Stats, schedule, health score (Plus+), revenue leakage (Plus+), plan usage bars |
+| Business Success | `/business-success` interactive simulator + demo tenants (`tenantType=DEMO`) |
+| AI Business Guide | Keyword KB on marketing pages (no external AI API) |
+| Customer reactivation | `/app/reactivation` — 30/60/90 day buckets (Plus+) |
+| Plan gating | Free/Plus/Pro enforced in API; activation codes; `GET /plans/me` |
+| Bilingual UI | EN · HI via `next-intl` + LangSwitcher |
+| Coaching module | Students, fees, attendance (Plus+) |
+| Clinic queue | `/app/queue` reception dashboard (Plus+) |
+| WhatsApp | Connect flow, inbox, BullMQ automation (confirm, remind, post-visit, inactive cron) |
+| Onboarding | 7-step standard; Darbhanga 2-step fast path with subcategories |
+| City SEO | 9 city pages + sitemap |
 | Roles | `BUSINESS_ADMIN`, `STAFF`, `SUPER_ADMIN` — UI gated via `/me` + `/me/ui` |
+| Production | Vercel (web + API) + Render (workers) + Neon (12 migrations) |
 
 Use this document to **sequence** work; do not attempt all sections in one release.
 
@@ -51,11 +57,13 @@ Use this document to **sequence** work; do not attempt all sections in one relea
 
 ---
 
-### Phase 2 — Daily operational dependency (3–6 weeks)
+### Phase 2 — Daily operational dependency (3–6 weeks) — **Partially done**
 
-- Hub is the **default home**: today-first, not analytics-first.
-- **Queues:** pending confirm, needs reply, follow-ups due, payments pending — each with deep link + optional push-style badge counts.
-- **Staff day view:** “my column” for STAFF role (reduce admin noise).
+- Hub is the **default home**: today-first ✅
+- **Health score + revenue leakage** widgets ✅ (Plus+)
+- **Reactivation engine** ✅ (Plus+)
+- **Queues:** pending confirm, needs reply, follow-ups due — deep links exist; badge counts pending
+- **Staff day view:** “my column” for STAFF role — pending
 
 **Maps to:** Sections 2, 6 (surface-level “insights” only), 13.
 
@@ -71,11 +79,12 @@ Use this document to **sequence** work; do not attempt all sections in one relea
 
 ---
 
-### Phase 4 — Retention automation engine (6–10 weeks)
+### Phase 4 — Retention automation engine (6–10 weeks) — **Partially done**
 
-- **Job runner:** Bull/Redis schedules + idempotent sends + audit log.
-- Triggers: inactive 45/60d, service interval (“haircut due?”), birthday (if captured), post-visit feedback, loyalty nudge.
-- **Opt-in & compliance:** business toggles per template; customer opt-out stored.
+- BullMQ jobs: booking confirm, 24h reminder, post-visit, inactive recovery cron ✅
+- **Reactivation UI** at `/app/reactivation` ✅ (Plus+)
+- Triggers: inactive 30/60/90d buckets ✅; birthday, service interval — pending
+- **Opt-in & compliance:** business toggles per template — pending
 
 **Maps to:** Section 4; builds on existing retention template files.
 
@@ -100,20 +109,24 @@ Use this document to **sequence** work; do not attempt all sections in one relea
 
 ---
 
-### Phase 7 — Industry packs (6+ weeks)
+### Phase 7 — Industry packs (6+ weeks) — **Partially done**
 
-- Already have **category keys** and hub module mapping — extend to: **default dashboard widgets**, **terminology** (patient vs client), **hidden nav items**.
-- Validate with one pilot per vertical.
+- Category keys + subcategories ✅
+- Coaching module (students/fees/attendance) ✅
+- Clinic queue ✅
+- Business Success simulator per industry ✅
+- Default dashboard widgets per vertical — partial
 
 **Maps to:** Section 7.
 
 ---
 
-### Phase 8 — Onboarding ≤5 minutes (2–4 weeks)
+### Phase 8 — Onboarding ≤5 minutes (2–4 weeks) — **Done (Darbhanga fast path)**
 
-- Instrument funnel: signup → business → services → WA connect → first booking.
-- **Skip paths:** “I’ll connect WhatsApp later” with clear reminder card on Hub.
-- Optional **demo data** toggle (seed mini calendar) for training mode only.
+- 7-step standard onboarding ✅
+- Darbhanga 2-step fast path with pack presets ✅
+- Activation code redemption during onboarding ✅
+- WhatsApp-later skip path with Hub reminder card — partial
 
 **Maps to:** Section 10.
 

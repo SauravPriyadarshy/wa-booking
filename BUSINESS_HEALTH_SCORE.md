@@ -2,7 +2,9 @@
 
 **Score range:** 0–100 · **Updated:** June 2026
 
-The Business Health Score appears on every business dashboard (`/app`) and is computed from existing data — no manual input required.
+The Business Health Score appears on the Hub (`/app`) for **Plus and Pro plans** and is computed from existing data — no manual input required. Free plan users see an upgrade banner instead.
+
+**Hindi label:** व्यवसाय स्थिति रिपोर्ट
 
 ## Score Levels
 
@@ -73,4 +75,23 @@ Shows estimated revenue at risk from:
 - Inactive customers (no booking 30+ days)
 - Unanswered leads (NEW stage 24h+)
 
-Each item includes a one-click action link.
+Each item includes a one-click action link. **Plus+ only** — Hindi label: संभावित छूटी हुई कमाई.
+
+## Customer Reactivation (Companion Feature)
+
+```
+GET /hub/reactivation
+```
+
+Returns inactive customers in 30 / 60 / 90 day buckets with WhatsApp action links. **Plus+ only.** UI at `/app/reactivation`.
+
+## Plan Gating
+
+| Feature | Free | Plus | Pro |
+|---------|------|------|-----|
+| Health score | ❌ | ✅ | ✅ |
+| Revenue leakage | ❌ | ✅ | ✅ |
+| Reactivation engine | ❌ | ✅ | ✅ |
+| Advanced analytics | ❌ | ❌ | ✅ |
+
+Check current plan: `GET /plans/me`

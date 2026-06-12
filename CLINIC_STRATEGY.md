@@ -6,15 +6,18 @@
 
 Uses existing booking + CRM infrastructure:
 
-| Feature | Status | Route |
-|---------|--------|-------|
-| Consultation booking | ✅ Live | `/demo-salon` style public page |
-| Appointment calendar | ✅ Live | `/app/bookings` |
-| Patient CRM | ✅ Live | `/app/customers` (tags, timeline, spend) |
-| WhatsApp reminders | ✅ Live | Auto 24h reminder on booking |
-| Follow-up leads | ✅ Live | `/app/leads` pipeline |
-| Clinic Health Score | ✅ Live | `/hub/health` (attendance-based) |
-| Payment verification | ✅ Live | `/app/payments` |
+| Feature | Status | Route | Plan |
+|---------|--------|-------|------|
+| Consultation booking | ✅ Live | `/{slug}` public page | Free |
+| Appointment calendar | ✅ Live | `/app/bookings` | Free |
+| Patient CRM | ✅ Live | `/app/customers` (tags, timeline, spend) | Free |
+| WhatsApp reminders | ✅ Live | Auto 24h reminder on booking | Free |
+| Follow-up leads | ✅ Live | `/app/leads` pipeline | Free |
+| Clinic Health Score | ✅ Live | `/hub/health` (attendance-based) | Plus+ |
+| Revenue Leakage | ✅ Live | `/hub/revenue-leakage` | Plus+ |
+| Patient reactivation | ✅ Live | `/app/reactivation` | Plus+ |
+| Payment verification | ✅ Live | `/app/payments` | Free |
+| Queue dashboard | ✅ Live | `/app/queue` | Plus+ (clinic category) |
 
 ## What We Do NOT Build
 
@@ -32,6 +35,18 @@ Default services seeded:
 - Follow-up Visit (10 min)
 - Health Check (20 min)
 
+Subcategories: General, Dental, Eye, Pediatric, etc.
+
+## Queue Screen (`/app/queue`) — Live
+
+Lightweight queue view:
+- Current patient (in consultation)
+- Waiting list (confirmed today, sorted by time)
+- Completed / Missed counts
+- Estimated wait time
+
+Uses existing `Appointment` with status filters — no new database models.
+
 ## Follow-Up Automation (Roadmap)
 
 | Interval | Use Case |
@@ -43,15 +58,9 @@ Default services seeded:
 
 Implementation: BullMQ delayed jobs using `inactive_recovery` template pattern.
 
-## Queue Screen (Roadmap — Phase 2)
+## Business Success Demo
 
-Planned lightweight queue view at `/app/queue`:
-- Current patient (in consultation)
-- Waiting list (confirmed today, sorted by time)
-- Completed / Missed counts
-- Estimated wait time
-
-No new database models required — uses existing `Appointment` with status filters.
+No signup: [wa-booking-web.vercel.app/business-success?type=clinic](https://wa-booking-web.vercel.app/business-success?type=clinic)
 
 ## Darbhanga Clinic Acquisition
 
@@ -61,15 +70,19 @@ No new database models required — uses existing `Appointment` with status filt
 > "Patient ko WhatsApp reminder automatic jayega. No-show 50% kam. Appointment register ek jagah. Free mein shuru karein."
 
 **Demo flow (5 min):**
-1. Create clinic business → services auto-fill
-2. Book one test appointment from public link
-3. Show WhatsApp confirmation
-4. Show patient in CRM with visit history
+1. Open `/business-success?type=clinic` → show simulator
+2. Sign up → select Clinic category + subcategory
+3. Book one test appointment from public link
+4. Show WhatsApp confirmation
+5. Show patient in CRM with visit history
+6. Show queue at `/app/queue` (Plus+)
 
-## Pricing
+## Pricing (Platform Tiers)
 
 | Plan | Price | For |
 |------|-------|-----|
-| Free | ₹0 | Solo doctor, ≤30 patients/month |
-| Pro | ₹499/mo | Clinic with 2+ doctors, WhatsApp automation |
-| Clinic Plus | ₹799/mo | Multi-doctor, follow-up automation, analytics |
+| Free | ₹0 | Solo doctor, ≤50 patients, 50 bookings/mo |
+| Plus | Paid | Queue, health score, reactivation, follow-ups |
+| Pro | Paid | Advanced analytics, exports, multi-staff |
+
+**Darbhanga field suggestion:** Plus ₹499/mo · activation code `PLUS90` for anchor clinics.

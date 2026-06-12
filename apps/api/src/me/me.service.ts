@@ -1,5 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { PlansService } from '../plans/plans.service';
+import { hasFeature } from '../plans/plan-limits';
 
 type UiModuleKey =
   | 'hub'
@@ -15,7 +17,10 @@ type UiModuleKey =
 
 @Injectable()
 export class MeService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private plans: PlansService,
+  ) {}
 
   async getMe(userId: string) {
     const user = await this.prisma.user.findUnique({
@@ -35,12 +40,18 @@ export class MeService {
             isActive: true,
             category: { select: { key: true, name: true } },
             features: { select: { key: true, enabled: true } },
+            plan: true,
+            planExpiresAt: true,
           },
         },
       },
     });
 
     if (!user) return { ok: false };
+
+    const planSnap = user.businessId
+      ? await this.plans.getSnapshot(user.businessId)
+      : null;
 
     const enabledFeatures =
       user.business?.features?.filter((f) => f.enabled).map((f) => f.key) ?? [];
@@ -64,6 +75,10 @@ export class MeService {
             categoryKey: user.business.category?.key ?? null,
             categoryName: user.business.category?.name ?? null,
             enabledFeatures,
+            plan: planSnap?.effectivePlan ?? 'FREE',
+            planExpiresAt: planSnap?.planExpiresAt?.toISOString() ?? null,
+            planFeatures: planSnap?.features ?? [],
+            planExpired: planSnap?.expired ?? false,
           }
         : null,
     };
@@ -72,6 +87,11 @@ export class MeService {
   async getUiConfig(userId: string) {
     const me = await this.getMe(userId);
     if (!me.ok) return { ok: false as const };
+
+    const planSnap = me.business?.id
+      ? await this.plans.getSnapshot(me.business.id)
+      : null;
+    const planFeatures = new Set(planSnap?.features ?? []);
 
     const role = me.user?.role;
     if (!role) return { ok: false as const };
@@ -93,7 +113,9 @@ export class MeService {
     if (has('crm')) modules.push('customers');
     if (has('support')) modules.push('support');
     if (has('payments')) modules.push('payments');
-    if (has('analytics') && !isStaff) modules.push('analytics');
+    if (has('analytics') && !isStaff && planFeatures.has('advanced_analytics')) {
+      modules.push('analytics');
+    }
 
     // Leads are useful for most businesses, but keep staff UI minimal.
     if (has('support') || has('crm')) {
@@ -117,6 +139,9 @@ export class MeService {
       categoryKey,
       slug: me.business?.slug ?? null,
       modules: Array.from(new Set(modules)),
+      plan: planSnap?.effectivePlan ?? 'FREE',
+      planFeatures: planSnap?.features ?? [],
+      planLimits: planSnap?.limits ?? null,
       quickActions: [
         { key: 'new-booking', label: 'New booking' },
         { key: 'reply', label: 'Reply on WhatsApp' },

@@ -2,6 +2,7 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../prisma/prisma.service';
 import { UserRole } from '../common/auth/user-role.enum';
+import { SubscriptionPlan } from '@prisma/client';
 
 function slugify(input: string) {
   return input
@@ -148,6 +149,68 @@ export class SuperAdminService {
       withBookings,
       byCategory: categories.map((c) => ({ key: c.key, name: c.name, count: c._count.businesses })),
     };
+  }
+
+  async listActivationCodes() {
+    return this.prisma.activationCode.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+      select: {
+        id: true,
+        code: true,
+        plan: true,
+        validityDays: true,
+        maxUses: true,
+        usedCount: true,
+        expiresAt: true,
+        isActive: true,
+        note: true,
+        createdAt: true,
+      },
+    });
+  }
+
+  async createActivationCode(args: {
+    code: string;
+    plan: SubscriptionPlan;
+    validityDays: number;
+    maxUses?: number;
+    expiresAt?: Date;
+    note?: string;
+  }) {
+    const code = args.code.trim().toUpperCase();
+    if (code.length < 3) throw new BadRequestException('Code too short');
+    return this.prisma.activationCode.create({
+      data: {
+        code,
+        plan: args.plan,
+        validityDays: args.validityDays,
+        maxUses: args.maxUses ?? 1,
+        expiresAt: args.expiresAt,
+        note: args.note,
+        isActive: true,
+      },
+    });
+  }
+
+  async setActivationCodeActive(id: string, isActive: boolean) {
+    return this.prisma.activationCode.update({
+      where: { id },
+      data: { isActive },
+      select: { id: true, code: true, isActive: true },
+    });
+  }
+
+  async setBusinessPlan(businessId: string, plan: SubscriptionPlan, validityDays?: number) {
+    const expiresAt =
+      plan === SubscriptionPlan.FREE
+        ? null
+        : new Date(Date.now() + (validityDays ?? 30) * 24 * 60 * 60 * 1000);
+    return this.prisma.business.update({
+      where: { id: businessId },
+      data: { plan, planExpiresAt: expiresAt },
+      select: { id: true, name: true, plan: true, planExpiresAt: true },
+    });
   }
 }
 

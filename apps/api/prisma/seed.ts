@@ -126,6 +126,98 @@ async function seedCategories() {
   }
 }
 
+async function seedSubcategories() {
+  const { SUBCATEGORY_SEEDS } = await import("../src/common/subcategory-seeds");
+  let count = 0;
+  for (const [categoryKey, items] of Object.entries(SUBCATEGORY_SEEDS)) {
+    const category = await prisma.businessCategory.findUnique({ where: { key: categoryKey } });
+    if (!category) continue;
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      await prisma.businessSubcategory.upsert({
+        where: { categoryId_key: { categoryId: category.id, key: item.key } },
+        create: {
+          categoryId: category.id,
+          key: item.key,
+          name: item.name,
+          nameHi: item.nameHi ?? item.name,
+          sortOrder: i,
+          isOther: item.isOther ?? false,
+          isActive: true,
+        },
+        update: {
+          name: item.name,
+          nameHi: item.nameHi ?? item.name,
+          sortOrder: i,
+          isOther: item.isOther ?? false,
+          isActive: true,
+        },
+      });
+      count++;
+    }
+  }
+  console.log(`Subcategories seeded: ${count}`);
+}
+
+async function seedActivationCodes() {
+  const codes = [
+    { code: "FREE30", plan: "FREE" as const, validityDays: 30, maxUses: 1000, note: "Free plan extension — 30 days" },
+    { code: "PLUS30", plan: "PLUS" as const, validityDays: 30, maxUses: 500, note: "Plus plan — 30 days" },
+    { code: "PLUS90", plan: "PLUS" as const, validityDays: 90, maxUses: 500, note: "Plus plan — 90 days" },
+    { code: "PRO30", plan: "PRO" as const, validityDays: 30, maxUses: 200, note: "Pro plan — 30 days" },
+    { code: "PRO60", plan: "PRO" as const, validityDays: 60, maxUses: 200, note: "Pro plan — 60 days" },
+    { code: "PRO90", plan: "PRO" as const, validityDays: 90, maxUses: 200, note: "Pro plan — 90 days" },
+  ];
+  for (const c of codes) {
+    await prisma.activationCode.upsert({
+      where: { code: c.code },
+      create: { ...c, isActive: true },
+      update: { ...c, isActive: true },
+    });
+  }
+  console.log(`Activation codes seeded: ${codes.map((c) => c.code).join(", ")}`);
+}
+
+/** Read-only demo tenants for Business Success simulator — never mixed with LIVE data in app flows. */
+async function seedDemoTenants() {
+  const demos: Array<{ slug: string; name: string; categoryKey: string }> = [
+    { slug: "demo-darbhanga-career-academy", name: "Darbhanga Career Academy", categoryKey: "coaching" },
+    { slug: "demo-city-care-clinic", name: "City Care Clinic", categoryKey: "clinic" },
+    { slug: "demo-modern-men-salon", name: "Modern Men Salon", categoryKey: "salon" },
+    { slug: "demo-bihar-home-services", name: "Bihar Home Services", categoryKey: "home_service" },
+    { slug: "demo-elite-ias-academy", name: "Elite IAS Academy", categoryKey: "coaching" },
+    { slug: "demo-home-tuition-priya", name: "Home Tuition — Priya Classes", categoryKey: "tutor" },
+    { slug: "demo-serene-spa", name: "Serene Spa & Wellness", categoryKey: "spa" },
+    { slug: "demo-ink-studio", name: "Ink Studio Darbhanga", categoryKey: "tattoo" },
+    { slug: "demo-sharma-associates", name: "Sharma & Associates", categoryKey: "consultant" },
+  ];
+
+  let count = 0;
+  for (const d of demos) {
+    const cat = await prisma.businessCategory.findUnique({ where: { key: d.categoryKey } });
+    if (!cat) continue;
+    await prisma.business.upsert({
+      where: { slug: d.slug },
+      create: {
+        slug: d.slug,
+        name: d.name,
+        categoryId: cat.id,
+        tenantType: "DEMO",
+        isActive: true,
+        timezone: "Asia/Kolkata",
+        referralCode: d.slug.replace(/-/g, "").slice(0, 8).toUpperCase(),
+      },
+      update: {
+        name: d.name,
+        categoryId: cat.id,
+        tenantType: "DEMO",
+      },
+    });
+    count++;
+  }
+  console.log(`Demo tenants seeded: ${count}`);
+}
+
 async function seedSuperAdmin() {
   const username = process.env.SUPERADMIN_USERNAME;
   const password = process.env.SUPERADMIN_PASSWORD;
@@ -416,31 +508,34 @@ async function seedSiteContent() {
       group: "landing",
       label: "Pricing Section (JSON)",
       value: JSON.stringify({
-        headline: "Simple pricing. No surprises.",
+        headline: "Simple plans. Start free.",
         plans: [
           {
             name: "Free",
             price: "₹0",
             period: "forever",
-            features: ["Unlimited bookings", "WhatsApp connect", "Public booking page", "Basic CRM"],
+            features: ["1 business · 1 staff", "50 customers / month", "WhatsApp booking", "Basic CRM", "Hindi interface"],
             cta: "Start free",
             href: "/signup",
             highlighted: false,
           },
           {
-            name: "Pro",
+            name: "Plus",
             price: "₹499",
             period: "per month",
-            features: [
-              "Everything in Free",
-              "Auto WhatsApp reminders",
-              "Customer retention automation",
-              "Analytics & reports",
-              "Priority support",
-            ],
-            cta: "Start 14-day trial",
+            features: ["Unlimited bookings", "Health score", "Reactivation", "Coaching module", "Fee tracking", "WA templates"],
+            cta: "Try Plus",
             href: "/signup",
             highlighted: true,
+          },
+          {
+            name: "Pro",
+            price: "₹999",
+            period: "per month",
+            features: ["Everything in Plus", "Advanced analytics", "AI guide", "Export tools", "API access", "Priority support"],
+            cta: "Go Pro",
+            href: "/signup",
+            highlighted: false,
           },
         ],
       }),
@@ -947,6 +1042,36 @@ async function seedSiteContent() {
       label: "Laheriasarai Page — Headline (Hindi)",
       value: "Laheriasarai के businesses के लिए WhatsApp Booking System",
     },
+    {
+      key: "city.patna.headline",
+      locale: "en",
+      group: "city",
+      label: "Patna Page — Headline",
+      value: "WhatsApp Booking System for Patna Businesses",
+    },
+    {
+      key: "city.patna.headline",
+      locale: "hi",
+      group: "city",
+      label: "Patna Page — Headline (Hindi)",
+      value: "पटना के व्यवसायों के लिए WhatsApp Booking",
+    },
+    {
+      key: "city.patna.subtext",
+      locale: "en",
+      group: "city",
+      label: "Patna Page — Subtext",
+      value:
+        "Salons, clinics, coaching centers and home services in Patna use BookNow for WhatsApp bookings and automated reminders.",
+    },
+    {
+      key: "city.patna.subtext",
+      locale: "hi",
+      group: "city",
+      label: "Patna Page — Subtext (Hindi)",
+      value:
+        "पटना के salons, clinics, coaching centers BookNow use कर रहे हैं — WhatsApp booking और automatic reminders के लिए।",
+    },
 
     // ── Onboarding ────────────────────────────────────────────────────────
     {
@@ -992,6 +1117,9 @@ async function seedSiteContent() {
 
 async function main() {
   await seedCategories();
+  await seedSubcategories();
+  await seedActivationCodes();
+  await seedDemoTenants();
   await seedSuperAdmin();
   await seedDemoBusiness();
   await seedSiteContent();

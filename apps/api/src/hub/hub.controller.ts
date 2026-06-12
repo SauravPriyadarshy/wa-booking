@@ -75,5 +75,11 @@ export class HubController {
   clinicSnapshot(@AuthUserDecorator() user: AuthUser) {
     return this.hub.clinicSnapshot(user.businessId!);
   }
+
+  @Get('reactivation')
+  @UseGuards(JwtUserGuard, RequireBusinessGuard)
+  reactivation(@AuthUserDecorator() user: AuthUser) {
+    return this.hub.reactivation(user.businessId!);
+  }
 }
 

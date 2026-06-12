@@ -1,8 +1,8 @@
 # User Test Credentials (Demo)
 
-Credentials and quick entry points for testing the WhatsApp-first Booking + CRM platform.
+Credentials and quick entry points for testing **WhatsApp Business Assistant**.
 
-For a step-by-step QA checklist, use [`docs/USER_TEST.md`](./docs/USER_TEST.md).
+For step-by-step QA, use [`docs/USER_TEST.md`](./docs/USER_TEST.md).
 
 ---
 
@@ -10,87 +10,65 @@ For a step-by-step QA checklist, use [`docs/USER_TEST.md`](./docs/USER_TEST.md).
 
 | Environment | URL |
 |-------------|-----|
-| **Production (live)** | **[https://wa-booking-web.vercel.app](https://wa-booking-web.vercel.app)** |
-| Local dev | `http://127.0.0.1:3001` |
-| Production API | `https://wa-booking-api.vercel.app` |
-| Local API | `http://localhost:3000` |
-| WA Worker (Render) | `https://wa-worker-dewp.onrender.com` |
-| BullMQ Worker (Render) | `https://bullmq-worker-u2sl.onrender.com` |
+| **Production (live)** | [https://wa-booking-web.vercel.app](https://wa-booking-web.vercel.app) |
+| **Production API** | [https://wa-booking-api.vercel.app](https://wa-booking-api.vercel.app) |
+| Local dev (web) | `http://127.0.0.1:3001` |
+| Local dev (API) | `http://localhost:3000` |
 
 ---
 
-## 1. Super Admin (Global Dashboard)
-
-Access all businesses, manage categories, edit all site content, and configure global feature flags.
+## 1. Super Admin
 
 | | Production | Local |
 |-|------------|-------|
-| **Login URL** | [https://wa-booking-web.vercel.app/login](https://wa-booking-web.vercel.app/login) | http://127.0.0.1:3001/login |
-| **Username** | `admin` or `super` | `admin` or `super` |
-| **Password** | `Test@123` | `Test@123` |
+| **Login** | [/login](https://wa-booking-web.vercel.app/login) | `http://127.0.0.1:3001/login` |
+| **Username** | `admin` or `super` | same |
+| **Password** | `Test@123` | same |
 
-**What to test:**
-- `/app/superadmin/businesses` — create new business + admin, list all businesses
-- `/app/superadmin/features` — toggle feature flags per business (e.g. enable WhatsApp, analytics)
-- `/app/superadmin/content` — **Content Editor** (landing page text, SEO metadata, WhatsApp templates, city pages, onboarding — all editable, changes live within 5 min)
-  - Filter by group (Landing Page, SEO, WhatsApp Templates, City Pages, Onboarding) and language (EN, HI)
-  - Edit a hero title → Save → visit `/` to confirm change
-
-**To add a new service provider (doctor, spa, etc.):**
-1. Login as Super Admin → click yellow "Super Admin Panel" banner
-2. Go to `/app/superadmin/businesses`
-3. Fill Business Name, Category, Phone, Admin Username, Password → Create
+**Test routes:**
+- `/app/superadmin/businesses` — create/manage tenants
+- `/app/superadmin/plans` — activation codes (`FREE30`, `PLUS90`, `PRO60`)
+- `/app/superadmin/content` — SiteContent editor (EN · HI + optional Mai keys)
+- `/app/superadmin/features` — feature flags per business
 
 ---
 
-## 2. Business Admin (Demo Salon & Spa)
-
-Manage services, staff, bookings, and customer relationships for a specific business.
+## 2. Business Admin (Demo Salon — Free plan)
 
 | | Production | Local |
 |-|------------|-------|
-| **Login URL** | [https://wa-booking-web.vercel.app/login](https://wa-booking-web.vercel.app/login) | http://127.0.0.1:3001/login |
-| **Username** | `demo_admin` | `demo_admin` |
-| **Password** | `password123` | `password123` |
-| **Business Phone** | `+919122000751` | — |
+| **Login** | [/login](https://wa-booking-web.vercel.app/login) | `http://127.0.0.1:3001/login` |
+| **Username** | `demo_admin` | same |
+| **Password** | `password123` | same |
 
-**What to test:**
-- **Hub** (`/app`): Today Workspace cards, Health Score, Revenue Leakage, coaching KPIs (if coaching)
-- **Coaching** (`/app/students`, `/app/fees`): Student list, attendance, fee collection (coaching category only)
-- **Analytics** (`/app/analytics`): 7d/30d/90d toggle; daily bookings bar chart; revenue; top services
-- **Bookings** (`/app/bookings`): Day / list view; confirm a booking → customer gets WhatsApp confirmation automatically
-- **WhatsApp** (`/app/whatsapp`): Connect QR → scan with phone → verify CONNECTED status; new bookings send alerts to `+919122000751`
-- **Provider confirm via WhatsApp**: When a new booking arrives, provider gets a message — reply `CONFIRM <bookingId>` or `CANCEL <bookingId>` to act directly from WhatsApp
-- **Inbox** (`/app/inbox`): WhatsApp conversation list; open a thread; use Quick Replies
-- **Customers** (`/app/customers`): List, filters, customer detail timeline
-- **Leads** (`/app/leads`): Pipeline view; change stage
-- **Support** (`/app/support`): Ticket list; assign staff; change status
-- **Payments** (`/app/payments`): Verify UPI or cash payments
-- **Services** (`/app/services`): Add / edit services and pricing
-- **Staff** (`/app/staff`): Add / edit staff members
-- **Templates** (`/app/templates`): WhatsApp quick-reply templates
-- **Settings → Business Profile** (`/app/settings/profile`): Update name, WhatsApp number, booking URL slug, timezone
-- **Settings → Hours** (`/app/settings`): Configure working days and hours
-- **Booking link card** on Hub: Copy, Share, Print QR
+**Test on Free plan:**
+- Hub shows **usage bars** (customers, staff, bookings/month)
+- Health score and revenue leakage show **upgrade banner** (Plus required)
+- `/app/reactivation` shows upgrade prompt
+
+**Unlock Plus for testing:**
+- During onboarding: enter activation code `PLUS90`
+- Super Admin → `/app/superadmin/plans` → assign plan to business
+
+**Key routes:**
+- `/app` — Hub (Today Workspace)
+- `/app/bookings` — Calendar
+- `/app/customers` — CRM with tags
+- `/app/reactivation` — Inactive customers (Plus+)
+- `/app/whatsapp` — Connect QR
+- `/app/onboarding` — 7-step wizard (new accounts)
 
 ---
 
 ## 3. Customer (Public Booking)
 
-Self-service booking page. No login required.
-
 | | Production | Local |
 |-|------------|-------|
-| **Public URL** | [https://wa-booking-web.vercel.app/demo-salon](https://wa-booking-web.vercel.app/demo-salon) | http://127.0.0.1:3001/demo-salon |
+| **URL** | [/demo-salon](https://wa-booking-web.vercel.app/demo-salon) | `http://127.0.0.1:3001/demo-salon` |
 
-**What to test:**
-- Select a service (Haircut, Beard, Facial)
-- Pick a date (7-day row) and available time slot
-- Enter name and phone number → confirm booking
-- **Success screen**: "You're booked!" with WhatsApp share link
-- Customer receives a WhatsApp acknowledgement immediately (if WA worker connected)
-- Provider (`+919122000751`) receives new booking alert with CONFIRM/CANCEL instructions
-- Reply `CONFIRM <id>` from provider → customer gets confirmed booking WhatsApp message
+No login. Select service → pick slot → enter name/phone → confirm.
+
+> Demo tenant URLs (`demo-darbhanga-career-academy`, etc.) are **read-only** — booking blocked by design.
 
 ---
 
@@ -98,80 +76,67 @@ Self-service booking page. No login required.
 
 | | Production | Local |
 |-|------------|-------|
-| **Sign up URL** | [https://wa-booking-web.vercel.app/signup](https://wa-booking-web.vercel.app/signup) | http://127.0.0.1:3001/signup |
+| **Signup** | [/signup](https://wa-booking-web.vercel.app/signup) | `http://127.0.0.1:3001/signup` |
+| **Delivery** | WhatsApp or Email (user picks on signup) | same |
+| **OTP code** | `1234` (always works until SMS gateway wired) | same |
 
-**Flow:** Enter 10-digit Indian mobile → **Get verification code** → enter **`1234`** (dev stub) → logged in → complete **Onboarding** if prompted.
-
-> OTP SMS is not wired in production. The code `1234` always works. Wire Twilio or MSG91 for real signups.
-
----
-
-## 5. WhatsApp Hub — Current State
-
-| Component | Status |
-|-----------|--------|
-| WA Worker (Render) | ✅ Live — `https://wa-worker-dewp.onrender.com/health` |
-| BullMQ Worker (Render) | ✅ Live — `https://bullmq-worker-u2sl.onrender.com/` |
-| Keep-alive ping | ✅ API pings worker every 10 min (no sleep on Render free tier) |
-| Business phone set | ✅ `+919122000751` |
-| WhatsApp session | Scan QR at `/app/whatsapp` to connect |
-
-**WhatsApp automation flow (once connected):**
-1. Customer books → customer gets "Booking received" WhatsApp message instantly
-2. Provider (`+919122000751`) gets "New Booking!" alert with `CONFIRM <id>` / `CANCEL <id>` instructions
-3. Provider replies `CONFIRM abc123` → booking confirmed → customer gets confirmation WhatsApp
-4. 24h before appointment → customer gets reminder WhatsApp
-5. 24h after visit → customer gets "Hope you enjoyed!" follow-up WhatsApp
-
-**To connect WhatsApp:**
-1. Login as `demo_admin` → go to `/app/whatsapp`
-2. Click **Get QR / connect** (wait ~20s for QR)
-3. Open WhatsApp on `+919122000751` → Settings → Linked Devices → Link a Device → scan QR
-4. Status changes to **Connected** ✅
+**Onboarding paths:**
+- Standard: `/app/onboarding` — 7 steps
+- Darbhanga fast: `/signup?ref=darbhanga&pack=salon` — 2 steps
 
 ---
 
-## 6. SEO & Marketing Pages
+## 5. Business Success Demo (no login)
 
-| URL (Production) | What to check |
-|------------------|---------------|
-| [https://wa-booking-web.vercel.app/](https://wa-booking-web.vercel.app/) | Dynamic hero title, features, pricing, FAQ — all from DB; language switcher (EN ↔ हिं) |
-| [https://wa-booking-web.vercel.app/city/darbhanga](https://wa-booking-web.vercel.app/city/darbhanga) | City headline + subtext from SiteContent; JSON-LD schema |
-| [https://wa-booking-web.vercel.app/city/laheriasarai](https://wa-booking-web.vercel.app/city/laheriasarai) | City page |
-| [https://wa-booking-web.vercel.app/city/mohali](https://wa-booking-web.vercel.app/city/mohali) | City page |
-| [https://wa-booking-web.vercel.app/sitemap.xml](https://wa-booking-web.vercel.app/sitemap.xml) | Static routes + city URLs |
-| [https://wa-booking-web.vercel.app/robots.txt](https://wa-booking-web.vercel.app/robots.txt) | Allow public, disallow `/app/` |
+| URL | Purpose |
+|-----|---------|
+| [/business-success](https://wa-booking-web.vercel.app/business-success) | Pick business type → simulator (API + offline fallback) |
+| [/business-success?type=coaching](https://wa-booking-web.vercel.app/business-success?type=coaching) | Direct to coaching demo |
 
 ---
 
-## 7. API Health & Quick Checks
+## 6. Activation Codes (production seeded)
 
-| Check | Command / URL |
+| Code | Plan | Validity |
+|------|------|----------|
+| `FREE30` | Free extension | 30 days |
+| `PLUS30` | Plus | 30 days |
+| `PLUS90` | Plus | 90 days |
+| `PRO30` | Pro | 30 days |
+| `PRO60` | Pro | 60 days |
+| `PRO90` | Pro | 90 days |
+
+Enter during onboarding step 1, or redeem via API `POST /businesses/me/redeem-code`.
+
+---
+
+## 7. SEO & Marketing Pages
+
+| URL | Check |
+|-----|-------|
+| [/](https://wa-booking-web.vercel.app/) | Compact landing, EN · HI switcher |
+| [/business-success](https://wa-booking-web.vercel.app/business-success) | Industry simulator |
+| [/darbhanga](https://wa-booking-web.vercel.app/darbhanga) | Darbhanga launch page |
+| [/city/darbhanga](https://wa-booking-web.vercel.app/city/darbhanga) | City SEO |
+| [/city/samastipur](https://wa-booking-web.vercel.app/city/samastipur) | City SEO |
+| [/sitemap.xml](https://wa-booking-web.vercel.app/sitemap.xml) | All public routes |
+
+---
+
+## 8. API Quick Checks
+
+| Check | URL / Command |
 |-------|---------------|
-| API health | [https://wa-booking-api.vercel.app/health](https://wa-booking-api.vercel.app/health) |
-| WA worker health | [https://wa-worker-dewp.onrender.com/health](https://wa-worker-dewp.onrender.com/health) |
-| SuperAdmin stats | `GET /superadmin/stats` (authenticated SA) |
-| Hub health score | `GET /hub/health` (authenticated) |
-| Revenue leakage | `GET /hub/revenue-leakage` (authenticated) |
-| Coaching snapshot | `GET /hub/coaching-snapshot` (authenticated) |
-| Business admin login | `curl -X POST https://wa-booking-api.vercel.app/auth/login -H "Content-Type: application/json" -d '{"username":"demo_admin","password":"password123"}'` |
-| WA status | `GET /whatsapp/status` (authenticated) |
-| Business profile | `GET /settings/profile` (authenticated) |
+| API health | `GET https://wa-booking-api.vercel.app/health` |
+| Business Success types | `GET https://wa-booking-api.vercel.app/public/business-success/types` |
+| Hub health (auth) | `GET /hub/health` — returns 403 on Free plan |
+| Plan usage (auth) | `GET /plans/me` |
+| Reactivation (auth) | `GET /hub/reactivation` — Plus+ only |
 
 ---
 
 ## Developer Notes
 
-**Production infrastructure:**
-- Vercel: web + API auto-deploy on push to `main`
-- Render: WA worker + BullMQ worker auto-deploy on push to `main`
-- Redis: Render Key Value (Singapore region), external TLS URL set on Vercel API
-- Neon Postgres: 6 migrations, 40 SiteContent keys seeded (incl. 2 new WA booking templates)
-- GitHub: https://github.com/SauravPriyadarshy/wa-booking
-
-**Local dev:**
-- Ensure API is running on port `3000` and Web on `3001`
-- Run `npm run db:seed` in `apps/api/` if demo data is missing
-- Run `npm run worker:dev` in `apps/api/` to process BullMQ jobs
-- WhatsApp worker must be running and connected to send real messages
-- OTP code is always `1234` in dev (SMS gateway not wired)
+**Production:** Vercel (web + API) + Render (workers) + Neon (12 migrations) + Redis  
+**Local:** `npm run db:seed` in `apps/api` · `npm run worker:dev` for BullMQ · OTP always `1234`  
+**Deploy:** `cd apps/api && npx vercel --prod` · `cd apps/web && npx vercel --prod`

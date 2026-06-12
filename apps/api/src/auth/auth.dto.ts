@@ -46,6 +46,14 @@ export class BootstrapSuperAdminDto {
 export class OtpRequestDto {
   @IsPhoneNumber('IN')
   phone: string;
+
+  @IsOptional()
+  @IsIn(['whatsapp', 'email'])
+  channel?: 'whatsapp' | 'email';
+
+  @IsOptional()
+  @IsString()
+  email?: string;
 }
 
 export class OtpVerifyDto {

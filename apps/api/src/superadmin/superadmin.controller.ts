@@ -1,9 +1,9 @@
-import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { JwtUserGuard } from '../common/auth/jwt-user.guard';
 import { RolesGuard } from '../common/auth/roles.guard';
 import { Roles } from '../common/auth/roles.decorator';
 import { UserRole } from '../common/auth/user-role.enum';
-import { SuperCreateBusinessDto } from './superadmin.dto';
+import { SuperCreateBusinessDto, CreateActivationCodeDto, SetBusinessPlanDto } from './superadmin.dto';
 import { SuperAdminService } from './superadmin.service';
 import { SetBusinessFeatureDto } from './features.dto';
 
@@ -36,6 +36,26 @@ export class SuperAdminController {
   @Get('stats')
   stats() {
     return this.superadmin.stats();
+  }
+
+  @Get('activation-codes')
+  activationCodes() {
+    return this.superadmin.listActivationCodes();
+  }
+
+  @Post('activation-codes')
+  createActivationCode(@Body() dto: CreateActivationCodeDto) {
+    return this.superadmin.createActivationCode(dto);
+  }
+
+  @Patch('activation-codes/:id')
+  toggleActivationCode(@Param('id') id: string, @Body() body: { isActive: boolean }) {
+    return this.superadmin.setActivationCodeActive(id, body.isActive);
+  }
+
+  @Post('business-plan')
+  setBusinessPlan(@Body() dto: SetBusinessPlanDto) {
+    return this.superadmin.setBusinessPlan(dto.businessId, dto.plan, dto.validityDays);
   }
 }
 

@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { AppointmentStatus, LeadStage, TicketStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { PlansService } from '../plans/plans.service';
 import { generateSlots } from '../appointments/slot-engine';
 
 type HubItem =
@@ -26,7 +27,10 @@ type HubItem =
 
 @Injectable()
 export class HubService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private plans: PlansService,
+  ) {}
 
   private leadSuggestions(stage: LeadStage, hasPhone: boolean) {
     const s: Array<{ key: string; label: string }> = [];
@@ -407,6 +411,7 @@ export class HubService {
   }
 
   async revenueLeakage(businessId: string) {
+    await this.plans.assertFeature(businessId, 'revenue_leakage');
     const now = new Date();
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
     const followupDueAt = new Date(now.getTime() - 48 * 60 * 60 * 1000);
@@ -707,6 +712,7 @@ export class HubService {
     categoryKey: string | null;
     actions: Array<{ key: string; label: string; href: string }>;
   }> {
+    await this.plans.assertFeature(businessId, 'health_score');
     const now = new Date();
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
@@ -830,6 +836,69 @@ export class HubService {
       score >= 90 ? 'excellent' : score >= 70 ? 'good' : score >= 50 ? 'needs_attention' : 'critical';
 
     return { score, level, categoryKey, actions: actions.slice(0, 4) };
+  }
+
+  /** Inactive customers grouped by 30 / 60 / 90 day buckets for reactivation campaigns. */
+  async reactivation(businessId: string) {
+    await this.plans.assertFeature(businessId, 'reactivation');
+    const now = new Date();
+    const buckets = [30, 60, 90] as const;
+
+    const inactiveWhere = (days: number) => ({
+      businessId,
+      appointments: {
+        some: { status: { not: AppointmentStatus.CANCELLED } },
+        none: {
+          startAt: { gte: new Date(now.getTime() - days * 24 * 60 * 60 * 1000) },
+          status: { not: AppointmentStatus.CANCELLED },
+        },
+      },
+    });
+
+    const results = await Promise.all(
+      buckets.map(async (days) => {
+        const where = inactiveWhere(days);
+        const [count, customers] = await Promise.all([
+          this.prisma.customer.count({ where }),
+          this.prisma.customer.findMany({
+            where,
+            select: {
+              id: true,
+              name: true,
+              phone: true,
+              appointments: {
+                where: { status: { not: AppointmentStatus.CANCELLED } },
+                orderBy: { startAt: 'desc' },
+                take: 1,
+                select: { startAt: true },
+              },
+            },
+            orderBy: { updatedAt: 'asc' },
+            take: 15,
+          }),
+        ]);
+
+        return {
+          days,
+          count,
+          customers: customers.map((c) => ({
+            id: c.id,
+            name: c.name,
+            phone: c.phone,
+            lastVisitAt: c.appointments[0]?.startAt?.toISOString() ?? null,
+          })),
+        };
+      }),
+    );
+
+    return {
+      buckets: results,
+      actions: [
+        { key: 'wa_reminder', label: 'Send WhatsApp Reminder', href: '/app/reactivation?action=reminder' },
+        { key: 'offer', label: 'Send Offer', href: '/app/reactivation?action=offer' },
+        { key: 'followup', label: 'Schedule Follow-up', href: '/app/leads' },
+      ],
+    };
   }
 }
 

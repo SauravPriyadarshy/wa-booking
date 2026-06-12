@@ -1,8 +1,9 @@
 # Local Marketing Plan — Darbhanga Market
 
-**Platform:** BookNow — WhatsApp Business Assistant  
+**Platform:** WhatsApp Business Assistant (BookNow)  
 **Primary Market:** Darbhanga, Laheriasarai, Bihar  
-**Secondary Markets:** Benipur, Baheri, Jale, Muzaffarpur, Mohali
+**Secondary Markets:** Benipur, Baheri, Jale, Samastipur, Muzaffarpur, Patna, Mohali  
+**Live:** [wa-booking-web.vercel.app](https://wa-booking-web.vercel.app)
 
 ---
 
@@ -26,30 +27,20 @@
 
 ## Pricing Strategy for Darbhanga Market
 
-### Current Tiers
-```
-Free Forever:
-- Unlimited bookings
-- WhatsApp connect (1 device)
-- Public booking page + QR
-- Basic CRM (50 customers)
-- WhatsApp confirmations
+### Current Tiers (enforced in API — June 2026)
 
-Pro (₹499/month or ₹4,999/year):
-- Everything in Free
-- Auto 24h reminders
-- Inactive customer recovery messages
-- Unlimited CRM
-- Analytics & reports
-- Priority WhatsApp support
+| Plan | Limits | Key features |
+|------|--------|--------------|
+| **Free** | 50 customers · 50 bookings/mo · 1 staff | Booking page, QR, basic CRM, Hindi UI |
+| **Plus** | Unlimited | Health score, revenue leakage, reactivation, coaching, fees, attendance, WA templates |
+| **Pro** | Unlimited | Everything Plus + advanced analytics, AI guide, exports |
 
-Business (₹999/month) — for coaching centers:
-- Everything in Pro
-- Student attendance tracking
-- Fee collection dashboard
-- Parent WhatsApp notifications
-- Multi-staff support
-```
+**Activation codes (seeded):** `FREE30`, `PLUS30`, `PLUS90`, `PRO30`, `PRO60`, `PRO90`  
+Redeem during onboarding or via Super Admin → `/app/superadmin/plans`.
+
+**Suggested Darbhanga pricing (when paid tiers launch):**
+- Plus: ₹499/month or ₹4,999/year
+- Pro: ₹999/month (coaching centers, multi-staff clinics)
 
 ### Darbhanga Market Pricing Intelligence
 - Typical salon owner revenue: ₹15,000–50,000/month
@@ -57,14 +48,14 @@ Business (₹999/month) — for coaching centers:
 - Coaching center fees: ₹1,000–3,000/student/month → 50 students = ₹1L+ revenue → ₹499-999 is very affordable
 - Clinic: ₹200-500/consultation × 20 patients/day = ₹100,000+/month → pricing is not the barrier
 
-**Recommendation:** Keep Free plan generous. Convert to Pro after businesses see value (2-4 weeks).
+**Recommendation:** Free plan is enough to start. Use `/business-success` demo + health score preview to drive Plus upgrades after 2–4 weeks of usage.
 
 ---
 
 ## WhatsApp Referral Strategy
 
 ### Referral Program: "5 लाओ — 3 महीने Free"
-- Each business gets a unique referral link: `booknow.vercel.app/signup?ref=BUSINESSID`
+- Each business gets a unique referral link: `wa-booking-web.vercel.app/signup?ref=BUSINESSID`
 - Refer 5 businesses → 3 months free Pro
 - Refer 10 businesses → 1 year free Pro + "Pioneer" badge on profile
 
@@ -155,9 +146,10 @@ dekhna chahenge?"
 - Q&A: Pre-populate common questions
 
 ### Local SEO Content
-City landing pages are already live:
-- `/city/darbhanga` → "WhatsApp Booking System for Darbhanga Businesses"
-- `/city/laheriasarai` → "WhatsApp Booking for Laheriasarai Businesses"
+City landing pages are live (9 cities):
+- `/city/darbhanga`, `/city/laheriasarai`, `/city/benipur`, `/city/baheri`, `/city/jale`
+- `/city/samastipur`, `/city/muzaffarpur`, `/city/patna`, `/city/mohali`
+- `/business-success` → interactive industry demo (no signup)
 
 Target keywords:
 - "darbhanga salon booking system"

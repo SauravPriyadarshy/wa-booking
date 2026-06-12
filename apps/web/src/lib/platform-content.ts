@@ -1,4 +1,5 @@
 import { getSiteContentGroup, parseJson } from "@/lib/site-content";
+import type { AppLocale } from "@/lib/locale";
 import {
   DARBHANGA_PACKS,
   type DarbhangaPack,
@@ -6,7 +7,7 @@ import {
 } from "@/lib/darbhanga-pack";
 
 export type PlatformStat = { n: string; label: string };
-export type PlatformCategory = { key: string; name: string; nameHi: string; icon: string };
+export type PlatformCategory = { key: string; name: string; nameHi: string; nameMai?: string; icon: string };
 export type PlatformTestimonial = { name: string; business: string; city: string; text: string };
 export type PlatformStep = { step: string; title: string; desc: string; icon: string };
 export type DarbhangaStep = { n: string; t: string; d: string };
@@ -18,12 +19,12 @@ const DEFAULT_STATS: PlatformStat[] = [
 ];
 
 const DEFAULT_CATEGORIES: PlatformCategory[] = [
-  { key: "salon", name: "Salon & Barber", nameHi: "सैलून / बाल कटाई", icon: "💈" },
-  { key: "clinic", name: "Clinic & Doctor", nameHi: "क्लिनिक / डॉक्टर", icon: "🏥" },
-  { key: "coaching", name: "Coaching Center", nameHi: "कोचिंग सेंटर", icon: "📚" },
-  { key: "spa", name: "Spa & Wellness", nameHi: "स्पा / वेलनेस", icon: "🧖" },
-  { key: "home_service", name: "Home Services", nameHi: "होम सर्विस", icon: "🔧" },
-  { key: "other", name: "Any Business", nameHi: "कोई भी बिज़नेस", icon: "🏪" },
+  { key: "salon", name: "Salon & Barber", nameHi: "सैलून / बाल कटाई", nameMai: "सैलून / बाल कटाई", icon: "💈" },
+  { key: "clinic", name: "Clinic & Doctor", nameHi: "क्लिनिक / डॉक्टर", nameMai: "क्लिनिक / डॉक्टर", icon: "🏥" },
+  { key: "coaching", name: "Coaching Center", nameHi: "कोचिंग सेंटर", nameMai: "कोचिंग सेंटर", icon: "📚" },
+  { key: "spa", name: "Spa & Wellness", nameHi: "स्पा / वेलनेस", nameMai: "स्पा / वेलनेस", icon: "🧖" },
+  { key: "home_service", name: "Home Services", nameHi: "होम सर्विस", nameMai: "होम सर्विस", icon: "🔧" },
+  { key: "other", name: "Any Business", nameHi: "कोई भी बिज़नेस", nameMai: "कोनो business", icon: "🏪" },
 ];
 
 const DEFAULT_TESTIMONIALS: PlatformTestimonial[] = [
@@ -111,75 +112,103 @@ export type PwaConfig = {
   startUrl: string;
 };
 
-export async function loadPlatformConfig(locale = "en"): Promise<PlatformConfig> {
-  const [platform, landing] = await Promise.all([
+export async function loadPlatformConfig(locale: AppLocale = "en"): Promise<PlatformConfig> {
+  const [platform, landing, platformEn] = await Promise.all([
     getSiteContentGroup("platform", locale),
     getSiteContentGroup("landing", locale),
+    getSiteContentGroup("platform", "en"),
   ]);
+  const base = { ...platformEn, ...platform };
+
+  const bannerFallback =
+    locale === "hi"
+      ? "📍 Darbhanga? → WhatsApp Pack — teen cheez, paanch minute, ₹0"
+      : "📍 Darbhanga? → WhatsApp Pack — 3 tools, 5 minutes, ₹0";
+
+  const shareFallback =
+    locale === "en"
+      ? "Hi! Online booking is live at {shopName}.\n\nLink: {link}\n\nScan QR to book — no app needed."
+      : "नमस्ते! {shopName} पर online booking शुरू हो गई है।\n\nLink: {link}\n\nQR scan करके book करें — कोई app नहीं चाहिए।";
 
   return {
-    contactPhone: platform["platform.contact_phone"] ?? "7500002221",
+    contactPhone: base["platform.contact_phone"] ?? "7500002221",
     whatsappNumber:
-      platform["platform.whatsapp_number"] ??
+      base["platform.whatsapp_number"] ??
       landing["landing.whatsapp_number"] ??
       "917500002221",
-    darbhangaBanner:
-      platform["platform.darbhanga_banner"] ??
-      "📍 Darbhanga? → WhatsApp Pack — teen cheez, paanch minute, ₹0",
-    shareTemplate:
-      platform["platform.share_template"] ??
-      "नमस्ते! {shopName} पर online booking शुरू हो गई है।\n\nLink: {link}\n\nQR scan करके book करें — कोई app नहीं चाहिए।",
-    stats: parseJson(platform["platform.stats"], DEFAULT_STATS),
-    categories: parseJson(platform["platform.categories"], DEFAULT_CATEGORIES),
-    testimonials: parseJson(platform["platform.testimonials"], DEFAULT_TESTIMONIALS),
-    howItWorks: parseJson(platform["platform.how_it_works"], DEFAULT_HOW_IT_WORKS),
-    beforeAfter: parseJson(platform["platform.before_after"], DEFAULT_BEFORE_AFTER),
+    darbhangaBanner: base["platform.darbhanga_banner"] ?? bannerFallback,
+    shareTemplate: base["platform.share_template"] ?? shareFallback,
+    stats: parseJson(base["platform.stats"], DEFAULT_STATS),
+    categories: parseJson(base["platform.categories"], DEFAULT_CATEGORIES),
+    testimonials: parseJson(base["platform.testimonials"], DEFAULT_TESTIMONIALS),
+    howItWorks: parseJson(base["platform.how_it_works"], DEFAULT_HOW_IT_WORKS),
+    beforeAfter: parseJson(base["platform.before_after"], DEFAULT_BEFORE_AFTER),
   };
 }
 
-export async function loadDarbhangaConfig(locale = "en"): Promise<DarbhangaConfig> {
-  const [darbhanga, cityHi] = await Promise.all([
+const DARBHANGA_FALLBACKS: Record<
+  AppLocale,
+  Pick<DarbhangaConfig, "heroTitle" | "heroTagline" | "heroSubtitle" | "testimonialQuote" | "waDemoMessage" | "seoTitle" | "seoDescription">
+> = {
+  en: {
+    heroTitle: "Darbhanga WhatsApp Pack",
+    heroTagline: "Three things. Five minutes. Works on your phone.",
+    heroSubtitle: "Not a CRM. Not an ERP. Just booking link, WhatsApp reminders, and customer list — one bundle.",
+    testimonialQuote: "I used to take bookings manually on WhatsApp. Now I share a link — everything is in the system.",
+    waDemoMessage: "Hi, I want a Darbhanga WhatsApp Pack demo — salon/clinic/coaching.",
+    seoTitle: "Darbhanga WhatsApp Pack — Booking + Reminder + Customer List | BookNow",
+    seoDescription: "One bundle for Darbhanga salons, clinics, and coaching: booking link, WhatsApp reminders, customer list.",
+  },
+  hi: {
+    heroTitle: "दरभंगा WhatsApp Pack",
+    heroTagline: "तीन चीज़। पाँच मिनट। Phone pe kaam।",
+    heroSubtitle: "CRM nahi. ERP nahi. Sirf booking link, reminder, customer list.",
+    testimonialQuote: "Pehle WhatsApp pe manually booking leta tha। Ab link share karta hoon।",
+    waDemoMessage: "नमस्ते, Darbhanga WhatsApp Pack demo chahiye — salon/clinic/coaching.",
+    seoTitle: "दरभंगा WhatsApp Pack | BookNow",
+    seoDescription: "Darbhanga ke salon, clinic, coaching ke liye ek bundle.",
+  },
+};
+
+export async function loadDarbhangaConfig(locale: AppLocale = "en"): Promise<DarbhangaConfig> {
+  const [primary, hi, en] = await Promise.all([
     getSiteContentGroup("darbhanga", locale),
     getSiteContentGroup("darbhanga", "hi"),
+    getSiteContentGroup("darbhanga", "en"),
   ]);
-  const hi = locale === "hi" ? darbhanga : { ...darbhanga, ...cityHi };
+  const merged = { ...en, ...hi, ...primary };
+  const fb = DARBHANGA_FALLBACKS[locale];
 
   return {
-    heroTitle: hi["darbhanga.hero.title"] ?? "दरभंगा WhatsApp Pack",
-    heroTagline: hi["darbhanga.hero.tagline"] ?? "तीन चीज़। पाँच मिनट। Phone pe kaam।",
-    heroSubtitle:
-      hi["darbhanga.hero.subtitle"] ??
-      "CRM नहीं। ERP नहीं। सिर्फ booking link, WhatsApp reminder, aur customer list — ek bundle mein।",
-    badge: hi["darbhanga.hero.badge"] ?? "Darbhanga Launch",
-    packs: parseJson<DarbhangaPack[]>(darbhanga["darbhanga.packs"], DARBHANGA_PACKS),
-    steps: parseJson(darbhanga["darbhanga.steps"], DEFAULT_DARBHANGA_STEPS),
-    testimonialQuote:
-      hi["darbhanga.testimonial.quote"] ??
-      "Pehle WhatsApp pe manually booking leta tha। Ab link share karta hoon — sab system mein। Missed booking band।",
-    testimonialAuthor: hi["darbhanga.testimonial.author"] ?? "— Rakesh, Raj Hair Studio, Darbhanga",
-    waDemoMessage:
-      darbhanga["darbhanga.wa_demo_message"] ??
-      "नमस्ते, Darbhanga WhatsApp Pack demo chahiye — salon/clinic/coaching. Kaise shuru karun?",
-    seoTitle:
-      darbhanga["darbhanga.seo.title"] ??
-      "दरभंगा WhatsApp Pack — Booking + Reminder + Customer List | BookNow",
-    seoDescription:
-      darbhanga["darbhanga.seo.description"] ??
-      "Darbhanga ke salon, clinic, coaching ke liye ek bundle: booking link, WhatsApp reminder, customer list.",
+    heroTitle: merged["darbhanga.hero.title"] ?? fb.heroTitle,
+    heroTagline: merged["darbhanga.hero.tagline"] ?? fb.heroTagline,
+    heroSubtitle: merged["darbhanga.hero.subtitle"] ?? fb.heroSubtitle,
+    badge: merged["darbhanga.hero.badge"] ?? "Darbhanga Launch",
+    packs: parseJson<DarbhangaPack[]>(merged["darbhanga.packs"] ?? en["darbhanga.packs"], DARBHANGA_PACKS),
+    steps: parseJson(merged["darbhanga.steps"] ?? en["darbhanga.steps"], DEFAULT_DARBHANGA_STEPS),
+    testimonialQuote: merged["darbhanga.testimonial.quote"] ?? fb.testimonialQuote,
+    testimonialAuthor: merged["darbhanga.testimonial.author"] ?? "— Rakesh, Raj Hair Studio, Darbhanga",
+    waDemoMessage: merged["darbhanga.wa_demo_message"] ?? fb.waDemoMessage,
+    seoTitle: merged["darbhanga.seo.title"] ?? fb.seoTitle,
+    seoDescription: merged["darbhanga.seo.description"] ?? fb.seoDescription,
   };
 }
 
-export async function loadPwaConfig(): Promise<PwaConfig> {
-  const pwa = await getSiteContentGroup("pwa", "en");
+export async function loadPwaConfig(locale: AppLocale = "en"): Promise<PwaConfig> {
+  const [pwa, en] = await Promise.all([
+    getSiteContentGroup("pwa", locale),
+    getSiteContentGroup("pwa", "en"),
+  ]);
+  const merged = { ...en, ...pwa };
   return {
-    name: pwa["pwa.name"] ?? "BookNow — WhatsApp Business Assistant",
-    shortName: pwa["pwa.short_name"] ?? "BookNow",
+    name: merged["pwa.name"] ?? "BookNow — WhatsApp Business Assistant",
+    shortName: merged["pwa.short_name"] ?? "BookNow",
     description:
-      pwa["pwa.description"] ??
+      merged["pwa.description"] ??
       "Booking, WhatsApp reminders, and customer list for Indian businesses.",
-    themeColor: pwa["pwa.theme_color"] ?? "#059669",
-    backgroundColor: pwa["pwa.background_color"] ?? "#fafafa",
-    startUrl: pwa["pwa.start_url"] ?? "/app?source=installed",
+    themeColor: merged["pwa.theme_color"] ?? "#059669",
+    backgroundColor: merged["pwa.background_color"] ?? "#fafafa",
+    startUrl: merged["pwa.start_url"] ?? "/app?source=installed",
   };
 }
 

@@ -1,6 +1,7 @@
 # Darbhanga WhatsApp Pack — Field Bundle
 
 **One page:** https://wa-booking-web.vercel.app/darbhanga  
+**Try first (no signup):** https://wa-booking-web.vercel.app/business-success  
 **One promise:** Teen cheez. Paanch minute. Phone pe kaam.
 
 Not CRM. Not ERP. Not "14 phases." One bundle per business type.

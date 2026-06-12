@@ -20,6 +20,6 @@ export class GetSiteContentQuery {
   group?: string;
 
   @IsOptional()
-  @IsIn(['en', 'hi'])
+  @IsIn(['en', 'hi', 'mai'])
   locale?: string;
 }

@@ -2,7 +2,7 @@ import type { MetadataRoute } from "next";
 
 const BASE = process.env.NEXT_PUBLIC_WEB_URL ?? "https://wa-booking-web.vercel.app";
 
-const CITIES = ["darbhanga", "laheriasarai", "benipur", "baheri", "jale", "mohali", "patna", "muzaffarpur"];
+const CITIES = ["darbhanga", "laheriasarai", "benipur", "baheri", "jale", "samastipur", "mohali", "patna", "muzaffarpur"];
 const CATEGORIES = ["salon", "clinic", "coaching", "spa", "home_service"];
 
 async function getBusinessSlugs(): Promise<Array<{ slug: string; updatedAt?: string }>> {
@@ -30,6 +30,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticRoutes: MetadataRoute.Sitemap = [
     { url: BASE, lastModified: now, changeFrequency: "weekly", priority: 1.0 },
     { url: `${BASE}/darbhanga`, lastModified: now, changeFrequency: "weekly", priority: 1.0 },
+    { url: `${BASE}/business-success`, lastModified: now, changeFrequency: "weekly", priority: 0.95 },
     { url: `${BASE}/signup`, lastModified: now, changeFrequency: "monthly", priority: 0.9 },
     { url: `${BASE}/login`, lastModified: now, changeFrequency: "monthly", priority: 0.6 },
   ];

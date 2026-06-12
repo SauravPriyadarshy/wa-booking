@@ -5,6 +5,7 @@ import type IORedis from 'ioredis';
 import { generateSlots } from './slot-engine';
 import { HOLIDAY_APPOINTMENT_CANCEL_REASON } from '../common/holiday-cancel';
 import { AutomationService } from '../automation/automation.service';
+import { PlansService } from '../plans/plans.service';
 
 const SLOT_LOCK_TTL_MS = 8_000; // 8s lock per slot attempt
 
@@ -15,6 +16,7 @@ export class AppointmentsService {
     @Inject('REDIS') private redis: IORedis,
     @Inject('QUEUE_REMINDERS') private remindersQueue: any,
     private automation: AutomationService,
+    private plans: PlansService,
   ) {}
 
   listUpcoming(businessId: string) {
@@ -113,6 +115,7 @@ export class AppointmentsService {
    * Prevents double-booking under concurrent requests.
    */
   async create(businessId: string, dto: { customerId: string; serviceId: string; staffId?: string; startAt: string }) {
+    await this.plans.assertCanAddBooking(businessId);
     const [service, customer, business] = await Promise.all([
       this.prisma.service.findUnique({ where: { id: dto.serviceId } }),
       this.prisma.customer.findUnique({ where: { id: dto.customerId }, select: { id: true, businessId: true, name: true, phone: true } }),

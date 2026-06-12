@@ -50,13 +50,13 @@ export class AuthController {
     return { ...data, refreshToken: undefined };
   }
 
-  @Throttle({ default: { limit: 6, ttl: 60_000 } })
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Post('otp/request')
   requestOtp(@Body() dto: OtpRequestDto) {
-    return this.auth.requestOtp(dto.phone);
+    return this.auth.requestOtp(dto.phone, dto.channel ?? 'whatsapp', dto.email);
   }
 
-  @Throttle({ default: { limit: 6, ttl: 60_000 } })
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Post('otp/verify')
   async verifyOtp(@Res({ passthrough: true }) res: Response, @Body() dto: OtpVerifyDto) {
     const data = await this.auth.verifyOtp(dto.phone, dto.code);

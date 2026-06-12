@@ -16,17 +16,19 @@
 - Create a target list in spreadsheet
 
 ### Day 3-4: Demo Preparation
-- Set up demo account: `demo-salon` or `demo-clinic`
+- Set up demo account: `demo-salon` or use `/business-success?type=coaching` (no signup)
 - Prepare a 3-minute WhatsApp voice note demo script in Hindi
 - Prepare a printed A4 flyer (Hindi) with QR code linking to `/city/darbhanga`
 - Prepare a printed "Booking Link" card for shop boards
+- Print activation code card: `PLUS90` for anchor partners (90 days Plus free)
 
 ### Day 5-7: First Outreach (Personal)
 **Script for shop owners (Hindi WhatsApp message):**
 ```
 नमस्ते! मैं [Name] हूँ। आपके {business_type} के लिए एक free WhatsApp booking system है जो 
 customers को automatically reminder भेजता है। Setup में सिर्फ 5 मिनट लगते हैं। 
-Free demo देखना है? https://wa-booking-web.vercel.app/city/darbhanga
+Free demo देखना है? https://wa-booking-web.vercel.app/business-success
+City page: https://wa-booking-web.vercel.app/city/darbhanga
 ```
 - Send to 20 businesses personally
 - Target: 5 signups by Day 7
@@ -137,13 +139,13 @@ Evening:
 
 ### Setup Script (In-Person, 5 min)
 ```
-Step 1: Open booknow.vercel.app/signup on owner's phone
-Step 2: Enter mobile number (they get OTP) or create account
-Step 3: Choose business type (salon/clinic/coaching)
-Step 4: Confirm pre-filled services (edit if needed)
-Step 5: Go to Settings → WhatsApp → scan QR
-Step 6: Test: book one appointment yourself from the public link
-Step 7: Show them the WhatsApp notification they receive
+Step 1: Open wa-booking-web.vercel.app/signup?ref=darbhanga&pack=salon on owner's phone
+Step 2: Enter mobile number → OTP 1234 (dev stub)
+Step 3: Darbhanga fast path: 2 steps (or full 7-step onboarding for other cities)
+Step 4: Optional: enter activation code PLUS90 for Plus features
+Step 5: Go to /app/whatsapp → scan QR
+Step 6: Test: book one appointment from the public link
+Step 7: Show WhatsApp confirmation notification
 Step 8: Print QR code / share booking link via WhatsApp
 ```
 

@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import { DarbhangaBundleLanding } from "@/components/darbhanga/darbhanga-bundle-landing";
 import { loadDarbhangaConfig } from "@/lib/platform-content";
+import { getServerLocale } from "@/lib/locale-server";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const config = await loadDarbhangaConfig();
+  const locale = await getServerLocale();
+  const config = await loadDarbhangaConfig(locale);
   return {
     title: config.seoTitle,
     description: config.seoDescription,
@@ -24,7 +26,8 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function DarbhangaPage() {
-  const config = await loadDarbhangaConfig();
+  const locale = await getServerLocale();
+  const config = await loadDarbhangaConfig(locale);
   return (
     <>
       <script
@@ -37,7 +40,7 @@ export default async function DarbhangaPage() {
             applicationCategory: "BusinessApplication",
             operatingSystem: "Web",
             offers: { "@type": "Offer", price: "0", priceCurrency: "INR" },
-            inLanguage: ["hi", "en"],
+            inLanguage: ["en", "hi", "mai"],
             areaServed: { "@type": "City", name: "Darbhanga" },
           }),
         }}

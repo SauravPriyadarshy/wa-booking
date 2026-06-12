@@ -27,7 +27,7 @@ const GROUP_LABELS: Record<string, string> = {
   onboarding: "Onboarding",
 };
 
-const LOCALES = ["en", "hi"];
+const LOCALES = ["en", "hi", "mai"];
 
 function authHeader(): Record<string, string> {
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
@@ -93,7 +93,13 @@ function ContentEditor({ row, onSaved }: { row: ContentRow; onSaved: () => void 
           <div className="text-[13px] font-semibold text-zinc-900">{row.label}</div>
           <div className="mt-0.5 flex items-center gap-2">
             <code className="rounded bg-zinc-100 px-1.5 py-0.5 text-[11px] text-zinc-600">{row.key}</code>
-            <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${row.locale === "hi" ? "bg-orange-100 text-orange-700" : "bg-blue-100 text-blue-700"}`}>
+            <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${
+              row.locale === "hi"
+                ? "bg-orange-100 text-orange-700"
+                : row.locale === "mai"
+                  ? "bg-emerald-100 text-emerald-700"
+                  : "bg-blue-100 text-blue-700"
+            }`}>
               {row.locale.toUpperCase()}
             </span>
             {isJsonValue && (
@@ -243,7 +249,9 @@ export default function SuperAdminContentPage() {
         >
           <option value="all">All languages</option>
           {LOCALES.map((l) => (
-            <option key={l} value={l}>{l === "en" ? "English" : "Hindi"}</option>
+            <option key={l} value={l}>
+              {l === "en" ? "English" : l === "hi" ? "Hindi" : "Maithili"}
+            </option>
           ))}
         </select>
         <button

@@ -1,9 +1,13 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { PlansService } from '../plans/plans.service';
 
 @Injectable()
 export class StaffService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private plans: PlansService,
+  ) {}
 
   list(businessId: string) {
     return this.prisma.staffProfile.findMany({
@@ -35,6 +39,7 @@ export class StaffService {
       consultationDurationMin?: number;
     },
   ) {
+    await this.plans.assertCanAddStaff(businessId);
     const user = await this.prisma.user.create({
       data: {
         name: args.name,

@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { apiBase } from "@/lib/api-base";
 import { DashboardSkeleton } from "@/components/ui";
 
@@ -129,6 +130,9 @@ function SuperAdminHome() {
 }
 
 export default function AppHome() {
+  const ton = useTranslations("onboarding");
+  const tah = useTranslations("appHome");
+  const tauth = useTranslations("auth");
   const [user, setUser] = useState<UserInfo | null>(null);
   const [onboardingQs, setOnboardingQs] = useState("");
 
@@ -171,21 +175,19 @@ export default function AppHome() {
       <div className="space-y-4">
         <div className="rounded-2xl border border-zinc-100 bg-white p-5 shadow-sm">
           <div className="text-[13px] font-medium text-zinc-500">
-            {isDarbhanga ? "Darbhanga Pack" : "Start here"}
+            {isDarbhanga ? tah("darbhangaPack") : tah("startHere")}
           </div>
           <div className="mt-1 text-xl font-semibold tracking-tight text-zinc-900">
-            {isDarbhanga ? "Shop setup — 2 minute" : "Create your business"}
+            {isDarbhanga ? tah("darbhangaSetupTitle") : tah("createBusiness")}
           </div>
           <p className="mt-2 text-[15px] leading-relaxed text-zinc-600">
-            {isDarbhanga
-              ? "Naam likho, pack chuno — booking link turant milega।"
-              : "You're one step away from your booking link and QR. Most businesses finish in under three minutes."}
+            {isDarbhanga ? tah("darbhangaSetupBody") : tah("defaultSetupBody")}
           </p>
           <a
             href={`/app/onboarding${onboardingQs}`}
             className="mt-4 flex h-11 items-center justify-center rounded-xl bg-emerald-600 text-[15px] font-semibold text-white shadow-sm transition hover:bg-emerald-700"
           >
-            {isDarbhanga ? "Shuru karo →" : "Start setup"}
+            {isDarbhanga ? ton("startSetup") : tah("startSetup")}
           </a>
         </div>
         <a
@@ -193,7 +195,7 @@ export default function AppHome() {
           className="mt-4 block text-center text-[13px] font-medium text-emerald-700"
           onClick={() => localStorage.removeItem("token")}
         >
-          Logout
+          {tauth("logout")}
         </a>
       </div>
     );

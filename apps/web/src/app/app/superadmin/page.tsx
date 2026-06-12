@@ -16,6 +16,7 @@ type SuperStats = {
 
 const LINKS = [
   { href: "/app/superadmin/businesses", label: "Businesses", sub: "Create & manage tenants", icon: "🏢" },
+  { href: "/app/superadmin/plans", label: "Activation Codes", sub: "FREE30 · PLUS90 · PRO60", icon: "🎫" },
   { href: "/app/superadmin/features", label: "Plans & Features", sub: "Enable modules per business", icon: "⚙️" },
   { href: "/app/superadmin/content", label: "Content & SEO", sub: "Landing, city pages, WA templates", icon: "✏️" },
   { href: "/app/settings", label: "Settings", sub: "Platform configuration", icon: "🔧" },

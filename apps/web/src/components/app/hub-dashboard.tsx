@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { apiBase } from "@/lib/api-base";
 import {
   CalendarDays,
@@ -13,6 +14,7 @@ import {
 } from "lucide-react";
 import { BookingLinkPanel } from "@/components/app/booking-link-panel";
 import { DarbhangaLaunchStrip } from "@/components/app/darbhanga-launch-strip";
+import { UpgradeBanner, PlanUsageBar } from "@/components/app/upgrade-banner";
 import { packByKey } from "@/lib/darbhanga-pack";
 import {
   StatCard,
@@ -105,6 +107,13 @@ type ClinicSnapshot = {
   revenueTodayCents: number;
 };
 
+type PlanInfo = {
+  effectivePlan: string;
+  features: string[];
+  usage: { customers: number; staff: number; bookingsThisMonth: number };
+  limits: { maxStaff: number | null; maxCustomers: number | null; maxBookingsPerMonth: number | null };
+};
+
 type InboxItem =
   | { type: "lead"; id: string; title: string; subtitle: string; updatedAt: string }
   | { type: "ticket"; id: string; title: string; subtitle: string; updatedAt: string };
@@ -132,15 +141,21 @@ function appointmentBadgeStatus(status: string): "confirmed" | "pending" | "canc
   return "pending";
 }
 
-function getGreeting(categoryKey: string | null, displayName: string): { title: string; subtitle: string } {
-  const greetings: Record<string, { title: string; subtitle: string }> = {
-    salon: { title: `नमस्ते ${displayName}! 💈`, subtitle: "Today's salon schedule" },
-    clinic: { title: `नमस्ते Dr. ${displayName}!`, subtitle: "आज का patient queue" },
-    coaching: { title: `नमस्ते ${displayName}! 📚`, subtitle: "Today's classes & fees" },
-    spa: { title: `Welcome back, ${displayName}! 🧖`, subtitle: "Today's spa bookings" },
-    home_service: { title: `Good morning, ${displayName}! 🔧`, subtitle: "Today's jobs" },
-  };
-  return greetings[categoryKey ?? ""] ?? { title: `नमस्ते ${displayName}!`, subtitle: "Today's workspace" };
+function hubGreeting(
+  t: (key: string, values?: Record<string, string>) => string,
+  categoryKey: string | null,
+  displayName: string,
+): { title: string; subtitle: string } {
+  if (categoryKey === "clinic") {
+    return { title: t("greetingClinic", { name: displayName }), subtitle: t("greetingClinicSub") };
+  }
+  if (categoryKey === "coaching") {
+    return { title: t("greetingCoaching", { name: displayName }), subtitle: t("greetingCoachingSub") };
+  }
+  if (categoryKey === "salon" || categoryKey === "spa" || categoryKey === "home_service") {
+    return { title: t("greetingSalon", { name: displayName }), subtitle: t("greetingSalonSub") };
+  }
+  return { title: t("greetingDefault", { name: displayName }), subtitle: t("greetingDefaultSub") };
 }
 
 function suggestionDismissKey(id: string) {
@@ -316,6 +331,7 @@ function HealthScoreWidget({ score, level, actions }: HealthPayload) {
 
 /* ─── HubDashboard ──────────────────────────────────────────────── */
 export function HubDashboard() {
+  const th = useTranslations("hub");
   const token = useMemo(() => (typeof window === "undefined" ? null : localStorage.getItem("token")), []);
   const [ui, setUi] = useState<UiConfig | null>(null);
   const [wa, setWa] = useState<WaStatus | null>(null);
@@ -339,6 +355,7 @@ export function HubDashboard() {
   const [launchMode, setLaunchMode] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [packLabel, setPackLabel] = useState("WhatsApp Pack");
+  const [plan, setPlan] = useState<PlanInfo | null>(null);
 
   useEffect(() => {
     setOrigin(typeof window !== "undefined" ? window.location.origin : "");
@@ -376,7 +393,7 @@ export function HubDashboard() {
     (async () => {
       try {
         setErr(null);
-        const [meRes, cfg, s, dash, qr, , healthRes, leakageRes, coachingRes, clinicRes, inboxRes] = await Promise.all([
+        const [meRes, cfg, s, dash, qr, , healthRes, leakageRes, coachingRes, clinicRes, inboxRes, planRes] = await Promise.all([
           api("/me").catch(() => null),
           api("/me/ui"),
           api("/whatsapp/status").catch(() => null),
@@ -388,6 +405,7 @@ export function HubDashboard() {
           api("/hub/coaching-snapshot").catch(() => null),
           api("/hub/clinic-snapshot").catch(() => null),
           api("/hub/inbox").catch(() => ({ items: [] })),
+          api("/plans/me").catch(() => null),
         ]);
 
         const me = meRes as {
@@ -417,6 +435,15 @@ export function HubDashboard() {
         setClinic(cat === "clinic" ? ((clinicRes as ClinicSnapshot) ?? null) : null);
         const inbox = inboxRes as { items?: InboxItem[] };
         setInboxItems((inbox?.items ?? []).slice(0, 6));
+        const p = planRes as PlanInfo | null;
+        if (p?.effectivePlan) {
+          setPlan({
+            effectivePlan: p.effectivePlan,
+            features: p.features ?? [],
+            usage: p.usage ?? { customers: 0, staff: 0, bookingsThisMonth: 0 },
+            limits: p.limits ?? { maxStaff: null, maxCustomers: null, maxBookingsPerMonth: null },
+          });
+        }
       } catch (e) {
         setErr(e instanceof Error ? e.message : "Failed");
         setUi({ ok: false });
@@ -479,7 +506,7 @@ export function HubDashboard() {
   const today = todayISO();
   const sug = d.suggestion && !suggestionDismissed ? d.suggestion : null;
   const waConnected = (wa?.status ?? "").toUpperCase() === "CONNECTED";
-  const greeting = getGreeting(categoryKey, greetingName);
+  const greeting = hubGreeting(th, categoryKey, greetingName);
 
   function dismissLaunchMode() {
     localStorage.setItem("darbhangaLaunchDismissed", "1");
@@ -489,7 +516,7 @@ export function HubDashboard() {
   function copyBookingLink() {
     if (!bookingUrl) return;
     void navigator.clipboard.writeText(bookingUrl).then(
-      () => toast.success("Link copy ho gaya — WhatsApp pe paste karo"),
+      () => toast.success(th("linkCopied")),
       () => toast.error("Copy nahi hua"),
     );
   }
@@ -529,6 +556,22 @@ export function HubDashboard() {
 
       {err ? (
         <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-[12px] text-amber-900">{err}</div>
+      ) : null}
+
+      {!waConnected && !launchMode ? (
+        <div className="mt-4 flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+          <div className="text-2xl shrink-0">💬</div>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium text-emerald-900">{th("waConnectTitle")}</p>
+            <p className="mt-1 text-xs text-emerald-700">{th("waConnectSub")}</p>
+          </div>
+          <a
+            href="/app/whatsapp"
+            className="shrink-0 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-medium text-white hover:bg-emerald-700"
+          >
+            {th("waConnectCta")}
+          </a>
+        </div>
       ) : null}
 
       {launchMode ? (
@@ -725,21 +768,21 @@ export function HubDashboard() {
       {(!launchMode || showAdvanced) ? (
       <div className="mt-5 -mx-1 flex gap-3 overflow-x-auto pb-1 pt-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <StatCard
-          label="Today"
+          label={th("kpiBookings")}
           value={d.stats.bookingsToday}
           accent="emerald"
           sub="bookings"
           href={`/app/bookings?date=${encodeURIComponent(today)}&view=day`}
         />
         <StatCard
-          label="Pending"
+          label={th("kpiPending")}
           value={d.stats.pendingConfirmations}
           accent={d.stats.pendingConfirmations > 0 ? "amber" : "zinc"}
           sub="confirm"
           href="/app/bookings?view=list&status=PENDING"
         />
         <StatCard
-          label="Revenue"
+          label={th("kpiRevenue")}
           value={formatInrFromCents(d.stats.revenueTodayCents)}
           accent="zinc"
           sub="today"
@@ -755,10 +798,27 @@ export function HubDashboard() {
       </div>
       ) : null}
 
+      {plan?.effectivePlan === "FREE" && plan.limits.maxCustomers != null ? (
+        <div className="mt-4 grid gap-2 sm:grid-cols-3">
+          <PlanUsageBar label="Customers" used={plan.usage.customers} max={plan.limits.maxCustomers} />
+          <PlanUsageBar label="Staff" used={plan.usage.staff} max={plan.limits.maxStaff} />
+          <PlanUsageBar label="Bookings/mo" used={plan.usage.bookingsThisMonth} max={plan.limits.maxBookingsPerMonth} />
+        </div>
+      ) : null}
+
       {/* 3. Health Score widget */}
       {health && showHealthInLaunch ? (
         <div className="mt-5">
           <HealthScoreWidget {...health} />
+        </div>
+      ) : !health && plan?.effectivePlan === "FREE" && !launchMode ? (
+        <div className="mt-5">
+          <UpgradeBanner
+            title="व्यवसाय स्थिति रिपोर्ट — Plus plan par"
+            message="Business Health Score, revenue leakage, aur customer reactivation Plus plan par unlock hote hain."
+            cta="Plus plan dekhein →"
+            href="/business-success"
+          />
         </div>
       ) : null}
 
@@ -795,7 +855,7 @@ export function HubDashboard() {
       {/* 5. Today's schedule */}
       <section className="mt-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-[15px] font-semibold text-zinc-900">Today&apos;s schedule</h2>
+          <h2 className="text-[15px] font-semibold text-zinc-900">{th("scheduleTitle")}</h2>
           <a
             href={`/app/bookings?date=${encodeURIComponent(today)}&view=day`}
             className="text-[12px] font-semibold text-emerald-700"
@@ -808,14 +868,14 @@ export function HubDashboard() {
           <div className="mt-3 rounded-2xl border border-zinc-100 bg-white">
             <EmptyState
               icon="calendar"
-              title="आज कोई बुकिंग नहीं"
-              description="Booking link share करें या नई बुकिंग add करें।"
+              title={th("noBookings")}
+              description={th("noBookingsDesc")}
               action={
                 <a
                   href="/app/bookings?new=1"
                   className="inline-flex h-10 items-center justify-center rounded-xl bg-emerald-600 px-4 text-[13px] font-semibold text-white"
                 >
-                  Add booking
+                  {th("addBooking")}
                 </a>
               }
             />

@@ -7,6 +7,6 @@ import { WhatsAppKeepAlive } from './whatsapp-keepalive.service';
 @Module({
   controllers: [WhatsAppController],
   providers: [PrismaService, WhatsAppService, WhatsAppKeepAlive],
+  exports: [WhatsAppService],
 })
 export class WhatsAppModule {}
-

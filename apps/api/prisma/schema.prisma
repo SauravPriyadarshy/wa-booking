@@ -225,6 +225,17 @@ model RefreshToken {
   @@index([tokenPrefix])
 }
 
+enum SubscriptionPlan {
+  FREE
+  PLUS
+  PRO
+}
+
+enum TenantType {
+  LIVE
+  DEMO
+}
+
 model BusinessCategory {
   id           String  @id @default(cuid())
   key          String  @unique
@@ -234,10 +245,31 @@ model BusinessCategory {
   // Template metadata used by onboarding
   templateJson Json?
 
+  businesses    Business[]
+  subcategories BusinessSubcategory[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model BusinessSubcategory {
+  id         String           @id @default(cuid())
+  categoryId String
+  category   BusinessCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  key        String
+  name       String
+  nameHi     String?
+  sortOrder  Int              @default(0)
+  isOther    Boolean          @default(false)
+  isActive   Boolean          @default(true)
+
   businesses Business[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@unique([categoryId, key])
+  @@index([categoryId])
 }
 
 model Business {
@@ -250,6 +282,21 @@ model Business {
 
   categoryId String?
   category   BusinessCategory? @relation(fields: [categoryId], references: [id])
+
+  subcategoryId        String?
+  subcategory          BusinessSubcategory? @relation(fields: [subcategoryId], references: [id])
+  customSpecialization String?
+
+  plan          SubscriptionPlan @default(FREE)
+  planExpiresAt DateTime?
+  referralCode  String?            @unique
+  tenantType    TenantType         @default(LIVE)
+
+  referredByBusinessId String?
+  referredByBusiness   Business?  @relation("BusinessReferrals", fields: [referredByBusinessId], references: [id])
+  referredBusinesses Business[] @relation("BusinessReferrals")
+
+  activationRedemptions ActivationRedemption[]
 
   users           User[]
   services        Service[]
@@ -560,7 +607,7 @@ model WhatsAppSession {
 model SiteContent {
   id        String   @id @default(cuid())
   key       String   // dotted namespace key
-  locale    String   @default("en") // "en" | "hi"
+  locale    String   @default("en") // "en" | "hi" | "mai"
   group     String   // "landing" | "seo" | "wa_templates" | "city" | "onboarding"
   label     String   // human-readable label for the editor UI
   value     String   // plain text or JSON string for rich blocks
@@ -633,4 +680,36 @@ model FeeRecord {
   @@index([studentId])
   @@index([studentId, paidAt])
   @@index([businessId, paidAt])
+}
+
+model ActivationCode {
+  id           String           @id @default(cuid())
+  code         String           @unique
+  plan         SubscriptionPlan
+  validityDays Int
+  maxUses      Int              @default(1)
+  usedCount    Int              @default(0)
+  expiresAt    DateTime?
+  isActive     Boolean          @default(true)
+  note         String?
+
+  redemptions ActivationRedemption[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive, expiresAt])
+}
+
+model ActivationRedemption {
+  id         String         @id @default(cuid())
+  codeId     String
+  code       ActivationCode @relation(fields: [codeId], references: [id])
+  businessId String
+  business   Business       @relation(fields: [businessId], references: [id])
+
+  redeemedAt DateTime @default(now())
+
+  @@unique([codeId, businessId])
+  @@index([businessId])
 }

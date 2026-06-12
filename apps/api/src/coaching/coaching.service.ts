@@ -1,12 +1,21 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { PlansService } from '../plans/plans.service';
 import type { CreateStudentDto, UpdateStudentDto, MarkAttendanceDto, CreateFeeRecordDto } from './coaching.dto';
 
 @Injectable()
 export class CoachingService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private plans: PlansService,
+  ) {}
+
+  private async requireCoaching(businessId: string) {
+    await this.plans.assertFeature(businessId, 'coaching_module');
+  }
 
   async listStudents(businessId: string) {
+    await this.requireCoaching(businessId);
     const students = await this.prisma.student.findMany({
       where: { businessId, isActive: true },
       orderBy: { name: 'asc' },
@@ -53,6 +62,7 @@ export class CoachingService {
   }
 
   async getStudent(businessId: string, id: string) {
+    await this.requireCoaching(businessId);
     const s = await this.prisma.student.findUnique({
       where: { id },
       select: {
@@ -68,6 +78,7 @@ export class CoachingService {
   }
 
   async createStudent(businessId: string, dto: CreateStudentDto) {
+    await this.requireCoaching(businessId);
     return this.prisma.student.create({
       data: { businessId, ...dto },
       select: { id: true, name: true, phone: true, batch: true, course: true },
@@ -75,6 +86,7 @@ export class CoachingService {
   }
 
   async updateStudent(businessId: string, id: string, dto: UpdateStudentDto) {
+    await this.requireCoaching(businessId);
     const s = await this.prisma.student.findUnique({ where: { id }, select: { businessId: true } });
     if (!s || s.businessId !== businessId) throw new BadRequestException('Student not found');
     return this.prisma.student.update({
@@ -85,6 +97,7 @@ export class CoachingService {
   }
 
   async markAttendance(businessId: string, dto: MarkAttendanceDto) {
+    await this.plans.assertFeature(businessId, 'attendance');
     const s = await this.prisma.student.findUnique({ where: { id: dto.studentId }, select: { businessId: true } });
     if (!s || s.businessId !== businessId) throw new BadRequestException('Student not found');
     return this.prisma.studentAttendance.upsert({
@@ -96,6 +109,7 @@ export class CoachingService {
   }
 
   async bulkAttendance(businessId: string, dateISO: string, records: Array<{ studentId: string; present: boolean }>) {
+    await this.plans.assertFeature(businessId, 'attendance');
     const students = await this.prisma.student.findMany({
       where: { businessId, id: { in: records.map((r) => r.studentId) } },
       select: { id: true },
@@ -116,6 +130,7 @@ export class CoachingService {
   }
 
   async createFeeRecord(businessId: string, dto: CreateFeeRecordDto) {
+    await this.plans.assertFeature(businessId, 'fee_tracking');
     const s = await this.prisma.student.findUnique({ where: { id: dto.studentId }, select: { businessId: true } });
     if (!s || s.businessId !== businessId) throw new BadRequestException('Student not found');
     return this.prisma.feeRecord.create({
@@ -132,6 +147,7 @@ export class CoachingService {
   }
 
   async markFeePaid(businessId: string, feeId: string) {
+    await this.plans.assertFeature(businessId, 'fee_tracking');
     const fee = await this.prisma.feeRecord.findUnique({ where: { id: feeId }, select: { businessId: true, paidAt: true } });
     if (!fee || fee.businessId !== businessId) throw new BadRequestException('Fee record not found');
     return this.prisma.feeRecord.update({
@@ -142,6 +158,7 @@ export class CoachingService {
   }
 
   async feesDashboard(businessId: string) {
+    await this.plans.assertFeature(businessId, 'fee_tracking');
     const now = new Date();
     const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
