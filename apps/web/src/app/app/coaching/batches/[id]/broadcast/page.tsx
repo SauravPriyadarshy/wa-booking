@@ -3,7 +3,7 @@
 import { use, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { apiBase } from "@/lib/api-base";
-import { buildWaMeUrl } from "@/lib/whatsapp-link";
+import { buildWhatsAppLink } from "@/lib/whatsapp-router";
 import { Button, Card } from "@/components/ui";
 
 type ParentRow = {
@@ -51,8 +51,12 @@ export default function BatchBroadcastPage({ params }: { params: Promise<{ id: s
 
   function openCurrentWa() {
     if (!current || !message.trim()) return;
-    const text = `${message.trim()}\n\n— ${roster?.batchName ?? "Coaching"}`;
-    window.open(buildWaMeUrl(current.parentPhone, text), "_blank");
+    const url = buildWhatsAppLink({
+      phone: current.parentPhone,
+      type: "BATCH_BROADCAST",
+      variables: { message: `${message.trim()}\n\n— ${roster?.batchName ?? "Coaching"}` },
+    });
+    window.open(url, "_blank");
     setSent((prev) => new Set(prev).add(current.studentId));
   }
 

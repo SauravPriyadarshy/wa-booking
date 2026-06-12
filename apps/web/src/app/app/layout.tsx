@@ -9,15 +9,12 @@ import { apiBase } from "@/lib/api-base";
 import { ToastProvider } from "@/components/ui";
 import { LangSwitcher } from "@/components/lang-switcher";
 import { AppSupportChat } from "@/components/app/app-support-chat";
-import { SidebarWhatsAppNav } from "@/components/app/sidebar-whatsapp-nav";
 import {
   Home,
   CalendarDays,
   Users,
   MoreHorizontal,
-  MessageCircle,
   BarChart2,
-  LifeBuoy,
   Settings,
   ClipboardList,
   GraduationCap,
@@ -34,7 +31,7 @@ type MeResponse =
         name: string;
         slug: string | null;
         categoryKey: string | null;
-        enabledFeatures: string[];
+        categoryName: string | null;
       };
     };
 
@@ -43,8 +40,9 @@ type UiConfig =
   | {
       ok: true;
       modules: string[];
+      categoryKey: string | null;
+      focusedMode?: boolean;
       slug: string | null;
-      quickActions: { key: string; label: string }[];
     };
 
 function logout() {
@@ -59,51 +57,70 @@ function linkActive(pathname: string, href: string) {
   return p === h || p.startsWith(`${h}/`);
 }
 
-type NavLabels = {
-  today: string;
-  bookings: string;
-  customers: string;
-  more: string;
-  queue: string;
-  matrix: string;
-  whatsapp: string;
-  support: string;
-  insights: string;
-  settings: string;
-};
-
 const NAV_ITEMS: Array<{
   href: string;
-  labelKey: keyof NavLabels;
-  module: string | null;
+  label: string;
+  module: string;
   Icon: LucideIcon;
   tab: boolean;
   side: boolean;
-  clinicOnly?: boolean;
-  coachingOnly?: boolean;
+  categories?: string[];
 }> = [
-  { href: "/app", labelKey: "today", module: "hub", Icon: Home, tab: true, side: true },
-  { href: "/app/bookings", labelKey: "bookings", module: "bookings", Icon: CalendarDays, tab: true, side: true },
-  { href: "/app/customers", labelKey: "customers", module: "customers", Icon: Users, tab: true, side: true },
-  { href: "/app/whatsapp", labelKey: "whatsapp", module: "whatsapp-connect", Icon: MessageCircle, tab: false, side: false },
-  { href: "/app/more", labelKey: "more", module: null, Icon: MoreHorizontal, tab: true, side: false },
-  { href: "/app/queue", labelKey: "queue", module: "bookings", Icon: ClipboardList, tab: true, side: true, clinicOnly: true },
+  { href: "/app", label: "Hub", module: "hub", Icon: Home, tab: true, side: true },
+  { href: "/app/queue", label: "Queue", module: "queue", Icon: ClipboardList, tab: true, side: true, categories: ["clinic"] },
   {
     href: "/app/coaching/matrix",
-    labelKey: "matrix",
-    module: "customers",
+    label: "Matrix",
+    module: "matrix",
     Icon: GraduationCap,
     tab: true,
     side: true,
-    coachingOnly: true,
+    categories: ["coaching"],
   },
-  { href: "/app/students", labelKey: "customers", module: "customers", Icon: Users, tab: false, side: true, coachingOnly: true },
-  { href: "/app/coaching/fees", labelKey: "bookings", module: "customers", Icon: CalendarDays, tab: false, side: true, coachingOnly: true },
-  { href: "/app/coaching/reports", labelKey: "insights", module: "customers", Icon: BarChart2, tab: false, side: true, coachingOnly: true },
-  { href: "/app/support", labelKey: "support", module: "support", Icon: LifeBuoy, tab: false, side: true },
-  { href: "/app/analytics", labelKey: "insights", module: "analytics", Icon: BarChart2, tab: false, side: true },
-  { href: "/app/settings", labelKey: "settings", module: "more", Icon: Settings, tab: false, side: true },
+  { href: "/app/bookings", label: "Bookings", module: "bookings", Icon: CalendarDays, tab: true, side: true },
+  { href: "/app/customers", label: "Customers", module: "customers", Icon: Users, tab: true, side: true },
+  { href: "/app/students", label: "Students", module: "students", Icon: Users, tab: false, side: true, categories: ["coaching"] },
+  { href: "/app/coaching/fees", label: "Fees", module: "fees", Icon: CalendarDays, tab: false, side: true, categories: ["coaching"] },
+  { href: "/app/coaching/reports", label: "Reports", module: "reports", Icon: BarChart2, tab: false, side: true, categories: ["coaching"] },
+  { href: "/app/settings", label: "Settings", module: "settings", Icon: Settings, tab: false, side: true },
+  { href: "/app/more", label: "More", module: "more", Icon: MoreHorizontal, tab: true, side: false },
 ];
+
+function VerticalBanner({ categoryKey, name }: { categoryKey: string; name: string }) {
+  const config: Record<string, { icon: string; title: string; sub: string; className: string }> = {
+    clinic: {
+      icon: "🏥",
+      title: "Clinic Mode",
+      sub: "Live queue · walk-ins · token alerts via WhatsApp",
+      className: "border-blue-200 bg-blue-50 text-blue-900",
+    },
+    coaching: {
+      icon: "📚",
+      title: "Coaching Mode",
+      sub: "Batches · attendance · fees · parent alerts",
+      className: "border-purple-200 bg-purple-50 text-purple-900",
+    },
+    salon: {
+      icon: "✂️",
+      title: "Salon Mode",
+      sub: "Bookings · customers · WhatsApp reminders",
+      className: "border-pink-200 bg-pink-50 text-pink-900",
+    },
+  };
+  const c = config[categoryKey];
+  if (!c) return null;
+  return (
+    <div className={`rounded-2xl border px-4 py-3 ${c.className}`}>
+      <div className="flex items-center gap-2">
+        <span className="text-xl">{c.icon}</span>
+        <div>
+          <div className="text-[13px] font-bold">{c.title}</div>
+          <div className="text-[11px] opacity-80">{name} — {c.sub}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -137,55 +154,42 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   }, [token]);
 
   const modules = ui?.ok ? new Set(ui.modules) : new Set<string>();
-  const show = (key: string | null) => !key || modules.size === 0 || modules.has(key);
+  const categoryKey = ui?.ok ? ui.categoryKey : me?.ok ? me.business?.categoryKey : null;
+  const focusedMode = ui?.ok ? ui.focusedMode : false;
   const isSuperAdmin = me?.ok && me.user.role === "SUPER_ADMIN";
-  const isClinic = me?.ok && me.business?.categoryKey === "clinic";
-  const isCoaching = me?.ok && me.business?.categoryKey === "coaching";
+  const businessName = me?.ok && me.business?.name ? me.business.name : "Dashboard";
 
-  const navFilter = (t: (typeof NAV_ITEMS)[number]) => {
-    if (t.clinicOnly && !isClinic) return false;
-    if (t.coachingOnly && !isCoaching) return false;
-    if (!t.clinicOnly && t.href === "/app/more" && isClinic) return false;
-    if (!t.coachingOnly && t.href === "/app/more" && isCoaching) return false;
-    if (isCoaching && t.href === "/app/customers" && t.tab) return false;
-    return show(t.module);
+  const navFilter = (item: (typeof NAV_ITEMS)[number]) => {
+    if (!modules.has(item.module)) return false;
+    if (item.categories && categoryKey && !item.categories.includes(categoryKey)) return false;
+    if (focusedMode && item.module === "more" && (categoryKey === "clinic" || categoryKey === "coaching")) {
+      return false;
+    }
+    if (categoryKey === "coaching" && item.href === "/app/customers" && item.tab) return false;
+    return true;
   };
 
   const visibleTabs = NAV_ITEMS.filter((t) => t.tab && navFilter(t)).map((t) => ({
     ...t,
-    label:
-      t.labelKey === "today"
-        ? tn("today")
-        : t.labelKey === "matrix"
-          ? "Matrix"
-          : tn(t.labelKey),
+    label: t.label === "Hub" ? tn("today") : t.label === "Customers" ? (categoryKey === "coaching" ? "CRM" : tn("customers")) : t.label,
   }));
-  const visibleSidebar = NAV_ITEMS.filter((t) => (t.side || (t.clinicOnly && isClinic) || (t.coachingOnly && isCoaching)) && navFilter(t)).map((t) => {
-    let label = tn(t.labelKey === "today" ? "hub" : t.labelKey);
-    if (t.labelKey === "matrix") label = "Academic Matrix";
-    if (t.href === "/app/students") label = "Students";
-    if (t.href === "/app/coaching/fees") label = "Fees";
-    if (t.href === "/app/coaching/reports") label = "Reports";
-    return { ...t, label };
-  });
+
+  const visibleSidebar = NAV_ITEMS.filter((t) => t.side && navFilter(t));
 
   return (
     <ToastProvider>
       <div className="min-h-screen bg-zinc-50 md:flex">
-        {/* Desktop sidebar */}
         <aside className="sticky top-0 hidden h-screen w-[240px] flex-shrink-0 flex-col border-r border-zinc-200 bg-white md:flex">
           <div className="border-b border-zinc-100 px-4 py-4">
             <div className="flex items-center justify-between gap-2">
               <div className="min-w-0 flex-1">
                 <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-400">Workspace</div>
-                <div className="mt-1 truncate text-[15px] font-semibold text-zinc-900">
-                  {me?.ok && me.business?.name ? me.business.name : "Dashboard"}
-                </div>
+                <div className="mt-1 truncate text-[15px] font-semibold text-zinc-900">{businessName}</div>
               </div>
               <LangSwitcher />
             </div>
           </div>
-          <nav className="flex flex-1 flex-col gap-0.5 p-2">
+          <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto p-2">
             {visibleSidebar.map(({ href, label, Icon }) => {
               const active = linkActive(pathname, href);
               return (
@@ -203,7 +207,6 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                 </a>
               );
             })}
-            {show("whatsapp-connect") ? <SidebarWhatsAppNav /> : null}
             <button
               type="button"
               onClick={logout}
@@ -217,7 +220,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
         <div className="relative flex min-h-screen flex-1 flex-col">
           <div className="shell relative flex flex-1 flex-col">
-            {isSuperAdmin && (
+            {isSuperAdmin ? (
               <div className="pt-3">
                 <a
                   href="/app/superadmin"
@@ -226,18 +229,22 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                   <span aria-hidden>⚡</span> Super Admin Panel
                 </a>
               </div>
-            )}
+            ) : null}
 
-            <main className="app-main animate-slide-up flex-1">
-              {children}
-            </main>
+            {focusedMode && categoryKey ? (
+              <div className="pt-3">
+                <VerticalBanner categoryKey={categoryKey} name={businessName} />
+              </div>
+            ) : null}
+
+            <main className="app-main animate-slide-up flex-1">{children}</main>
 
             <AppSupportChat />
 
             <nav className="fixed bottom-0 left-0 right-0 z-30 border-t border-zinc-100 bg-white/95 pb-safe backdrop-blur-md md:hidden">
               <div
                 className="shell grid gap-0 py-1 !px-2"
-                style={{ gridTemplateColumns: `repeat(${visibleTabs.length}, 1fr)` }}
+                style={{ gridTemplateColumns: `repeat(${Math.max(visibleTabs.length, 1)}, 1fr)` }}
               >
                 {visibleTabs.map(({ href, label, Icon }) => {
                   const active = linkActive(pathname, href);
@@ -251,9 +258,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                       }`}
                     >
                       <Icon className="h-5 w-5" strokeWidth={active ? 2.2 : 1.8} />
-                      <span
-                        className={`text-[10px] font-semibold leading-none ${active ? "text-emerald-600" : "text-zinc-400"}`}
-                      >
+                      <span className={`text-[10px] font-semibold leading-none ${active ? "text-emerald-600" : "text-zinc-400"}`}>
                         {label}
                       </span>
                     </Link>

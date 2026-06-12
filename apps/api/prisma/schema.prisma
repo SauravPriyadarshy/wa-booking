@@ -27,6 +27,25 @@ enum AppointmentStatus {
   NO_SHOW
 }
 
+enum BookingType {
+  ONLINE
+  WALK_IN
+  PHONE
+}
+
+enum QueueStatus {
+  WAITING
+  IN_CONSULTATION
+  COMPLETED
+  SKIPPED
+}
+
+enum ClinicPaymentStatus {
+  PENDING
+  PAID_CASH
+  PAID_UPI
+}
+
 enum LeadStage {
   NEW
   INTERESTED
@@ -512,6 +531,11 @@ model Appointment {
   startAt DateTime
   endAt   DateTime
 
+  tokenNumber   Int?
+  bookingType   BookingType         @default(ONLINE)
+  queueStatus   QueueStatus?
+  paymentStatus ClinicPaymentStatus @default(PENDING)
+
   /** When status is CANCELLED, optional reason (e.g. HOLIDAY for mass holiday cancel). */
   cancelReason String?
 
@@ -526,6 +550,8 @@ model Appointment {
   @@index([businessId, status])
   @@index([businessId, startAt, status])
   @@index([businessId, customerId, status, startAt])
+  @@index([businessId, staffId, startAt])
+  @@index([businessId, staffId, tokenNumber])
   @@index([customerId])
   @@index([serviceId])
   @@index([staffId])

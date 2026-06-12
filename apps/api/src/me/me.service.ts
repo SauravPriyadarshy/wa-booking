@@ -1,19 +1,20 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { PlansService } from '../plans/plans.service';
-import { hasFeature } from '../plans/plan-limits';
 
 type UiModuleKey =
   | 'hub'
   | 'bookings'
   | 'customers'
-  | 'leads'
-  | 'support'
-  | 'payments'
-  | 'staff'
-  | 'analytics'
-  | 'whatsapp-connect'
+  | 'queue'
+  | 'matrix'
+  | 'students'
+  | 'fees'
+  | 'reports'
+  | 'settings'
   | 'more';
+
+const FOCUSED_VERTICALS = new Set(['clinic', 'coaching', 'salon']);
 
 @Injectable()
 export class MeService {
@@ -51,9 +52,7 @@ export class MeService {
 
     if (!user) return { ok: false };
 
-    const planSnap = user.businessId
-      ? await this.plans.getSnapshot(user.businessId)
-      : null;
+    const planSnap = user.businessId ? await this.plans.getSnapshot(user.businessId) : null;
 
     const enabledFeatures =
       user.business?.features?.filter((f) => f.enabled).map((f) => f.key) ?? [];
@@ -92,55 +91,33 @@ export class MeService {
     const me = await this.getMe(userId);
     if (!me.ok) return { ok: false as const };
 
-    const planSnap = me.business?.id
-      ? await this.plans.getSnapshot(me.business.id)
-      : null;
+    const planSnap = me.business?.id ? await this.plans.getSnapshot(me.business.id) : null;
     const planFeatures = new Set(planSnap?.features ?? []);
-
     const role = me.user?.role;
     if (!role) return { ok: false as const };
+
     const categoryKey = me.business?.categoryKey ?? null;
-    const enabled = new Set(me.business?.enabledFeatures ?? []);
-    const noFlagsYet = enabled.size === 0;
+    const focusedMode = categoryKey ? FOCUSED_VERTICALS.has(categoryKey) : false;
 
-    const has = (k: string) => enabled.has(k) || noFlagsYet;
+    const modules: UiModuleKey[] = ['hub'];
 
-    const isStaff = role === 'STAFF';
-    const isOwnerLike = role === 'SUPER_ADMIN' || role === 'BUSINESS_ADMIN';
-
-    const modules: UiModuleKey[] = [];
-
-    // Always: Hub + Bookings. This is the "simple like WhatsApp" core.
-    modules.push('hub');
-    modules.push('bookings');
-
-    if (has('crm')) modules.push('customers');
-    if (has('support')) modules.push('support');
-    if (has('payments')) modules.push('payments');
-    if (has('analytics') && !isStaff && planFeatures.has('advanced_analytics')) {
-      modules.push('analytics');
+    if (categoryKey === 'clinic') {
+      modules.push('queue', 'bookings', 'customers', 'settings', 'more');
+    } else if (categoryKey === 'coaching') {
+      modules.push('matrix', 'students', 'fees', 'reports', 'bookings', 'customers', 'settings', 'more');
+    } else if (categoryKey === 'salon') {
+      modules.push('bookings', 'customers', 'settings', 'more');
+    } else if (role === 'SUPER_ADMIN') {
+      modules.push('bookings', 'customers', 'settings', 'more');
+    } else {
+      modules.push('bookings', 'customers', 'more');
     }
 
-    // Leads are useful for most businesses, but keep staff UI minimal.
-    if (has('support') || has('crm')) {
-      if (has('whatsapp')) modules.push('leads');
-      else if (isOwnerLike) modules.push('leads');
-    }
-
-    // Queue is category-specific; we keep it under "More" until implemented.
-    // (categoryKey can be used later to promote Queue into the main nav.)
-    void categoryKey;
-
-    // WhatsApp connect is a setup screen, not a primary module.
-    if (has('whatsapp') && isOwnerLike) modules.push('whatsapp-connect');
-
-    modules.push('more');
-
-    // Hard cap for bottom-nav: we only expose a subset on the client.
     return {
       ok: true as const,
       role,
       categoryKey,
+      focusedMode,
       slug: me.business?.slug ?? null,
       modules: Array.from(new Set(modules)),
       plan: planSnap?.effectivePlan ?? 'FREE',
@@ -148,12 +125,12 @@ export class MeService {
       planLimits: planSnap?.limits ?? null,
       quickActions: [
         { key: 'new-booking', label: 'New booking' },
-        { key: 'reply', label: 'Reply on WhatsApp' },
-        ...(has('support') ? [{ key: 'new-ticket', label: 'Create ticket' }] : []),
-        ...(has('crm') ? [{ key: 'new-customer', label: 'Add customer' }] : []),
-        ...(has('payments') ? [{ key: 'payment-reminder', label: 'Payment reminder' }] : []),
+        ...(categoryKey === 'clinic'
+          ? [{ key: 'walk-in', label: 'Register walk-in' }]
+          : categoryKey === 'coaching'
+            ? [{ key: 'add-student', label: 'Add student' }]
+            : []),
       ],
     };
   }
 }
-

@@ -30,6 +30,7 @@ import { ConversationsModule } from './conversations/conversations.module';
 import { QueuesModule } from './queues/queues.module';
 import { SiteContentModule } from './site-content/site-content.module';
 import { CoachingModule } from './coaching/coaching.module';
+import { ClinicModule } from './clinic/clinic.module';
 import { AutomationModule } from './automation/automation.module';
 import { PlansModule } from './plans/plans.module';
 
@@ -65,6 +66,7 @@ import { PlansModule } from './plans/plans.module';
     ConversationsModule,
     PublicModule,
     CoachingModule,
+    ClinicModule,
     AutomationModule,
     PlansModule,
   ],

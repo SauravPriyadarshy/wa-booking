@@ -43,6 +43,26 @@ function resolvePricing(raw: string | undefined, locale: AppLocale): PricingSect
 
 const CITIES = ["Darbhanga", "Laheriasarai", "Benipur", "Baheri", "Jale", "Samastipur", "Muzaffarpur", "Patna"];
 
+const FOCUS_VERTICALS = new Set(["clinic", "coaching", "salon"]);
+
+const FOCUS_COPY: Record<string, { tagline: string; features: string[]; accent: string }> = {
+  clinic: {
+    tagline: "Live token queue · walk-ins · parent WhatsApp alerts",
+    features: ["Doctor-wise tokens", "Cash/UPI fee tracking", "Walk-in register in 10 sec"],
+    accent: "border-blue-200 bg-gradient-to-br from-blue-50 to-white",
+  },
+  coaching: {
+    tagline: "Batches · attendance · fees · parent broadcast",
+    features: ["Academic matrix", "Daily roll call", "Fee ledger + reminders"],
+    accent: "border-purple-200 bg-gradient-to-br from-purple-50 to-white",
+  },
+  salon: {
+    tagline: "Online booking · CRM · WhatsApp reminders",
+    features: ["Share booking link", "Customer history", "Staff scheduling"],
+    accent: "border-pink-200 bg-gradient-to-br from-pink-50 to-white",
+  },
+};
+
 export default async function Home() {
   const locale = await getServerLocale();
   const t = await getTranslations("marketing");
@@ -81,6 +101,8 @@ export default async function Home() {
   const waNumber = platform.whatsappNumber;
   const { categories, testimonials } = platform;
   const benefits = CITY_BENEFITS[locale];
+  const focusCategories = categories.filter((c) => FOCUS_VERTICALS.has(c.key));
+  const otherCategories = categories.filter((c) => !FOCUS_VERTICALS.has(c.key));
 
   return (
     <MarketingShell>
@@ -110,22 +132,65 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* Categories — compact grid */}
+      {/* Focus verticals — clinic, coaching, salon */}
       <section className="shell py-8">
-        <h2 className="text-center text-[18px] font-bold text-zinc-900">{t("everyBusinessType")}</h2>
-        <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
-          {categories.map((cat) => (
-            <a
-              key={cat.key}
-              href="/signup"
-              className="flex items-center gap-2 rounded-xl border border-zinc-100 bg-white p-3 shadow-sm transition hover:border-emerald-200 active:scale-[0.99]"
-            >
-              <span className="text-xl">{cat.icon}</span>
-              <span className="truncate text-[12px] font-semibold text-zinc-800">{categoryDisplayName(cat, locale)}</span>
-            </a>
-          ))}
+        <div className="text-center">
+          <span className="inline-block rounded-full bg-emerald-100 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-emerald-800">
+            Now live in Bihar
+          </span>
+          <h2 className="mt-3 text-[20px] font-black text-zinc-900 md:text-[24px]">
+            Built for clinics, coaching & salons
+          </h2>
+          <p className="mx-auto mt-2 max-w-lg text-[13px] leading-6 text-zinc-600">
+            Start free today — pick your business type and go live in minutes. WhatsApp alerts work from your phone, no setup.
+          </p>
+        </div>
+        <div className="mt-6 grid gap-3 md:grid-cols-3">
+          {focusCategories.map((cat) => {
+            const copy = FOCUS_COPY[cat.key];
+            return (
+              <a
+                key={cat.key}
+                href={`/signup?category=${cat.key}`}
+                className={`flex flex-col rounded-2xl border-2 p-5 shadow-sm transition hover:shadow-md active:scale-[0.99] ${copy?.accent ?? "border-zinc-100 bg-white"}`}
+              >
+                <span className="text-3xl">{cat.icon}</span>
+                <div className="mt-3 text-[16px] font-black text-zinc-900">{categoryDisplayName(cat, locale)}</div>
+                <p className="mt-1 text-[12px] leading-5 text-zinc-600">{copy?.tagline}</p>
+                <ul className="mt-3 space-y-1">
+                  {(copy?.features ?? []).map((f) => (
+                    <li key={f} className="text-[11px] font-semibold text-zinc-700">
+                      ✓ {f}
+                    </li>
+                  ))}
+                </ul>
+                <span className="mt-4 text-[13px] font-bold text-emerald-700">Start free →</span>
+              </a>
+            );
+          })}
         </div>
       </section>
+
+      {/* Other categories — compact, de-emphasized */}
+      {otherCategories.length > 0 ? (
+        <section className="border-t border-zinc-100 bg-zinc-50 py-6">
+          <div className="shell">
+            <p className="text-center text-[12px] font-semibold text-zinc-500">{t("everyBusinessType")}</p>
+            <div className="mt-3 flex flex-wrap justify-center gap-2">
+              {otherCategories.map((cat) => (
+                <a
+                  key={cat.key}
+                  href="/signup"
+                  className="flex items-center gap-1.5 rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-zinc-600 opacity-70 transition hover:opacity-100"
+                >
+                  <span>{cat.icon}</span>
+                  {categoryDisplayName(cat, locale)}
+                </a>
+              ))}
+            </div>
+          </div>
+        </section>
+      ) : null}
 
       {/* Key benefits — 4 cards */}
       <section className="bg-zinc-50 py-8">

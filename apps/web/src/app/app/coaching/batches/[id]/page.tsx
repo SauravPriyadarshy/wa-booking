@@ -4,7 +4,7 @@ import { use, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { apiBase } from "@/lib/api-base";
 import { ManualWhatsAppButton } from "@/components/app/manual-whatsapp-button";
-import { buildFeesPendingText, openWaMeLink } from "@/lib/whatsapp-link";
+import { openWhatsAppLink } from "@/lib/whatsapp-router";
 import { Button, Card } from "@/components/ui";
 
 type FeeRow = {
@@ -84,6 +84,12 @@ export default function BatchOpsPage({ params }: { params: Promise<{ id: string 
   const [activeTestId, setActiveTestId] = useState<string | null>(null);
   const [scores, setScores] = useState<Record<string, string>>({});
   const [savingTest, setSavingTest] = useState(false);
+
+  const [broadcastOpen, setBroadcastOpen] = useState(false);
+  const [broadcastCategory, setBroadcastCategory] = useState<"attendance" | "fees" | "custom">("custom");
+  const [broadcastMessage, setBroadcastMessage] = useState("");
+  const [broadcastIndex, setBroadcastIndex] = useState(0);
+  const [broadcastSent, setBroadcastSent] = useState<Set<string>>(new Set());
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -249,6 +255,45 @@ export default function BatchOpsPage({ params }: { params: Promise<{ id: string 
     [ops?.tests, activeTestId],
   );
 
+  const broadcastTargets = useMemo(
+    () => (ops?.roster ?? []).filter((s) => s.parentPhone),
+    [ops?.roster],
+  );
+  const broadcastCurrent = broadcastTargets[broadcastIndex] ?? null;
+
+  function openBroadcastAlert() {
+    if (!broadcastCurrent || !ops) return;
+    const instituteName = ops.batch.course.stream.name;
+    if (broadcastCategory === "fees" && broadcastCurrent.fee && !broadcastCurrent.fee.isFullyPaid) {
+      openWhatsAppLink({
+        phone: broadcastCurrent.parentPhone!,
+        type: "COACHING_FEE_REMINDER",
+        variables: {
+          studentName: broadcastCurrent.name,
+          month: ops.month,
+          amount: String(Math.round((broadcastCurrent.fee.amountCents - broadcastCurrent.fee.paidAmountCents) / 100)),
+          instituteName,
+        },
+      });
+    } else if (broadcastCategory === "attendance") {
+      const status = broadcastCurrent.presentToday === false ? "ABSENT" : "PRESENT";
+      openWhatsAppLink({
+        phone: broadcastCurrent.parentPhone!,
+        type: "BATCH_BROADCAST",
+        variables: {
+          message: `Priya Abhibhavak,\nAaj ${ops.dateISO} ko ${broadcastCurrent.name} batch ${ops.batch.name} mein ${status} mark kiya gaya.\n- ${instituteName}`,
+        },
+      });
+    } else {
+      openWhatsAppLink({
+        phone: broadcastCurrent.parentPhone!,
+        type: "BATCH_BROADCAST",
+        variables: { message: `${broadcastMessage.trim()}\n\n— ${ops.batch.name}` },
+      });
+    }
+    setBroadcastSent((prev) => new Set(prev).add(broadcastCurrent.id));
+  }
+
   if (loading) return <div className="py-10 text-center text-[14px] text-zinc-500">Loading batch…</div>;
   if (!ops) return <div className="py-10 text-center text-[14px] text-red-600">{error ?? "Batch not found"}</div>;
 
@@ -304,6 +349,20 @@ export default function BatchOpsPage({ params }: { params: Promise<{ id: string 
 
       {tab === "roster" ? (
         <div className="space-y-3">
+          <div className="flex justify-end">
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              onClick={() => {
+                setBroadcastOpen(true);
+                setBroadcastIndex(0);
+                setBroadcastSent(new Set());
+              }}
+            >
+              Broadcast Alert to Batch
+            </Button>
+          </div>
           <Card className="!p-4">
             <div className="text-[13px] font-bold text-zinc-900">Quick Add Student</div>
             <div className="mt-3 grid gap-2 sm:grid-cols-3">
@@ -378,7 +437,17 @@ export default function BatchOpsPage({ params }: { params: Promise<{ id: string 
                   <div className="mt-2 border-t border-zinc-100 pt-2">
                     <ManualWhatsAppButton
                       label="Notify absent"
-                      onClick={() => openWaMeLink(s.parentPhone!, `Priya Abhibhavak, aapka bacha ${s.name} aaj class se anupasthit (ABSENT) hai. - BookNow Coaching System`)}
+                      onClick={() =>
+                        openWhatsAppLink({
+                          phone: s.parentPhone!,
+                          type: "COACHING_ABSENT",
+                          variables: {
+                            studentName: s.name,
+                            batchName: ops.batch.name,
+                            instituteName: ops.batch.course.stream.name,
+                          },
+                        })
+                      }
                     />
                   </div>
                 ) : null}
@@ -426,10 +495,21 @@ export default function BatchOpsPage({ params }: { params: Promise<{ id: string 
                         Update
                       </button>
                     ) : null}
-                    {!paid && s.parentPhone ? (
+                    {!paid && s.parentPhone && fee ? (
                       <ManualWhatsAppButton
                         label="Remind"
-                        onClick={() => openWaMeLink(s.parentPhone!, buildFeesPendingText(s.name))}
+                        onClick={() =>
+                          openWhatsAppLink({
+                            phone: s.parentPhone!,
+                            type: "COACHING_FEE_REMINDER",
+                            variables: {
+                              studentName: s.name,
+                              month: ops.month,
+                              amount: String(Math.round((fee.amountCents - fee.paidAmountCents) / 100)),
+                              instituteName: ops.batch.course.stream.name,
+                            },
+                          })
+                        }
                       />
                     ) : null}
                   </div>
@@ -521,6 +601,82 @@ export default function BatchOpsPage({ params }: { params: Promise<{ id: string 
                 Save
               </Button>
             </div>
+          </Card>
+        </div>
+      ) : null}
+
+      {broadcastOpen ? (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center">
+          <Card className="max-h-[90vh] w-full max-w-md overflow-y-auto !p-5 shadow-lg">
+            <h2 className="text-[16px] font-semibold">Broadcast Alert to Batch</h2>
+            <p className="mt-1 text-[12px] text-zinc-500">
+              Step through parents — each opens WhatsApp in a new tab with your message pre-filled.
+            </p>
+
+            <label className="mt-4 grid gap-1 text-[12px] font-medium text-zinc-700">
+              Alert type
+              <select
+                value={broadcastCategory}
+                onChange={(e) => setBroadcastCategory(e.target.value as "attendance" | "fees" | "custom")}
+                className="h-10 rounded-xl border border-zinc-200 px-3 text-[14px]"
+              >
+                <option value="attendance">Attendance Summary</option>
+                <option value="fees">Fee Dues Notice</option>
+                <option value="custom">Custom message</option>
+              </select>
+            </label>
+
+            {broadcastCategory === "custom" ? (
+              <textarea
+                value={broadcastMessage}
+                onChange={(e) => setBroadcastMessage(e.target.value)}
+                rows={3}
+                placeholder='e.g. "Class timing changed tomorrow to 8 AM."'
+                className="mt-3 w-full rounded-xl border border-zinc-200 px-3 py-2 text-[14px]"
+              />
+            ) : null}
+
+            {broadcastTargets.length === 0 ? (
+              <p className="mt-4 text-[13px] text-zinc-500">No parent phone numbers in this batch.</p>
+            ) : (
+              <>
+                <div className="mt-4 rounded-xl bg-zinc-50 px-3 py-2 text-[12px] text-zinc-600">
+                  Progress: {broadcastSent.size}/{broadcastTargets.length} · Step {broadcastIndex + 1}
+                </div>
+                {broadcastCurrent ? (
+                  <div className="mt-3 rounded-xl border border-zinc-100 p-3">
+                    <div className="text-[14px] font-bold text-zinc-900">{broadcastCurrent.name}</div>
+                    <div className="text-[12px] text-zinc-500">{broadcastCurrent.parentPhone}</div>
+                    {broadcastSent.has(broadcastCurrent.id) ? (
+                      <span className="mt-1 inline-block text-[11px] font-bold text-emerald-600">Sent ✓</span>
+                    ) : null}
+                  </div>
+                ) : null}
+                <div className="mt-4 flex gap-2">
+                  <Button
+                    type="button"
+                    variant="primary"
+                    className="flex-1"
+                    disabled={!broadcastCurrent || (broadcastCategory === "custom" && !broadcastMessage.trim())}
+                    onClick={openBroadcastAlert}
+                  >
+                    Send Next Alert
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="flex-1"
+                    onClick={() => setBroadcastIndex((i) => Math.min(i + 1, broadcastTargets.length - 1))}
+                  >
+                    Next →
+                  </Button>
+                </div>
+              </>
+            )}
+
+            <Button type="button" variant="secondary" className="mt-4 w-full" onClick={() => setBroadcastOpen(false)}>
+              Close
+            </Button>
           </Card>
         </div>
       ) : null}
