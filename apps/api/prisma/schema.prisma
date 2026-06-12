@@ -318,6 +318,9 @@ model Business {
   students        Student[]
   feeRecords      FeeRecord[]
   followUpLogs    FollowUpLog[]
+  streams         Stream[]
+  courses         Course[]
+  batches         Batch[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -359,6 +362,7 @@ model StaffProfile {
 
   title       String?
   specialization     String?
+  specializations    String[] @default([])
   consultationFeeCents Int?
   consultationDurationMin Int @default(15)
   isAvailable Boolean @default(true)
@@ -367,6 +371,7 @@ model StaffProfile {
   hours           StaffHours[]
   assignedTickets SupportTicket[]
   assignedConversations Conversation[]
+  batchAssignments BatchStaff[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -622,6 +627,107 @@ model SiteContent {
 
 // ── Coaching Center Module ──────────────────────────────────────────────────
 
+enum CoachingStreamKey {
+  SCHOOLING
+  JEE
+  NEET
+  CIVIL_SERVICES
+  SSC
+}
+
+enum EnrollmentStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+model Stream {
+  id         String            @id @default(cuid())
+  businessId String
+  business   Business          @relation(fields: [businessId], references: [id])
+  key        CoachingStreamKey
+  name       String
+  sortOrder  Int               @default(0)
+  isActive   Boolean           @default(true)
+  courses    Course[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([businessId, key])
+  @@index([businessId])
+}
+
+model Course {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id])
+  streamId   String
+  stream     Stream   @relation(fields: [streamId], references: [id], onDelete: Cascade)
+  name       String
+  isActive   Boolean  @default(true)
+  batches    Batch[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([businessId])
+  @@index([streamId])
+}
+
+model Batch {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id])
+  courseId   String
+  course     Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  name       String
+  roomNumber String?
+  startTime  String // HH:mm e.g. "08:00"
+  endTime    String // HH:mm e.g. "10:00"
+  daysOfWeek String[] // MON, TUE, WED, ...
+  isActive   Boolean  @default(true)
+
+  enrollments      BatchEnrollment[]
+  staffAssignments BatchStaff[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([businessId])
+  @@index([courseId])
+  @@index([businessId, roomNumber])
+}
+
+model BatchEnrollment {
+  id             String           @id @default(cuid())
+  studentId      String
+  student        Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  batchId        String
+  batch          Batch            @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  enrollmentDate DateTime         @default(now())
+  status         EnrollmentStatus @default(ACTIVE)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([studentId, batchId])
+  @@index([studentId])
+  @@index([batchId])
+}
+
+model BatchStaff {
+  id      String       @id @default(cuid())
+  batchId String
+  batch   Batch        @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  staffId String
+  staff   StaffProfile @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([batchId, staffId])
+  @@index([staffId])
+}
+
 model Student {
   id         String   @id @default(cuid())
   businessId String
@@ -638,6 +744,7 @@ model Student {
   admissionAt DateTime @default(now())
   attendance  StudentAttendance[]
   feeRecords  FeeRecord[]
+  enrollments BatchEnrollment[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -667,11 +774,16 @@ model FeeRecord {
   businessId String
   business   Business @relation(fields: [businessId], references: [id])
 
-  amountCents Int
-  dueDate     DateTime
-  paidAt      DateTime?
-  month       String    // "2026-06"
-  notes       String?
+  amountCents      Int
+  paidAmountCents  Int       @default(0)
+  dueDate          DateTime
+  paidAt           DateTime?
+  month            String // "2026-06"
+  notes            String?
+  courseName       String?
+  installmentIndex Int?
+  installmentTotal Int?
+  installmentGroupId String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -680,6 +792,7 @@ model FeeRecord {
   @@index([studentId])
   @@index([studentId, paidAt])
   @@index([businessId, paidAt])
+  @@index([installmentGroupId])
 }
 
 model ActivationCode {

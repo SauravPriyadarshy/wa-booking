@@ -20,6 +20,7 @@ import {
   LifeBuoy,
   Settings,
   ClipboardList,
+  GraduationCap,
   type LucideIcon,
 } from "lucide-react";
 
@@ -64,6 +65,7 @@ type NavLabels = {
   customers: string;
   more: string;
   queue: string;
+  matrix: string;
   whatsapp: string;
   support: string;
   insights: string;
@@ -78,6 +80,7 @@ const NAV_ITEMS: Array<{
   tab: boolean;
   side: boolean;
   clinicOnly?: boolean;
+  coachingOnly?: boolean;
 }> = [
   { href: "/app", labelKey: "today", module: "hub", Icon: Home, tab: true, side: true },
   { href: "/app/bookings", labelKey: "bookings", module: "bookings", Icon: CalendarDays, tab: true, side: true },
@@ -85,6 +88,17 @@ const NAV_ITEMS: Array<{
   { href: "/app/whatsapp", labelKey: "whatsapp", module: "whatsapp-connect", Icon: MessageCircle, tab: false, side: false },
   { href: "/app/more", labelKey: "more", module: null, Icon: MoreHorizontal, tab: true, side: false },
   { href: "/app/queue", labelKey: "queue", module: "bookings", Icon: ClipboardList, tab: true, side: true, clinicOnly: true },
+  {
+    href: "/app/coaching/matrix",
+    labelKey: "matrix",
+    module: "customers",
+    Icon: GraduationCap,
+    tab: true,
+    side: true,
+    coachingOnly: true,
+  },
+  { href: "/app/students", labelKey: "customers", module: "customers", Icon: Users, tab: false, side: true, coachingOnly: true },
+  { href: "/app/coaching/fees", labelKey: "bookings", module: "customers", Icon: CalendarDays, tab: false, side: true, coachingOnly: true },
   { href: "/app/support", labelKey: "support", module: "support", Icon: LifeBuoy, tab: false, side: true },
   { href: "/app/analytics", labelKey: "insights", module: "analytics", Icon: BarChart2, tab: false, side: true },
   { href: "/app/settings", labelKey: "settings", module: "more", Icon: Settings, tab: false, side: true },
@@ -125,21 +139,33 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const show = (key: string | null) => !key || modules.size === 0 || modules.has(key);
   const isSuperAdmin = me?.ok && me.user.role === "SUPER_ADMIN";
   const isClinic = me?.ok && me.business?.categoryKey === "clinic";
+  const isCoaching = me?.ok && me.business?.categoryKey === "coaching";
 
   const navFilter = (t: (typeof NAV_ITEMS)[number]) => {
     if (t.clinicOnly && !isClinic) return false;
+    if (t.coachingOnly && !isCoaching) return false;
     if (!t.clinicOnly && t.href === "/app/more" && isClinic) return false;
+    if (!t.coachingOnly && t.href === "/app/more" && isCoaching) return false;
+    if (isCoaching && t.href === "/app/customers" && t.tab) return false;
     return show(t.module);
   };
 
   const visibleTabs = NAV_ITEMS.filter((t) => t.tab && navFilter(t)).map((t) => ({
     ...t,
-    label: tn(t.labelKey === "today" ? "today" : t.labelKey),
+    label:
+      t.labelKey === "today"
+        ? tn("today")
+        : t.labelKey === "matrix"
+          ? "Matrix"
+          : tn(t.labelKey),
   }));
-  const visibleSidebar = NAV_ITEMS.filter((t) => (t.side || (t.clinicOnly && isClinic)) && navFilter(t)).map((t) => ({
-    ...t,
-    label: tn(t.labelKey === "today" ? "hub" : t.labelKey),
-  }));
+  const visibleSidebar = NAV_ITEMS.filter((t) => (t.side || (t.clinicOnly && isClinic) || (t.coachingOnly && isCoaching)) && navFilter(t)).map((t) => {
+    let label = tn(t.labelKey === "today" ? "hub" : t.labelKey);
+    if (t.labelKey === "matrix") label = "Academic Matrix";
+    if (t.href === "/app/students") label = "Students";
+    if (t.href === "/app/coaching/fees") label = "Fees";
+    return { ...t, label };
+  });
 
   return (
     <ToastProvider>

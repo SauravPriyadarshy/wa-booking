@@ -715,9 +715,9 @@ export function HubDashboard() {
           <h2 className="text-[13px] font-semibold uppercase tracking-wide text-zinc-400">Coaching Today</h2>
           <div className="mt-3 grid grid-cols-2 gap-2 md:grid-cols-3 lg:grid-cols-4">
             <WorkspaceCard label="Students" count={coaching.totalStudents} sub="active" href="/app/students" accent="text-blue-600" />
-            <WorkspaceCard label="Fees Due" count={coaching.feesDue} sub={formatInrFromCents(coaching.feesDueCents)} href="/app/fees" accent="text-red-600" urgent={coaching.feesDue > 0} />
-            <WorkspaceCard label="Attendance" count={coaching.attendancePct != null ? `${coaching.attendancePct}%` : "—"} sub="today" href="/app/students" accent="text-emerald-600" />
-            <WorkspaceCard label="New Admissions" count={coaching.newAdmissions} sub="last 30 days" href="/app/students" accent="text-purple-600" />
+            <WorkspaceCard label="Fees Due" count={coaching.feesDue} sub={formatInrFromCents(coaching.feesDueCents)} href="/app/coaching/fees" accent="text-red-600" urgent={coaching.feesDue > 0} />
+            <WorkspaceCard label="Attendance" count={coaching.attendancePct != null ? `${coaching.attendancePct}%` : "—"} sub="today" href="/app/coaching/attendance" accent="text-emerald-600" />
+            <WorkspaceCard label="Academic Matrix" count="→" sub="streams & batches" href="/app/coaching/matrix" accent="text-purple-600" />
           </div>
         </section>
       ) : null}

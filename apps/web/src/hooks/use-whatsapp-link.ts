@@ -5,6 +5,8 @@ import { apiBase } from "@/lib/api-base";
 import {
   buildBookingConfirmText,
   buildFeeReminderText,
+  buildAbsenceNotificationText,
+  buildInstallmentReminderText,
   buildWaMeUrl,
   openWaMeLink,
 } from "@/lib/whatsapp-link";
@@ -72,6 +74,20 @@ export function useWhatsAppLink() {
     openWaMeLink(parentPhone, buildFeeReminderText(month));
   }, []);
 
+  const openAbsenceNotification = useCallback((parentPhone: string, studentName: string, batchName: string) => {
+    openWaMeLink(parentPhone, buildAbsenceNotificationText(studentName, batchName));
+  }, []);
+
+  const openInstallmentReminder = useCallback(
+    (parentPhone: string, amountRupees: number, studentName: string, courseName: string, dueDate: string) => {
+      openWaMeLink(
+        parentPhone,
+        buildInstallmentReminderText(amountRupees, studentName, courseName, dueDate),
+      );
+    },
+    [],
+  );
+
   return {
     connected,
     loading: connected === null,
@@ -80,6 +96,8 @@ export function useWhatsAppLink() {
     feeReminderUrl,
     openBookingConfirm,
     openFeeReminder,
+    openAbsenceNotification,
+    openInstallmentReminder,
     /** Show manual WA action when server automations are unavailable. */
     showManualFallback: connected === false,
   };

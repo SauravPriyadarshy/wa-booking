@@ -21,6 +21,19 @@ export function buildFeeReminderText(month: string): string {
   return `Fee reminder for ${month}`;
 }
 
+export function buildAbsenceNotificationText(studentName: string, batchName: string): string {
+  return `Aadarneeya Abhibhavak, aapka bacha ${studentName} aaj ${batchName} ki kaksha se ABSENT hai. - BookNow Coaching System`;
+}
+
+export function buildInstallmentReminderText(
+  amountRupees: number,
+  studentName: string,
+  courseName: string,
+  dueDate: string,
+): string {
+  return `Dear Parent, this is an automated reminder that an installment of ₹${amountRupees.toLocaleString('en-IN')} for ${studentName}'s enrollment in ${courseName} is due by ${dueDate}. Please clear online or via cash register.`;
+}
+
 export function openWaMeLink(phone: string, text: string): void {
   window.location.assign(buildWaMeUrl(phone, text));
 }

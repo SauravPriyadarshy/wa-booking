@@ -80,8 +80,10 @@ export default function MorePage() {
 
         {hasCoaching ? (
           <>
-            <Card href="/app/students" title={tn("customers")} subtitle={t("studentsSub")} />
-            <Card href="/app/fees" title={th("payments")} subtitle={t("feesSub")} />
+            <Card href="/app/students" title="Students" subtitle={t("studentsSub")} />
+            <Card href="/app/coaching/matrix" title="Academic Matrix" subtitle="Streams, courses & batches" />
+            <Card href="/app/coaching/fees" title={th("payments")} subtitle={t("feesSub")} />
+            <Card href="/app/coaching/attendance" title="Attendance" subtitle="Daily roll call & parent alerts" />
           </>
         ) : null}
 
